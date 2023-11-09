@@ -16,11 +16,11 @@ This prompt which has `45 tokens` and guides the composition (altough it doesn't
 
 > "breathtaking high-quality image of a big old tree with a dog at the right side with an airplane in the sky, golden hour, beautiful lake in the background, professional, high budget hollywood move production, cinematic, film grain"
 
-It's not the same as this one where everything is left at random with danbooru style tags (`27  tokens`)
+It's not the same as this one where everything is left at random with danbooru style tags (`27 tokens`)
 
 > "breathtaking, high-quality, big old tree, dog, dawn, professional, high budget hollywood move production, cinematic, film grain"
 
-At compared to the last one, this doesn't add any quality or composition to the final result, it just changes it randomly (`109 tokens`).
+Compared to the last one, the following doesn't add any quality or composition to the final result, it just changes the image randomly (`109 tokens`).
 
 > "breathtaking, high-quality, big old tree, dog, airplane, sky, golden hour, beautiful lake, background, professional, high budget hollywood move production, cinematic, film grain, soft dimmed light, cinematic photo, (cinematic still:1.2), bokeh, photograph, ultrarealistic, professional, 4k, highly detailed, detailed hands, perfect hands, ultra detailed skin, small skin imperfections, award winning masterpiece with incredible details, Non-representational, colors and shapes, expression of feelings, imaginative, highly detailed"
 

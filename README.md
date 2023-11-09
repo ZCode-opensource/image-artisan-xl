@@ -2,6 +2,10 @@
 
 Image Artisan XL is the ultimate desktop application for creating amazing images with the power of artificial intelligence.
 
+<p align="center">
+<img src="https://raw.githubusercontent.com/ZCode-opensource/image-artisan-xl/main/src/iartisanxl/theme/images/iartisan_splash.webp" width="350" alt=""/>
+<p>
+
 With Image **Artisan XL**, you can unleash your creativity and generate new images from scratch using simple text prompts. Whether you want to create realistic landscapes, fantasy creatures, abstract art, or anything else you can imagine, **Image Artisan XL** has it all. **Image Artisan XL** is powered by Stable Diffusion XL, the best open source image model developed by Stability AI.
 
 No matter what you want to create, **Image Artisan XL** and Stable Diffusion XL will make it happen. Don’t miss this opportunity to get **Image Artisan XL** today and discover the endless possibilities of AI image creation.
@@ -29,6 +33,13 @@ It is highly recommended to use the included VAE with the FP16 fix, since the VA
 - Will completely run offline after the first installation.
 - Powerfull features only avalaible as a desktop application.
 - Easy sharing of models and Lora's metadata since the information its stored in each model, including sample image, sample generation, triggers and tags for filtering.
+
+## Limitations
+
+- Only runs with Stable Diffusion XL models.
+- It has the default 75 CLIP token limitation for the prompts.
+
+You can read why [here](https://github.com/ZCode-opensource/image-artisan-xl/EXPLANATIONS.MD#prompt-restriction).
 
 ## Hardware requirements
 
@@ -93,7 +104,11 @@ If you want to display the images when generating you'll need to create this dir
 > /models  
 > -- /taesd
 
-then download the taesd decoder from here: https://github.com/madebyollin/taesd/blob/main/taesdxl_decoder.pth and save it in this location.
+then download the taesd decoder from here:
+
+https://github.com/madebyollin/taesd/blob/main/taesdxl_decoder.pth
+
+and save it in this location.
 
 #### Vae with half precision fixed
 
@@ -104,13 +119,14 @@ For using less VRAM when decoding the images you'll need to create this director
 
 then download the vae model files from here:
 
-https://huggingface.co/madebyollin/sdxl-vae-fp16-fix/blob/main/diffusion_pytorch_model.safetensors https://huggingface.co/madebyollin/sdxl-vae-fp16-fix/blob/main/config.json
+https://huggingface.co/madebyollin/sdxl-vae-fp16-fix/blob/main/diffusion_pytorch_model.safetensors  
+https://huggingface.co/madebyollin/sdxl-vae-fp16-fix/blob/main/config.json
 
 and save them in this location.
 
 ## License
 
-Image Artisan XL is licensed under the MIT License.
+Image Artisan XL is licensed under the MIT License. You can find the full text of the license [here](https://github.com/ZCode-opensource/image-artisan-xl/blob/main/LICENSE).
 
 ## Acknowledgements
 
