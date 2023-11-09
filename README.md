@@ -8,6 +8,11 @@ Image Artisan XL is the ultimate desktop application for creating amazing images
 
 With Image **Artisan XL**, you can unleash your creativity and generate new images from scratch using simple text prompts. Whether you want to create realistic landscapes, fantasy creatures, abstract art, or anything else you can imagine, **Image Artisan XL** has it all. **Image Artisan XL** is powered by Stable Diffusion XL, the best open source image model developed by Stability AI.
 
+<p align="center">
+<img src="https://github-production-user-asset-6210df.s3.amazonaws.com/5442875/281783086-6bf31481-bd0a-451f-83e4-f8752c3fb397.png" width="340" alt=""/>
+<img src="https://github-production-user-asset-6210df.s3.amazonaws.com/5442875/281783588-ac05afcf-ba42-44e1-8a05-b643186e45cd.png" width="300" alt=""/>
+<p>
+
 No matter what you want to create, **Image Artisan XL** and Stable Diffusion XL will make it happen. Don’t miss this opportunity to get **Image Artisan XL** today and discover the endless possibilities of AI image creation.
 
 ## Motivation
