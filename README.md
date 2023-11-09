@@ -39,7 +39,7 @@ It is highly recommended to use the included VAE with the FP16 fix, since the VA
 - Only runs with Stable Diffusion XL models.
 - It has the default 75 CLIP token limitation for the prompts.
 
-You can read why [here](https://github.com/ZCode-opensource/image-artisan-xl/EXPLANATIONS.MD#prompt-restriction).
+You can read why [here](https://github.com/ZCode-opensource/image-artisan-xl/blob/main/EXPLANATIONS.MD).
 
 ## Hardware requirements
 
