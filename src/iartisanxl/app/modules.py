@@ -17,12 +17,12 @@ DATASET_ICON = files("iartisanxl.theme.icons").joinpath("dataset.png")
 
 MODULES = {
     "Text to image": (TXT2IMG_ICON, TextToImageModule),
-    "Image to image": (IMG2IMG_ICON, ImageToImageModule),
+    # "Image to image": (IMG2IMG_ICON, ImageToImageModule),
     # "Inpainting": (INPAINT_ICON, TextToImageModule),
     # "Gallery": (GALLERY_ICON, TextToImageModule),
     # "Canvas": (CANVAS_ICON, TextToImageModule),
     # "Nodes": (NODE_ICON, TextToImageModule),
     # "Finetune model": (FINETUNE_ICON, TextToImageModule),
-    "Train LoRA": (LORA_ICON, TrainLoraModule),
-    "Dataset": (DATASET_ICON, DatasetModule),
+    # "Train LoRA": (LORA_ICON, TrainLoraModule),
+    # "Dataset": (DATASET_ICON, DatasetModule),
 }
