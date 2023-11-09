@@ -65,7 +65,24 @@ You can read why [here](https://github.com/ZCode-opensource/image-artisan-xl/blo
 
 ### Windows installer
 
-Coming soon..
+Please download the most recent installer from the [releases](https://github.com/ZCode-opensource/image-artisan-xl/releases) section. This version is exclusively for x64 and, while it has only been tested on Windows 11, it should also be compatible with Windows 10.
+
+Before proceeding with the installation, ensure that you have the following prerequisites installed:
+
+- [Git for windows](https://git-scm.com/download/win)
+- [Powershell 7](https://learn.microsoft.com/en-us/powershell/)
+
+The installer will open a separate window to download the required dependencies, this will take some time specially for pytorch which is a 2.8 GB install.
+
+The final installed application without models will take around **6 GB** of space, it will be installed under a directory named ZCode/ImageArtisanXL and you can uninstall later from the `Windows installed apps menu`. It will create a shortcut icon on your desktop named "Image Artisan XL".
+
+The application will have a self contained version of python and environment, it will also have the tiny decoder and fixed VAE for half precision.
+
+Once installed, on the first run you will be asked to choose the directories for the models, you can use the defaults or point them to a place you already have with models. Later you can change them on the fly if you want to use separate model directories.
+
+### Documentation
+
+Coming soon...
 
 ### Manual install
 
