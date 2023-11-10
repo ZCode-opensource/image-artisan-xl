@@ -763,6 +763,10 @@ def convert_ldm_unet_checkpoint(
             "label_emb.0.2.bias"
         ]
 
+    # Relevant to StableDiffusionUpscalePipeline
+    if "num_class_embeds" in config:
+        new_checkpoint["class_embedding.weight"] = unet_state_dict["label_emb.weight"]
+
     new_checkpoint["conv_in.weight"] = unet_state_dict["input_blocks.0.0.weight"]
     new_checkpoint["conv_in.bias"] = unet_state_dict["input_blocks.0.0.bias"]
 
@@ -845,6 +849,7 @@ def convert_ldm_unet_checkpoint(
 
         if len(attentions):
             paths = renew_attention_paths(attentions)
+
             meta_path = {
                 "old": f"input_blocks.{i}.1",
                 "new": f"down_blocks.{block_id}.attentions.{layer_in_block_id}",

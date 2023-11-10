@@ -15,6 +15,7 @@ from diffusers import (
     DEISMultistepScheduler,
     DDPMScheduler,
     DPMSolverSDEScheduler,
+    LCMScheduler,
 )
 
 
@@ -68,4 +69,5 @@ schedulers = [
     Scheduler("LMS Karras", LMSDiscreteScheduler, dict(use_karras_sigmas=True)),
     Scheduler("Euler Ancestral", EulerAncestralDiscreteScheduler, dict()),
     Scheduler("KDPM 2 Ancestral", KDPM2AncestralDiscreteScheduler, dict()),
+    Scheduler("LCM", LCMScheduler, dict()),
 ]

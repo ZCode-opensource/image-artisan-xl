@@ -38,11 +38,13 @@ It is highly recommended to use the included VAE with the FP16 fix, since the VA
 - Will completely run offline after the first installation.
 - Powerfull features only avalaible as a desktop application.
 - Easy sharing of models and Lora's metadata since the information its stored in each model, including sample image, sample generation, triggers and tags for filtering.
+- Latent Consistency Models (LCM) and LoRAs for fast inference.
+- Segmind Stable Diffusion (SSD-1B) models for VRAM savings.
 
 ## Limitations
 
 - Only runs with Stable Diffusion XL models.
-- It has the default 75 CLIP token limitation for the prompts.
+- It has the default CLIP 75 token limitation for the prompts.
 
 You can read why [here](https://github.com/ZCode-opensource/image-artisan-xl/blob/main/EXPLANATIONS.MD).
 
