@@ -562,10 +562,6 @@ def create_unet_diffusers_config(original_config, image_size: int, controlnet=Fa
                 class_embed_type = "projection"
             assert "adm_in_channels" in unet_params
             projection_class_embeddings_input_dim = unet_params.adm_in_channels
-        else:
-            raise NotImplementedError(
-                f"Unknown conditional unet num_classes config: {unet_params.num_classes}"
-            )
 
     config = {
         "sample_size": image_size // vae_scale_factor,
@@ -582,6 +578,12 @@ def create_unet_diffusers_config(original_config, image_size: int, controlnet=Fa
         "projection_class_embeddings_input_dim": projection_class_embeddings_input_dim,
         "transformer_layers_per_block": transformer_layers_per_block,
     }
+
+    if "disable_self_attentions" in unet_params:
+        config["only_cross_attention"] = unet_params.disable_self_attentions
+
+    if "num_classes" in unet_params and isinstance(unet_params.num_classes, int):
+        config["num_class_embeds"] = unet_params.num_classes
 
     if controlnet:
         config["conditioning_channels"] = unet_params.hint_channels
