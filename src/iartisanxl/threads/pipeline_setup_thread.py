@@ -56,6 +56,9 @@ class PipelineSetupThread(QThread):
             else:
                 try:
                     self.status_changed.emit("Loading safetensors model...")
+                    scheduler = load_scheduler(
+                        self.image_generation_data.base_scheduler
+                    )
                     pipeline = ImageArtisanTextPipeline.from_single_file(
                         self.image_generation_data.model.path,
                         torch_dtype=torch.float16,
@@ -64,6 +67,7 @@ class PipelineSetupThread(QThread):
                         local_files_only=True,
                         original_config_file="./configs/sd_xl_base.yaml",
                         vae=vae,
+                        scheduler=scheduler,
                     )
                 except FileNotFoundError as e:
                     self.pipeline_error.emit(f"{e}")

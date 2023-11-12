@@ -228,6 +228,7 @@ class ImageArtisanTextPipeline(
     ):
         original_config_file = kwargs.pop("original_config_file", None)
         torch_dtype = kwargs.pop("torch_dtype", None)
+        scheduler = kwargs.pop("scheduler", None)
         pipeline_class = ImageArtisanTextPipeline
 
         try:
@@ -239,14 +240,15 @@ class ImageArtisanTextPipeline(
 
         image_size = 1024
 
-        scheduler_config = None
-        with open(
-            "./configs/scheduler_config.json", "r", encoding="utf-8"
-        ) as config_file:
-            scheduler_config = json.load(config_file)
+        if scheduler is None:
+            scheduler_config = None
+            with open(
+                "./configs/scheduler_config.json", "r", encoding="utf-8"
+            ) as config_file:
+                scheduler_config = json.load(config_file)
 
-        scheduler = EulerDiscreteScheduler.from_config(scheduler_config)
-        scheduler.register_to_config(clip_sample=False)
+            scheduler = EulerDiscreteScheduler.from_config(scheduler_config)
+            scheduler.register_to_config(clip_sample=False)
 
         unet_config = create_unet_diffusers_config(
             original_config, image_size=image_size

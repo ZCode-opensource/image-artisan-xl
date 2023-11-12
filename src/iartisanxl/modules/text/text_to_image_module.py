@@ -689,7 +689,6 @@ class TextToImageModule(BaseModule):
         torch.cuda.ipc_collect()
 
     def auto_generate(self, generation_data):
-        print(f"{generation_data=}")
         self.image_generation_data.loras = []
         error = self.image_generation_data.update_attributes(
             self.deserialize_image_data(generation_data)
