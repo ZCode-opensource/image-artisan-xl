@@ -42,7 +42,7 @@ h6 {
 
 h1 {
     line-height: 1.2;
-    font-size: 20px;
+    font-size: 28px;
 }
 
 h2 {
@@ -61,11 +61,12 @@ a {
 
 section {
     position: relative;
-    padding: 10px 10px 0;
+    padding: 20px 10px 0;
 }
 
 section:not(:first-of-type) {
     margin-top: 20px;
+    margin-bottom: 50px;
 }
 
 section h2 {
@@ -110,12 +111,16 @@ nav img {
     position: relative;
 }
 
-.right-showcase img {
-    margin: 10px auto;
+.left-catchphrase h1 {
+    margin: 10px 0;
+}
+
+.right-showcase video {
+    margin: 10px auto 15px;
 }
 
 .description p {
-    margin: 10px 0;
+    margin: 10px 0 15px;
 }
 
 #unique-features li {
@@ -127,7 +132,7 @@ nav img {
 }
 
 .vertical-images div {
-    margin: 10px 0;
+    margin: 15px 0;
 }
 
 #current-features {
@@ -159,10 +164,6 @@ footer {
         padding: 0;
     }
 
-    h1 {
-        font-size: 25px;
-    }
-
     nav h1 {
         font-size: 30px;
         line-height: 50px;
@@ -189,22 +190,21 @@ footer {
     .left-catchphrase {
         vertical-align: middle;
         text-align: left;
-        width: 80%;
     }
 
-    .right-showcase img {
-        top: 100px;
+    .right-showcase video {
+        top: 120px;
         right: 15px;
         position: absolute;
     }
 
     .description {
         padding-top: 3%;
-        width: 40%;
+        width: 30%;
     }
 
     .top-content {
-        min-height: 390px;
+        min-height: 470px;
     }
 
     #unique-features {
