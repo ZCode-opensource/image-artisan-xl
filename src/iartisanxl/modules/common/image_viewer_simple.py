@@ -20,26 +20,14 @@ from PyQt6.QtGui import (
     QScreen,
 )
 from PyQt6.QtCore import Qt
-from PyQt6.QtOpenGLWidgets import QOpenGLWidget
-from OpenGL import GL as gl
 
 from iartisanxl.modules.common.dialogs.full_screen_preview import FullScreenPreview
-
-
-class ImageGLWidget(QOpenGLWidget):
-    def initializeGL(self):
-        # gl.glClearColor(0.16, 0.16, 0.17, 1.0)
-        gl.glClearColor(0, 0, 0, 1.0)
-
-    def paintGL(self):
-        gl.glClear(gl.GL_COLOR_BUFFER_BIT | gl.GL_DEPTH_BUFFER_BIT)
 
 
 class ImageViewerSimple(QGraphicsView):
     def __init__(self, output_path, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.setAcceptDrops(True)
-        self.use_opengl = False
 
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
@@ -59,10 +47,6 @@ class ImageViewerSimple(QGraphicsView):
         # Create a QShortcut to trigger the save_image function when the user presses Ctrl+S
         save_shortcut = QShortcut(QKeySequence("Ctrl+S"), self)
         save_shortcut.activated.connect(self.save_image)
-
-        if self.use_opengl:
-            imagegl_widget = ImageGLWidget()
-            self.setViewport(imagegl_widget)
 
         self.initial_scale_factor = None
         self.serialized_data = None
