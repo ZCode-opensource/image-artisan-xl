@@ -19,7 +19,6 @@ from diffusers.models import AutoencoderKL, UNet2DConditionModel
 from diffusers.schedulers import KarrasDiffusionSchedulers, EulerDiscreteScheduler
 from diffusers.utils import scale_lora_layers, unscale_lora_layers
 from diffusers.pipelines.pipeline_utils import DiffusionPipeline
-from diffusers.utils.torch_utils import randn_tensor
 
 from iartisanxl.convert_model.convert_functions import (
     create_unet_diffusers_config,
@@ -33,6 +32,7 @@ from iartisanxl.pipelines.prompt_utils import (
     get_prompts_tokens_with_weights,
     pad_and_group_tokens_and_weights,
 )
+from iartisanxl.nodes.latents_node import LatentsNode
 
 
 class ImageArtisanTextPipeline(
@@ -443,17 +443,17 @@ class ImageArtisanTextPipeline(
         generator = torch.Generator(device="cpu").manual_seed(seed)
 
         status_update("Generating latents...")
-        num_channels_latents = self.unet.config.in_channels
+        latents_node = LatentsNode(
+            width=width,
+            height=height,
+            seed=seed,
+            num_channels_latents=self.unet.config.in_channels,
+            scale_factor=self.vae_scale_factor,
+            device=device,
+            dtype=prompt_embeds.dtype,
+        )
 
-        shape = (
-            1,
-            num_channels_latents,
-            height // self.vae_scale_factor,
-            width // self.vae_scale_factor,
-        )
-        latents = randn_tensor(
-            shape, generator=generator, device=device, dtype=prompt_embeds.dtype
-        )
+        latents = latents_node.process()
         latents = latents * self.scheduler.init_noise_sigma
 
         status_update("Preparing extra steps kwargs...")
