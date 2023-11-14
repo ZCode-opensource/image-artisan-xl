@@ -187,9 +187,10 @@ class FlowLayout(QLayout):
 
                 tags_match = (
                     set(self.tags_filter).issubset(item_tags.split(", "))
-                    if self.tags_filter
-                    else True
+                    if self.tags_filter and item_tags
+                    else not self.tags_filter
                 )
+
                 name_match = (
                     self.name_filter.lower() in item_name.lower()
                     if self.name_filter
