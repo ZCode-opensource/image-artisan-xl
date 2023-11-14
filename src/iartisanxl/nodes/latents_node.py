@@ -1,7 +1,6 @@
-import torch
-
 # pylint: disable=no-member
 
+import torch
 from diffusers.utils.torch_utils import randn_tensor
 
 from iartisanxl.nodes.node import Node
