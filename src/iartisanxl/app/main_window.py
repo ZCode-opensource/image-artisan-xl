@@ -13,6 +13,7 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtOpenGLWidgets import QOpenGLWidget
 from PyQt6.QtCore import Qt, QSettings, QPropertyAnimation, QEasingCurve, QPoint, QTimer
+from PyQt6.QtGui import QGuiApplication
 
 from iartisanxl.app.title_bar import TitleBar
 from iartisanxl.app.modules import MODULES
@@ -68,6 +69,15 @@ class MainWindow(QMainWindow):
         geometry = self.settings.value("geometry")
         if geometry is not None:
             self.restoreGeometry(geometry)
+
+            if QGuiApplication.screens().index(self.screen()) > 0:
+                screen = QGuiApplication.primaryScreen()
+                screen_geometry = screen.geometry()
+
+                center_x = (screen_geometry.width() - self.width()) // 2
+                center_y = (screen_geometry.height() - self.height()) // 2
+
+                self.move(center_x, center_y)
 
         windowState = self.settings.value("windowState")
         if windowState is not None:
