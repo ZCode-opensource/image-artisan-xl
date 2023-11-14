@@ -24,7 +24,8 @@ dependencies = [
     "tomesd",
     "attrs",
     "omegaconf",
-    "peft>=0.6.0",    
+    "peft>=0.6.0",
+    "opencv-python>=4.8.1.78",
 ]
 
 [project.optional-dependencies]
