@@ -14,8 +14,6 @@ dependencies = [
     "accelerate>=0.24.1 ",
     "diffusers>=0.23.0",
     "Pillow>=9.3.0",
-    "PyOpenGL",
-    "PyOpenGL_accelerate",
     "PyQt6>=6.6.0",
     "pyqtgraph",
     "safetensors",
@@ -26,7 +24,6 @@ dependencies = [
     "tomesd",
     "attrs",
     "omegaconf",
-    "PyOpenGL",
     "peft>=0.6.0",    
 ]
 

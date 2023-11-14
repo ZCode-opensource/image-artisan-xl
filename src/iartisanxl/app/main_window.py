@@ -1,7 +1,5 @@
 import logging
 
-from OpenGL import GL as gl
-
 from PyQt6.QtWidgets import (
     QMainWindow,
     QHBoxLayout,
@@ -11,9 +9,7 @@ from PyQt6.QtWidgets import (
     QWidget,
     QApplication,
 )
-from PyQt6.QtOpenGLWidgets import QOpenGLWidget
 from PyQt6.QtCore import Qt, QSettings, QPropertyAnimation, QEasingCurve, QPoint, QTimer
-from PyQt6.QtGui import QGuiApplication
 
 from iartisanxl.app.title_bar import TitleBar
 from iartisanxl.app.modules import MODULES
@@ -22,17 +18,6 @@ from iartisanxl.windows.snackbar import SnackBar
 from iartisanxl.app.directories import DirectoriesObject
 from iartisanxl.app.preferences import PreferencesObject
 from iartisanxl.configuration.preferences_dialog import PreferencesDialog
-
-
-class MainGLWidget(QOpenGLWidget):
-    def initializeGL(self):
-        gl.glClearColor(0.16, 0.16, 0.17, 1.0)
-
-    def resizeGL(self, w, h):
-        pass
-
-    def paintGL(self):
-        pass
 
 
 class MainWindow(QMainWindow):
@@ -69,15 +54,6 @@ class MainWindow(QMainWindow):
         geometry = self.settings.value("geometry")
         if geometry is not None:
             self.restoreGeometry(geometry)
-
-            if QGuiApplication.screens().index(self.screen()) > 0:
-                screen = QGuiApplication.primaryScreen()
-                screen_geometry = screen.geometry()
-
-                center_x = (screen_geometry.width() - self.width()) // 2
-                center_y = (screen_geometry.height() - self.height()) // 2
-
-                self.move(center_x, center_y)
 
         windowState = self.settings.value("windowState")
         if windowState is not None:
@@ -126,7 +102,7 @@ class MainWindow(QMainWindow):
             self.timer_finished = True
 
     def init_ui(self):
-        central_widget = MainGLWidget()
+        central_widget = QWidget()
         main_layout = QVBoxLayout()
         main_layout.setContentsMargins(0, 0, 0, 0)
         main_layout.setSpacing(0)

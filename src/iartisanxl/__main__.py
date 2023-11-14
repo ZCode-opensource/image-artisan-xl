@@ -2,9 +2,6 @@ import sys
 import os
 import logging.config
 
-from PyQt6.QtCore import Qt
-from PyQt6.QtWidgets import QApplication
-
 from .app.artisan import ArtisanApplication
 from .app.logging_conf import logging_config
 
@@ -19,7 +16,6 @@ sys.excepthook = my_exception_hook
 
 
 def main():
-    QApplication.setAttribute(Qt.ApplicationAttribute.AA_UseDesktopOpenGL)
     app = ArtisanApplication(sys.argv)
     sys.exit(app.exec())
 

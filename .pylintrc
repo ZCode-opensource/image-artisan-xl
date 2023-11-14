@@ -5,7 +5,7 @@
 
 # Allow loading of arbitrary C extensions. Extensions are imported into the
 # active Python interpreter and may run arbitrary code.
-extension-pkg-allow-list=PyQt6.QtCore,PyQt6.QtWidgets,PyQt6.QtGui,PyQt6.QtOpenGLWidgets,PyQt6.QtOpenGL,OpenGL.GL
+extension-pkg-allow-list=PyQt6.QtCore,PyQt6.QtWidgets,PyQt6.QtGui
 
 [MESSAGES CONTROL]
 # Enable the message, report, category or checker with the given id(s). You can

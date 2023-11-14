@@ -98,7 +98,7 @@ Coming soon...
 ```bash
 python -m venv .venv --prompt ImageArtisanXL
 source .venv/bin/activate
-pip install torch torchvision --index-url https://download.pytorch.org/whl/cu118
+pip install torch torchvision --index-url https://download.pytorch.org/whl/cu121
 pip install .
 ```
 
@@ -109,7 +109,7 @@ Then run with the command `python -m iartisan`.
 ```powershell
 python -m venv .venv --prompt ImageArtisanXL
 .\.venv\Scripts\activate
-pip install torch torchvision --index-url https://download.pytorch.org/whl/cu118
+pip install torch torchvision --index-url https://download.pytorch.org/whl/cu121
 pip install .
 ```
 
