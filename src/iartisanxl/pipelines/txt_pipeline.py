@@ -28,11 +28,8 @@ from iartisanxl.convert_model.convert_functions import (
     create_vae_diffusers_config,
     convert_ldm_vae_checkpoint,
 )
-from iartisanxl.pipelines.prompt_utils import (
-    get_prompts_tokens_with_weights,
-    pad_and_group_tokens_and_weights,
-)
 from iartisanxl.nodes.latents_node import LatentsNode
+from iartisanxl.nodes.encode_prompts_node import EncodePromptsNode
 
 
 class ImageArtisanTextPipeline(
@@ -75,152 +72,6 @@ class ImageArtisanTextPipeline(
         self.vae_scale_factor = 2 ** (len(self.vae.config.block_out_channels) - 1)
         self.model_cpu_offloaded = False
         self.sequential_cpu_offloaded = False
-
-    def encode_prompt(
-        self,
-        prompt: str,
-        prompt_2: Optional[str] = None,
-        device: Optional[torch.device] = None,
-        negative_prompt: Optional[str] = None,
-        negative_prompt_2: Optional[str] = None,
-        lora_scale: Optional[float] = None,
-        clip_skip: Optional[int] = None,
-    ):
-        if lora_scale is not None:
-            self._lora_scale = lora_scale
-            scale_lora_layers(self.text_encoder, lora_scale)
-            scale_lora_layers(self.text_encoder_2, lora_scale)
-
-        # Get tokens with first tokenizer
-        (
-            prompt_tokens,
-            prompt_weights,
-            neg_prompt_tokens,
-            neg_prompt_weights,
-        ) = get_prompts_tokens_with_weights(self.tokenizer, prompt, negative_prompt)
-
-        # Check prompt2 and negative_prompt_2
-        if not prompt_2:
-            prompt_2 = prompt
-
-        if not negative_prompt_2:
-            negative_prompt_2 = negative_prompt
-
-        # Get tokens with second tokenizer
-        (
-            prompt_tokens_2,
-            prompt_weights_2,
-            neg_prompt_tokens_2,
-            neg_prompt_weights_2,
-        ) = get_prompts_tokens_with_weights(
-            self.tokenizer_2, prompt_2, negative_prompt_2
-        )
-
-        # pylint: disable=unbalanced-tuple-unpacking
-        (
-            (prompt_tokens, prompt_weights),
-            (neg_prompt_tokens, neg_prompt_weights),
-            (prompt_tokens_2, prompt_weights_2),
-            (neg_prompt_tokens_2, neg_prompt_weights_2),
-        ) = pad_and_group_tokens_and_weights(
-            (prompt_tokens, prompt_weights),
-            (neg_prompt_tokens, neg_prompt_weights),
-            (prompt_tokens_2, prompt_weights_2),
-            (neg_prompt_tokens_2, neg_prompt_weights_2),
-        )
-
-        token_tensor = torch.tensor([prompt_tokens], dtype=torch.long, device=device)
-        weight_tensor = torch.tensor(prompt_weights, dtype=torch.float16, device=device)
-
-        token_tensor_2 = torch.tensor(
-            [prompt_tokens_2], dtype=torch.long, device=device
-        )
-
-        embeds = []
-        neg_embeds = []
-
-        # use first text encoder
-        prompt_embeds_1 = self.text_encoder(token_tensor, output_hidden_states=True)
-
-        if clip_skip is None:
-            prompt_embeds_1_hidden_states = prompt_embeds_1.hidden_states[-2]
-        else:
-            prompt_embeds_1_hidden_states = prompt_embeds_1.hidden_states[
-                -(clip_skip + 2)
-            ]
-
-        # use second text encoder
-        prompt_embeds_2 = self.text_encoder_2(token_tensor_2, output_hidden_states=True)
-        prompt_embeds_2_hidden_states = prompt_embeds_2.hidden_states[-2]
-        pooled_prompt_embeds = prompt_embeds_2[0]
-
-        prompt_embeds_list = [
-            prompt_embeds_1_hidden_states,
-            prompt_embeds_2_hidden_states,
-        ]
-        token_embedding = torch.concat(prompt_embeds_list, dim=-1).squeeze(0)
-
-        for j, weight in enumerate(weight_tensor):
-            if weight != 1.0:
-                token_embedding[j] = (
-                    token_embedding[-1]
-                    + (token_embedding[j] - token_embedding[-1]) * weight
-                )
-
-        token_embedding = token_embedding.unsqueeze(0)
-        embeds.append(token_embedding)
-
-        neg_token_tensor = torch.tensor(
-            [neg_prompt_tokens], dtype=torch.long, device=device
-        )
-        neg_token_tensor_2 = torch.tensor(
-            [neg_prompt_tokens_2], dtype=torch.long, device=device
-        )
-        neg_weight_tensor = torch.tensor(
-            neg_prompt_weights, dtype=torch.float16, device=device
-        )
-
-        # use first text encoder
-        neg_prompt_embeds_1 = self.text_encoder(
-            neg_token_tensor.to(device), output_hidden_states=True
-        )
-        neg_prompt_embeds_1_hidden_states = neg_prompt_embeds_1.hidden_states[-2]
-
-        # use second text encoder
-        neg_prompt_embeds_2 = self.text_encoder_2(
-            neg_token_tensor_2.to(device), output_hidden_states=True
-        )
-        neg_prompt_embeds_2_hidden_states = neg_prompt_embeds_2.hidden_states[-2]
-        negative_pooled_prompt_embeds = neg_prompt_embeds_2[0]
-
-        neg_prompt_embeds_list = [
-            neg_prompt_embeds_1_hidden_states,
-            neg_prompt_embeds_2_hidden_states,
-        ]
-        neg_token_embedding = torch.concat(neg_prompt_embeds_list, dim=-1).squeeze(0)
-
-        for z, weight in enumerate(neg_weight_tensor):
-            if weight != 1.0:
-                neg_token_embedding[z] = (
-                    neg_token_embedding[-1]
-                    + (neg_token_embedding[z] - neg_token_embedding[-1]) * weight
-                )
-
-        neg_token_embedding = neg_token_embedding.unsqueeze(0)
-        neg_embeds.append(neg_token_embedding)
-
-        prompt_embeds = torch.cat(embeds, dim=1)
-        negative_prompt_embeds = torch.cat(neg_embeds, dim=1)
-
-        unscale_lora_layers(self.text_encoder, lora_scale)
-        unscale_lora_layers(self.text_encoder_2, lora_scale)
-
-        return (
-            prompt_embeds,
-            negative_prompt_embeds,
-            pooled_prompt_embeds,
-            negative_pooled_prompt_embeds,
-        )
 
     @classmethod
     def from_single_file(
@@ -414,26 +265,41 @@ class ImageArtisanTextPipeline(
             else None
         )
 
+        if text_encoder_lora_scale is not None:
+            self._lora_scale = text_encoder_lora_scale
+            scale_lora_layers(self.text_encoder, text_encoder_lora_scale)
+            scale_lora_layers(self.text_encoder_2, text_encoder_lora_scale)
+
         if self.abort:
             on_aborted_function()
             return
+
+        encode_prompts_node = EncodePromptsNode(
+            prompt1=prompt,
+            prompt2=prompt_2,
+            negative_prompt1=negative_prompt,
+            negative_prompt2=negative_prompt_2,
+            tokenizer1=self.tokenizer,
+            tokenizer2=self.tokenizer_2,
+            text_encoder1=self.text_encoder,
+            text_encoder2=self.text_encoder_2,
+            clip_skip=clip_skip,
+            device=device,
+        )
+
         (
             prompt_embeds,
             negative_prompt_embeds,
             pooled_prompt_embeds,
             negative_pooled_prompt_embeds,
-        ) = self.encode_prompt(
-            prompt=prompt,
-            prompt_2=prompt_2,
-            device=device,
-            negative_prompt=negative_prompt,
-            negative_prompt_2=negative_prompt_2,
-            lora_scale=text_encoder_lora_scale,
-            clip_skip=clip_skip,
-        )
+        ) = encode_prompts_node.process()
+
         if self.abort:
             on_aborted_function()
             return
+
+        unscale_lora_layers(self.text_encoder, text_encoder_lora_scale)
+        unscale_lora_layers(self.text_encoder_2, text_encoder_lora_scale)
 
         status_update("Preparing timesteps...")
         self.scheduler.set_timesteps(num_inference_steps, device=device)
