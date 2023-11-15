@@ -85,7 +85,7 @@ class TextToImageModule(BaseModule):
             image_height=self.settings.value("image_height", 1024, type=int),
             steps=self.settings.value("steps", 20, type=int),
             guidance=self.settings.value("guidance", 7.5, type=float),
-            base_scheduler=self.settings.value("base_scheduler", 12, type=int),
+            base_scheduler=self.settings.value("base_scheduler", 0, type=int),
             lora_scale=1.0,
             loras=[],
             model=model,
