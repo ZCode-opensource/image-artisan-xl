@@ -258,7 +258,7 @@ class ImageArtisanTextPipeline(
         if guidance_scale > 1:
             do_classifier_free_guidance = True
 
-        status_update("Encoding the prompt...")
+        status_update("Encoding the prompts...")
         text_encoder_lora_scale = (
             cross_attention_kwargs.get("scale", None)
             if cross_attention_kwargs is not None
