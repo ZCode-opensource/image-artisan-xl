@@ -10,6 +10,8 @@ def load_scheduler(scheduler_index):
     use_karras_sigmas = scheduler_args.get("use_karras_sigmas", None)
     algorithm_type = scheduler_args.get("algorithm_type", None)
     noise_sampler_seed = scheduler_args.get("noise_sampler_seed", None)
+    euler_at_final = scheduler_args.get("euler_at_final", None)
+    use_lu_lambdas = scheduler_args.get("use_lu_lambdas", None)
 
     scheduler_config = None
     with open("./configs/scheduler_config.json", "r", encoding="utf-8") as config_file:
@@ -24,5 +26,11 @@ def load_scheduler(scheduler_index):
 
     if noise_sampler_seed is not None:
         scheduler.config.noise_sampler_seed = noise_sampler_seed
+
+    if euler_at_final is not None:
+        scheduler.config.euler_at_final = euler_at_final
+
+    if use_lu_lambdas is not None:
+        scheduler.config.use_lu_lambdas = use_lu_lambdas
 
     return scheduler
