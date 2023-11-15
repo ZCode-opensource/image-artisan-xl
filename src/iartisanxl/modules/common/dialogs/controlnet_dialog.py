@@ -10,7 +10,7 @@ from PyQt6.QtWidgets import (
     QApplication,
 )
 from PyQt6.QtCore import QSettings, Qt, QRectF, QPoint
-from PyQt6.QtGui import QPixmap, QImageReader, QPainter
+from PyQt6.QtGui import QPixmap, QImageReader, QPainter, QPainterPath
 from superqt import QLabeledDoubleRangeSlider
 
 from iartisanxl.modules.common.dialogs.base_dialog import BaseDialog
@@ -91,6 +91,8 @@ class ImageEditor(QGraphicsView):
                     self.fitInView()
                 else:
                     self._zoom = 0
+            else:
+                super().wheelEvent(event)
 
     def mousePressEvent(self, event):
         if event.button() == Qt.MouseButton.LeftButton:
@@ -100,12 +102,26 @@ class ImageEditor(QGraphicsView):
                 super().mousePressEvent(event)
             else:
                 self.drawing = True
-                self.lastPoint = event.pos()
+                self.lastPoint = self.mapToScene(event.pos())
+                self.path = QPainterPath()
+                self.path.moveTo(self.lastPoint)
+                self.pathItem = self._scene.addPath(self.path)
+
+    def mouseMoveEvent(self, event):
+        if (event.buttons() & Qt.MouseButton.LeftButton) and self.drawing:
+            currentPoint = self.mapToScene(event.pos())
+            self.path.lineTo(currentPoint)
+            self.pathItem.setPath(self.path)
+            self.lastPoint = currentPoint
+        else:
+            super().mouseMoveEvent(event)
 
     def mouseReleaseEvent(self, event):
         if event.button() == Qt.MouseButton.LeftButton:
-            self.setDragMode(QGraphicsView.DragMode.NoDrag)  # Reset drag mode to NoDrag
+            self.setDragMode(QGraphicsView.DragMode.NoDrag)
             self.drawing = False
+        else:
+            super().mouseReleaseEvent(event)
 
 
 class ControlImageWidget(QWidget):
