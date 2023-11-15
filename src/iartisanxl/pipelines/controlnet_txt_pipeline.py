@@ -375,18 +375,41 @@ class ImageArtisanControlNetTextPipeline(
         unscale_lora_layers(self.text_encoder, text_encoder_lora_scale)
         unscale_lora_layers(self.text_encoder_2, text_encoder_lora_scale)
 
-        image = self.prepare_image(
-            image=image,
-            width=width,
-            height=height,
-            batch_size=1 * 1,
-            num_images_per_prompt=1,
-            device=device,
-            dtype=self.controlnet.dtype,
-            do_classifier_free_guidance=do_classifier_free_guidance,
-            guess_mode=guess_mode,
-        )
-        height, width = image.shape[-2:]
+        if isinstance(self.controlnet, ControlNetModel):
+            image = self.prepare_image(
+                image=image,
+                width=width,
+                height=height,
+                batch_size=1 * 1,
+                num_images_per_prompt=1,
+                device=device,
+                dtype=self.controlnet.dtype,
+                do_classifier_free_guidance=do_classifier_free_guidance,
+                guess_mode=guess_mode,
+            )
+            height, width = image.shape[-2:]
+        elif isinstance(self.controlnet, MultiControlNetModel):
+            images = []
+
+            for image_ in image:
+                image_ = self.prepare_image(
+                    image=image_,
+                    width=width,
+                    height=height,
+                    batch_size=1,
+                    num_images_per_prompt=1,
+                    device=device,
+                    dtype=self.controlnet.dtype,
+                    do_classifier_free_guidance=do_classifier_free_guidance,
+                    guess_mode=guess_mode,
+                )
+
+                images.append(image_)
+
+            image = images
+            height, width = image[0].shape[-2:]
+        else:
+            assert False
 
         status_update("Preparing timesteps...")
         self.scheduler.set_timesteps(num_inference_steps, device=device)
@@ -493,8 +516,16 @@ class ImageArtisanControlNetTextPipeline(
                 controlnet_prompt_embeds = prompt_embeds
                 controlnet_added_cond_kwargs = added_cond_kwargs
 
-            controlnet_cond_scale = controlnet_conditioning_scale
-            cond_scale = controlnet_cond_scale * controlnet_keep[i]
+            if isinstance(controlnet_keep[i], list):
+                cond_scale = [
+                    c * s
+                    for c, s in zip(controlnet_conditioning_scale, controlnet_keep[i])
+                ]
+            else:
+                controlnet_cond_scale = controlnet_conditioning_scale
+                if isinstance(controlnet_cond_scale, list):
+                    controlnet_cond_scale = controlnet_cond_scale[0]
+                cond_scale = controlnet_cond_scale * controlnet_keep[i]
 
             down_block_res_samples, mid_block_res_sample = self.controlnet(
                 control_model_input,
