@@ -305,9 +305,6 @@ class ImageArtisanTextPipeline(
         self.scheduler.set_timesteps(num_inference_steps, device=device)
         timesteps = self.scheduler.timesteps
 
-        status_update("Setting up generator...")
-        generator = torch.Generator(device="cpu").manual_seed(seed)
-
         status_update("Generating latents...")
         latents_node = LatentsNode(
             width=width,
@@ -319,7 +316,7 @@ class ImageArtisanTextPipeline(
             dtype=prompt_embeds.dtype,
         )
 
-        latents = latents_node.process()
+        latents, generator = latents_node.process()
         latents = latents * self.scheduler.init_noise_sigma
 
         status_update("Preparing extra steps kwargs...")

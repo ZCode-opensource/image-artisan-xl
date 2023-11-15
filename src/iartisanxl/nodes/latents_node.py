@@ -17,9 +17,11 @@ class LatentsNode(Node):
         "dtype",
     ]
 
-    def process(self):
-        generator = torch.Generator(device="cpu").manual_seed(self.seed)
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.generator = torch.Generator(device="cpu").manual_seed(self.seed)
 
+    def process(self):
         shape = (
             1,
             self.num_channels_latents,
@@ -28,7 +30,7 @@ class LatentsNode(Node):
         )
 
         latents = randn_tensor(
-            shape, generator=generator, device=self.device, dtype=self.dtype
+            shape, generator=self.generator, device=self.device, dtype=self.dtype
         )
 
-        return latents
+        return latents, self.generator
