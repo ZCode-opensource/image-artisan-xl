@@ -189,7 +189,10 @@ PreferencesDialog QCheckBox {
     background-color: #181b28;
 }
 
-
+QWidget#control_image_widget ImageEditor {
+    background: #181b28;
+    border: 1px solid #2f344e;
+}
 
 /* Base */
 QMainWindow {

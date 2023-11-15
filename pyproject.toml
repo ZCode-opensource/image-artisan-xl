@@ -27,7 +27,8 @@ dependencies = [
     "peft>=0.6.0",
     "opencv-python>=4.8.1.78",
     "matplotlib",
-    "scikit-image"
+    "scikit-image",
+    "superqt>=0.6.1",
 ]
 
 [project.optional-dependencies]

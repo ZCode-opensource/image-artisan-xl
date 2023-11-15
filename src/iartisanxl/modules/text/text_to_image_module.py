@@ -25,6 +25,7 @@ from iartisanxl.modules.common.image_viewer_simple import ImageViewerSimple
 from iartisanxl.modules.common.prompt_window import PromptWindow
 from iartisanxl.modules.common.panels.generation_panel import GenerationPanel
 from iartisanxl.modules.common.panels.lora_panel import LoraPanel
+from iartisanxl.modules.common.panels.controlnet_panel import ControlNetPanel
 from iartisanxl.modules.common.diffusers_utils import load_vae_from_safetensors
 from iartisanxl.menu.right_menu import RightMenu
 from iartisanxl.generation.generation_data_object import ImageGenData
@@ -184,6 +185,7 @@ class TextToImageModule(BaseModule):
             "Generation", GenerationPanel, schedulers, self.module_options
         )
         right_menu.add_panel("LoRAs", LoraPanel)
+        right_menu.add_panel("ControlNet", ControlNetPanel)
 
         main_layout.setStretch(0, 16)
         main_layout.setStretch(1, 0)
