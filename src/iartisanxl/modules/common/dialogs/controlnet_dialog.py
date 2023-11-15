@@ -26,14 +26,15 @@ class ImageEditor(QGraphicsView):
         self._scene = QGraphicsScene(self)
         self._photo = QGraphicsPixmapItem()
         self._scene.addItem(self._photo)
-        self._drawing = QGraphicsPixmapItem()  # Create a pixmap for drawing
-        self._scene.addItem(self._drawing)
         self.setScene(self._scene)
+
         self.setRenderHint(QPainter.RenderHint.Antialiasing)
         self.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform)
+
+        self.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Ignored)
         self.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        self.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Ignored)
+
         self.drawing = False
         self.lastPoint = QPoint()
 
