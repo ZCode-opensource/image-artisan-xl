@@ -1,3 +1,4 @@
+from importlib.resources import files
 from PyQt6.QtWidgets import (
     QVBoxLayout,
     QHBoxLayout,
@@ -8,9 +9,19 @@ from PyQt6.QtWidgets import (
     QGraphicsView,
     QSizePolicy,
     QApplication,
+    QSlider,
 )
 from PyQt6.QtCore import QSettings, Qt, QRectF, QPoint
-from PyQt6.QtGui import QPixmap, QImageReader, QPainter, QPainterPath
+from PyQt6.QtGui import (
+    QPixmap,
+    QImageReader,
+    QPainter,
+    QPainterPath,
+    QCursor,
+    QPen,
+    QColor,
+)
+from PyQt6.QtSvg import QSvgRenderer
 from superqt import QLabeledDoubleRangeSlider
 
 from iartisanxl.modules.common.dialogs.base_dialog import BaseDialog
@@ -18,6 +29,8 @@ from iartisanxl.modules.common.drop_lightbox import DropLightBox
 
 
 class ImageEditor(QGraphicsView):
+    CIRCLE_CURSOR = files("iartisanxl.theme.cursors").joinpath("circle.svg")
+
     def __init__(self, parent=None):
         super(ImageEditor, self).__init__(parent)
 
@@ -37,9 +50,20 @@ class ImageEditor(QGraphicsView):
 
         self.drawing = False
         self.lastPoint = QPoint()
+        self.path = None
+        self.pathItem = None
 
         self.drop_lightbox = DropLightBox(self)
         self.drop_lightbox.setText("Drop file here")
+
+        self.slider = QSlider(Qt.Orientation.Horizontal)
+        self.slider.setMinimum(1)
+        self.slider.setMaximum(100)
+        self.slider.setValue(32)  # Default value
+        self.slider.valueChanged.connect(self.updateCursor)
+        layout = QVBoxLayout()
+        layout.addWidget(self.slider)
+        self.setLayout(layout)
 
     def setPhoto(self, path):
         reader = QImageReader(path)
@@ -106,11 +130,22 @@ class ImageEditor(QGraphicsView):
                 self.path = QPainterPath()
                 self.path.moveTo(self.lastPoint)
                 self.pathItem = self._scene.addPath(self.path)
+                size = self.slider.value()
+                pixmap = QPixmap(size, size)
+                pixmap.fill(Qt.GlobalColor.transparent)
+                painter = QPainter(pixmap)
+                renderer = QSvgRenderer(str(self.CIRCLE_CURSOR))
+                renderer.render(painter)
+                painter.end()
+                circle_cursor = QCursor(pixmap)
+                self.setCursor(circle_cursor)
 
     def mouseMoveEvent(self, event):
         if (event.buttons() & Qt.MouseButton.LeftButton) and self.drawing:
             currentPoint = self.mapToScene(event.pos())
             self.path.lineTo(currentPoint)
+            pen = QPen(QColor("black"), self.slider.value())
+            self.pathItem.setPen(pen)
             self.pathItem.setPath(self.path)
             self.lastPoint = currentPoint
         else:
@@ -120,8 +155,21 @@ class ImageEditor(QGraphicsView):
         if event.button() == Qt.MouseButton.LeftButton:
             self.setDragMode(QGraphicsView.DragMode.NoDrag)
             self.drawing = False
+            self.unsetCursor()  # Reset the cursor when you stop drawing
         else:
             super().mouseReleaseEvent(event)
+
+    def updateCursor(self):
+        if self.drawing:
+            size = self.slider.value()
+            pixmap = QPixmap(size, size)
+            pixmap.fill(Qt.GlobalColor.transparent)
+            painter = QPainter(pixmap)
+            renderer = QSvgRenderer(str(self.CIRCLE_CURSOR))
+            renderer.render(painter)
+            painter.end()
+            circle_cursor = QCursor(pixmap)
+            self.setCursor(circle_cursor)
 
 
 class ControlImageWidget(QWidget):
