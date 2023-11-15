@@ -478,9 +478,20 @@ class ImageArtisanControlNetTextPipeline(
                 "time_ids": add_time_ids,
             }
 
-            control_model_input = latent_model_input
-            controlnet_prompt_embeds = prompt_embeds
-            controlnet_added_cond_kwargs = added_cond_kwargs
+            if guess_mode and do_classifier_free_guidance:
+                control_model_input = latents
+                control_model_input = self.scheduler.scale_model_input(
+                    control_model_input, t
+                )
+                controlnet_prompt_embeds = prompt_embeds.chunk(2)[1]
+                controlnet_added_cond_kwargs = {
+                    "text_embeds": add_text_embeds.chunk(2)[1],
+                    "time_ids": add_time_ids.chunk(2)[1],
+                }
+            else:
+                control_model_input = latent_model_input
+                controlnet_prompt_embeds = prompt_embeds
+                controlnet_added_cond_kwargs = added_cond_kwargs
 
             controlnet_cond_scale = controlnet_conditioning_scale
             cond_scale = controlnet_cond_scale * controlnet_keep[i]
