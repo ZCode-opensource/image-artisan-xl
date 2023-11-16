@@ -64,14 +64,6 @@ class LoraPanel(BasePanel):
     def open_lora_dialog(self):
         self.dialog_opened.emit(LoraDialog, "LoRAs")
 
-    def on_remove_lora(self, lora_widget: LoraAddedItem):
-        index = self.loras_layout.indexOf(lora_widget)
-        if index != -1:
-            self.loras_layout.takeAt(index)
-            lora_widget.deleteLater()
-            self.image_generation_data.remove_lora(self.loras[index].lora)
-            del self.loras[index]
-
     def clear_loras(self):
         self.loras = []
 
@@ -94,5 +86,21 @@ class LoraPanel(BasePanel):
                 lora_widget.remove_clicked.connect(
                     lambda lw=lora_widget: self.on_remove_lora(lw)
                 )
+                lora_widget.enabled.connect(
+                    lambda lw=lora_widget: self.on_lora_enabled(lw)
+                )
                 self.loras_layout.addWidget(lora_widget)
                 self.loras.append(lora_widget)
+
+    def on_remove_lora(self, lora_widget: LoraAddedItem):
+        index = self.loras_layout.indexOf(lora_widget)
+        if index != -1:
+            self.loras_layout.takeAt(index)
+            lora_widget.deleteLater()
+            self.image_generation_data.remove_lora(self.loras[index].lora)
+            del self.loras[index]
+
+    def on_lora_enabled(self, lora_widget: LoraAddedItem):
+        self.image_generation_data.change_lora_enabled(
+            lora_widget.lora, lora_widget.enabled_checkbox.isChecked()
+        )

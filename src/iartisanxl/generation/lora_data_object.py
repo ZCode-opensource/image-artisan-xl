@@ -3,6 +3,7 @@ import attr
 
 @attr.s
 class LoraDataObject:
+    enabled = attr.ib(type=bool)
     name = attr.ib(type=str)
     filename = attr.ib(type=str)
     version = attr.ib(type=str)
@@ -11,6 +12,7 @@ class LoraDataObject:
 
     def copy(self):
         new_obj = LoraDataObject(
+            enabled=self.enabled,
             name=self.name,
             filename=self.filename,
             version=self.version,

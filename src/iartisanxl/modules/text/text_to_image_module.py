@@ -582,6 +582,7 @@ class TextToImageModule(BaseModule):
         }
         data["loras"] = [
             {
+                "enabled": lora.enabled,
                 "name": lora.name,
                 "filename": lora.filename,
                 "version": lora.version,
