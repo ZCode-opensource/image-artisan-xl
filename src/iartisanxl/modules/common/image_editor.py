@@ -43,6 +43,7 @@ class ImageEditor(QGraphicsView):
 
         self.drawing = False
         self.last_point = QPoint()
+        self.brush_color = QColor(0, 0, 0, 255)
         self.brush_size = 32
         self.hardness = 0
         self.undo_stack = []
@@ -135,9 +136,7 @@ class ImageEditor(QGraphicsView):
             # Create a radial gradient as the brush
             gradient = QRadialGradient(self.last_point, self.brush_size / 2)
             gradient.setColorAt(0, QColor(0, 0, 0, 255))  # Inner color (black)
-            gradient.setColorAt(
-                self.hardness, QColor(0, 0, 0, 255)
-            )  # Outer color (black)
+            gradient.setColorAt(self.hardness, self.brush_color)  # Outer color (black)
             gradient.setColorAt(1, QColor(0, 0, 0, 0))  # Beyond hardness (transparent)
             brush = QBrush(gradient)
 
@@ -193,8 +192,6 @@ class ImageEditor(QGraphicsView):
             Qt.KeyboardModifier.ControlModifier | Qt.KeyboardModifier.ShiftModifier
         ):
             self.redo()
-        elif key == Qt.Key.Key_S and modifiers == Qt.KeyboardModifier.ControlModifier:
-            self.export_pixmap()
         else:
             super().keyReleaseEvent(event)
 
@@ -206,7 +203,7 @@ class ImageEditor(QGraphicsView):
         self._photo = original_image_item
         self._scene.addItem(original_image_item)
 
-    def export_pixmap(self):
+    def get_painted_image(self):
         image = QImage(
             self._scene.sceneRect().size().toSize(), QImage.Format.Format_ARGB32
         )
@@ -216,7 +213,10 @@ class ImageEditor(QGraphicsView):
         self._scene.render(painter)
         painter.end()
 
-        image.save("some path")
+        return image
+
+    def set_brush_color(self, color: tuple):
+        self.brush_color = QColor(int(color[0]), int(color[1]), int(color[2]), 255)
 
     def set_brush_size(self, value):
         self.brush_size = value

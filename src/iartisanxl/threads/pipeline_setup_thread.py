@@ -2,11 +2,14 @@ import logging
 
 import torch
 
-from diffusers import AutoencoderKL
+from diffusers import AutoencoderKL, ControlNetModel
 from huggingface_hub.utils._validators import HFValidationError
 from PyQt6.QtCore import QThread, pyqtSignal
 
 from iartisanxl.pipelines.txt_pipeline import ImageArtisanTextPipeline
+from iartisanxl.pipelines.controlnet_txt_pipeline import (
+    ImageArtisanControlNetTextPipeline,
+)
 from iartisanxl.generation.generation_data_object import ImageGenData
 from iartisanxl.generation.schedulers.schedulers_utils import load_scheduler
 from iartisanxl.modules.common.diffusers_utils import diffusers_models
@@ -127,14 +130,38 @@ class PipelineSetupThread(QThread):
             return
         else:
             self.status_changed.emit("Creating the pipeline...")
-            pipeline = ImageArtisanTextPipeline(
-                vae=loaded_models.get("vae"),
-                text_encoder=loaded_models.get("text_encoder"),
-                text_encoder_2=loaded_models.get("text_encoder_2"),
-                tokenizer=loaded_models.get("tokenizer"),
-                tokenizer_2=loaded_models.get("tokenizer_2"),
-                unet=loaded_models.get("unet"),
-                scheduler=scheduler,
-            )
+
+            if len(self.image_generation_data.controlnets) > 0:
+                controlnets = []
+
+                for controlnet in self.image_generation_data.controlnets:
+                    controlnet_model = ControlNetModel.from_pretrained(
+                        controlnet.model_path,
+                        torch_dtype=torch.float16,
+                        use_safetensors=True,
+                        variant="fp16",
+                    )
+                    controlnets.append(controlnet_model)
+
+                pipeline = ImageArtisanControlNetTextPipeline(
+                    vae=loaded_models.get("vae"),
+                    text_encoder=loaded_models.get("text_encoder"),
+                    text_encoder_2=loaded_models.get("text_encoder_2"),
+                    tokenizer=loaded_models.get("tokenizer"),
+                    tokenizer_2=loaded_models.get("tokenizer_2"),
+                    unet=loaded_models.get("unet"),
+                    scheduler=scheduler,
+                    controlnet=controlnets,
+                )
+            else:
+                pipeline = ImageArtisanTextPipeline(
+                    vae=loaded_models.get("vae"),
+                    text_encoder=loaded_models.get("text_encoder"),
+                    text_encoder_2=loaded_models.get("text_encoder_2"),
+                    tokenizer=loaded_models.get("tokenizer"),
+                    tokenizer_2=loaded_models.get("tokenizer_2"),
+                    unet=loaded_models.get("unet"),
+                    scheduler=scheduler,
+                )
 
         return pipeline

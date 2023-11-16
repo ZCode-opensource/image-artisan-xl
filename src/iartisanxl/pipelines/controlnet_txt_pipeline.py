@@ -312,14 +312,27 @@ class ImageArtisanControlNetTextPipeline(
         self.logger.debug("Using device: %s", device)
 
         # align format for control guidance
-        mult = (
-            len(self.controlnet.nets)
-            if isinstance(self.controlnet, MultiControlNetModel)
-            else 1
-        )
-        control_guidance_start, control_guidance_end = mult * [
-            control_guidance_start
-        ], mult * [control_guidance_end]
+        if not isinstance(control_guidance_start, list) and isinstance(
+            control_guidance_end, list
+        ):
+            control_guidance_start = len(control_guidance_end) * [
+                control_guidance_start
+            ]
+        elif not isinstance(control_guidance_end, list) and isinstance(
+            control_guidance_start, list
+        ):
+            control_guidance_end = len(control_guidance_start) * [control_guidance_end]
+        elif not isinstance(control_guidance_start, list) and not isinstance(
+            control_guidance_end, list
+        ):
+            mult = (
+                len(self.controlnet.nets)
+                if isinstance(self.controlnet, MultiControlNetModel)
+                else 1
+            )
+            control_guidance_start, control_guidance_end = mult * [
+                control_guidance_start
+            ], mult * [control_guidance_end]
 
         do_classifier_free_guidance = False
         if guidance_scale > 1:
@@ -391,20 +404,21 @@ class ImageArtisanControlNetTextPipeline(
         elif isinstance(self.controlnet, MultiControlNetModel):
             images = []
 
-            for image_ in image:
-                image_ = self.prepare_image(
-                    image=image_,
-                    width=width,
-                    height=height,
-                    batch_size=1,
-                    num_images_per_prompt=1,
-                    device=device,
-                    dtype=self.controlnet.dtype,
-                    do_classifier_free_guidance=do_classifier_free_guidance,
-                    guess_mode=guess_mode,
-                )
+            if image is not None:
+                for image_ in image:
+                    image_ = self.prepare_image(
+                        image=image_,
+                        width=width,
+                        height=height,
+                        batch_size=1,
+                        num_images_per_prompt=1,
+                        device=device,
+                        dtype=self.controlnet.dtype,
+                        do_classifier_free_guidance=do_classifier_free_guidance,
+                        guess_mode=guess_mode,
+                    )
 
-                images.append(image_)
+                    images.append(image_)
 
             image = images
             height, width = image[0].shape[-2:]

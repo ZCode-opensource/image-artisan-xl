@@ -45,6 +45,23 @@ class ImageGenerationThread(QThread):
 
         self.start_time = time.time()
 
+        if len(self.image_generation_data.controlnets) > 0:
+            images = []
+            controlnet_conditioning_scale = []
+            control_guidance_start = []
+            control_guidance_end = []
+
+            for controlnet in self.image_generation_data.controlnets:
+                images.append(controlnet.annotator_image)
+                controlnet_conditioning_scale.append(controlnet.conditioning_scale)
+                control_guidance_start.append(controlnet.guidance_start)
+                control_guidance_end.append(controlnet.guidance_end)
+
+            kwargs["image"] = images
+            kwargs["controlnet_conditioning_scale"] = controlnet_conditioning_scale
+            kwargs["control_guidance_start"] = control_guidance_start
+            kwargs["control_guidance_end"] = control_guidance_end
+
         try:
             image = self.base_pipeline(
                 original_size=size,
