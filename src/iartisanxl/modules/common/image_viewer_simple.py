@@ -16,18 +16,22 @@ from PyQt6.QtGui import (
     QMouseEvent,
     QContextMenuEvent,
     QAction,
-    QImageWriter,
     QScreen,
 )
 from PyQt6.QtCore import Qt
 
 from iartisanxl.modules.common.dialogs.full_screen_preview import FullScreenPreview
+from iartisanxl.app.preferences import PreferencesObject
+from iartisanxl.formats.image import ImageProcessor
 
 
 class ImageViewerSimple(QGraphicsView):
-    def __init__(self, output_path, *args, **kwargs):
+    def __init__(self, output_path, preferences: PreferencesObject, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.setAcceptDrops(True)
+
+        self.output_path = output_path
+        self.preferences = preferences
 
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
@@ -40,7 +44,6 @@ class ImageViewerSimple(QGraphicsView):
 
         # Create the context menu
         self.context_menu = QMenu(self)
-        self.output_path = output_path
         self.save_action = self.context_menu.addAction("Save image")
         self.save_action.triggered.connect(self.save_image)
 
@@ -206,22 +209,22 @@ class ImageViewerSimple(QGraphicsView):
 
     def save_image(self):
         if self.pixmap_item is not None:
-            # Generate a timestamp string
             timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
 
-            # Ask the user for a file name to save the image
-            file_name, _ = QFileDialog.getSaveFileName(
+            output_path, _ = QFileDialog.getSaveFileName(
                 self,
                 "Save image",
                 f"{self.output_path}/{timestamp}.png",
                 "Images (*.png *.jpg)",
             )
 
-            if file_name:
-                qimage = self.pixmap_item.pixmap().toImage()
-                writer = QImageWriter(file_name, b"png")
-                writer.setText("data", self.serialized_data)
-                writer.write(qimage)
+            image = ImageProcessor()
+            image.set_pixmap(self.pixmap_item.pixmap())
+
+            if self.preferences.save_image_metadata:
+                image.set_serialized_data(self.serialized_data)
+
+            image.save_to_png(output_path)
 
     def dragMoveEvent(self, event):
         pass

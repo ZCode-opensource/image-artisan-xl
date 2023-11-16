@@ -3,6 +3,7 @@ from typing import List
 from PyQt6.QtCore import QObject
 
 from iartisanxl.generation.lora_data_object import LoraDataObject
+from iartisanxl.generation.controlnet_data_object import ControlNetDataObject
 from iartisanxl.generation.model_data_object import ModelDataObject
 from iartisanxl.generation.vae_data_object import VaeDataObject
 
@@ -18,6 +19,7 @@ class ImageGenData(QObject):
         "_base_scheduler",
         "_lora_scale",
         "_loras",
+        "_controlnets",
         "_model",
         "_vae",
         "_positive_prompt_clipl",
@@ -39,6 +41,7 @@ class ImageGenData(QObject):
         base_scheduler: int,
         lora_scale: float,
         loras: List[LoraDataObject],
+        controlnets: List[ControlNetDataObject],
         model: ModelDataObject,
         vae: VaeDataObject,
         positive_prompt_clipl: str,
@@ -57,6 +60,7 @@ class ImageGenData(QObject):
         self._base_scheduler = base_scheduler
         self._lora_scale = lora_scale
         self._loras = loras
+        self._controlnets = controlnets
         self._model = model
         self._vae = vae
         self._positive_prompt_clipl = positive_prompt_clipl
@@ -177,6 +181,30 @@ class ImageGenData(QObject):
     def clip_skip(self, value: int) -> None:
         self._clip_skip = value
 
+    @property
+    def lora_scale(self) -> float:
+        return self._lora_scale
+
+    @lora_scale.setter
+    def lora_scale(self, value: float) -> None:
+        self._lora_scale = value
+
+    @property
+    def loras(self) -> List[LoraDataObject]:
+        return self._loras
+
+    @loras.setter
+    def loras(self, value: List[LoraDataObject]):
+        self._loras = value
+
+    @property
+    def controlnets(self) -> List[ControlNetDataObject]:
+        return self._controlnets
+
+    @controlnets.setter
+    def controlnets(self, value: List[ControlNetDataObject]):
+        self._controlnets = value
+
     def update_attributes(self, data: dict):
         error = None
         for key, value in data.items():
@@ -187,6 +215,13 @@ class ImageGenData(QObject):
                         self.add_lora(lora)
                     except TypeError:
                         error = "LoRA information is not compatible."
+            elif key == "controlnets":
+                for controlnet_data in value:
+                    try:
+                        controlnet = ControlNetDataObject(**controlnet_data)
+                        self.add_controlnet(controlnet)
+                    except TypeError:
+                        error = "ControlNet information is not compatible."
             elif key == "model":
                 try:
                     model = ModelDataObject(**value)
@@ -208,22 +243,6 @@ class ImageGenData(QObject):
 
         return error
 
-    @property
-    def lora_scale(self) -> float:
-        return self._lora_scale
-
-    @lora_scale.setter
-    def lora_scale(self, value: float) -> None:
-        self._lora_scale = value
-
-    @property
-    def loras(self) -> List[LoraDataObject]:
-        return self._loras
-
-    @loras.setter
-    def loras(self, value: List[LoraDataObject]):
-        self._loras = value
-
     def add_lora(self, lora: LoraDataObject):
         self._loras.append(lora)
 
@@ -233,8 +252,32 @@ class ImageGenData(QObject):
                 del self._loras[index]
                 break
 
+    def change_lora_enabled(self, lora_item: LoraDataObject, enabled: bool):
+        for lora in self._loras:
+            if lora == lora_item:
+                lora.enabled = enabled
+                break
+
+    def add_controlnet(self, controlnet: ControlNetDataObject):
+        self._controlnets.append(controlnet)
+
+    def remove_controlnet(self, controlnet_to_remove: ControlNetDataObject):
+        for index, controlnet in enumerate(self._controlnets):
+            if controlnet == controlnet_to_remove:
+                del self._controlnets[index]
+                break
+
+    def change_controlnet_enabled(
+        self, controlnet_item: ControlNetDataObject, enabled: bool
+    ):
+        for controlnet in self._controlnets:
+            if controlnet == controlnet_item:
+                controlnet.enabled = enabled
+                break
+
     def copy(self):
         loras_copy = [lora.copy() for lora in self.loras]
+        controlnets_copy = [controlnet.copy() for controlnet in self.controlnets]
 
         new_obj = ImageGenData(
             module=self.module,
@@ -246,6 +289,7 @@ class ImageGenData(QObject):
             base_scheduler=self.base_scheduler,
             lora_scale=self.lora_scale,
             loras=loras_copy,
+            controlnets=controlnets_copy,
             model=self.model.copy(),
             vae=self.vae,
             positive_prompt_clipl=self.positive_prompt_clipl,

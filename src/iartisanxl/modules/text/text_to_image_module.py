@@ -1,13 +1,10 @@
-import os
 import random
-import json
 import logging
 from typing import Optional
-from datetime import datetime
 
+from PIL import Image
 import torch
 import tomesd
-from PIL import Image
 from PyQt6.QtWidgets import (
     QVBoxLayout,
     QHBoxLayout,
@@ -15,7 +12,7 @@ from PyQt6.QtWidgets import (
     QSizePolicy,
     QProgressBar,
 )
-from PyQt6.QtGui import QImage, QPixmap, QImageWriter
+from PyQt6.QtGui import QImage, QPixmap
 from PyQt6.QtCore import QSettings
 from diffusers.models import AutoencoderKL
 
@@ -39,6 +36,7 @@ from iartisanxl.threads.lora_setup_thread import LoraSetupThread
 from iartisanxl.threads.image_generation_thread import ImageGenerationThread
 from iartisanxl.threads.taesd_loader_thread import TaesdLoaderThread
 from iartisanxl.pipelines.txt_pipeline import ImageArtisanTextPipeline
+from iartisanxl.formats.image import ImageProcessor
 
 
 class TextToImageModule(BaseModule):
@@ -89,6 +87,7 @@ class TextToImageModule(BaseModule):
             base_scheduler=self.settings.value("base_scheduler", 0, type=int),
             lora_scale=1.0,
             loras=[],
+            controlnets=[],
             model=model,
             vae=vae,
             positive_prompt_clipl="",
@@ -142,7 +141,9 @@ class TextToImageModule(BaseModule):
         top_layout = QHBoxLayout()
         top_layout.setContentsMargins(0, 0, 0, 0)
         top_layout.setSpacing(0)
-        self.image_viewer = ImageViewerSimple(self.directories.outputs_images)
+        self.image_viewer = ImageViewerSimple(
+            self.directories.outputs_images, self.preferences
+        )
         top_layout.addWidget(self.image_viewer)
         main_layout.addLayout(top_layout)
 
@@ -267,42 +268,28 @@ class TextToImageModule(BaseModule):
         for url in event.mimeData().urls():
             path = url.toLocalFile()
             if path.endswith(".png"):
-                try:
-                    image = Image.open(path)
-                    metadata = image.info
-                    serialized_data = metadata.get("data")
+                self.update_status_bar("Getting generation data from image...")
+                image = ImageProcessor()
+                image.open_image(path)
 
-                    self.update_status_bar("Getting generation data from image...")
+                self.update_status_bar(
+                    "Setting up generation from metada found in the image..."
+                )
 
-                    if serialized_data is None:
-                        self.update_status_bar("No metadata found in the image.")
-
-                    self.logger.debug(serialized_data)
-
-                    self.update_status_bar(
-                        "Setting up generation from metada found in the image..."
-                    )
-                    self.image_generation_data.loras = []
-                    error = self.image_generation_data.update_attributes(
-                        self.deserialize_image_data(serialized_data)
-                    )
-                    if error is not None:
-                        self.show_error(error)
-                    self.update_status_bar("Ready")
-                    self.notify_observers()
-                    self.prompt_window.unblock_seed()
-                except json.JSONDecodeError as json_error:
-                    self.logger.error(
-                        "Error decoding JSON from image metadata with this error: %s",
-                        json_error,
-                    )
-                    self.logger.debug("JSONDecodeError exception", exc_info=True)
-                except ValueError as data_error:
-                    self.logger.error(
-                        "Value error from image metadata with this message: %s",
-                        data_error,
-                    )
-                    self.logger.debug("ValueError exception", exc_info=True)
+                if image.serialized_data is None:
+                    self.show_error("No metadata found in the image.")
+                    self.update_status_bar("No metadata found in the image.")
+                else:
+                    try:
+                        self.image_generation_data = image.get_image_generation_data(
+                            self.image_generation_data
+                        )
+                        self.image_viewer.set_pixmap(image.get_qpixmap())
+                        self.update_status_bar("Ready")
+                        self.notify_observers()
+                        self.prompt_window.unblock_seed()
+                    except ValueError as e:
+                        self.show_error(e)
 
     def generation_clicked(
         self, auto_save: bool = False, continuous_generation: bool = False
@@ -383,6 +370,22 @@ class TextToImageModule(BaseModule):
                             for lora_attr in lora.__dict__:
                                 if getattr(lora, lora_attr) != getattr(
                                     self.rendering_generation_data.loras[i], lora_attr
+                                ):
+                                    self.changed_parameters.append(attr)
+                                    break
+                elif attr == "_controlnets":
+                    if len(self.image_generation_data.controlnets) != len(
+                        self.rendering_generation_data.controlnets
+                    ):
+                        self.changed_parameters.append(attr)
+                    else:
+                        for i, controlnet in enumerate(
+                            self.image_generation_data.controlnets
+                        ):
+                            for controlnet_attr in controlnet.__dict__:
+                                if getattr(controlnet, controlnet_attr) != getattr(
+                                    self.rendering_generation_data.controlnets[i],
+                                    controlnet_attr,
                                 ):
                                     self.changed_parameters.append(attr)
                                     break
@@ -574,45 +577,10 @@ class TextToImageModule(BaseModule):
             qpixmap = QPixmap.fromImage(qimage)
             self.image_viewer.set_pixmap(qpixmap)
 
-    def serialize_image_data(self, rendering_generation_data: ImageGenData) -> str:
-        data = {
-            attr.strip("_"): getattr(rendering_generation_data, attr)
-            for attr in rendering_generation_data.__slots__
-            if attr not in ("_loras", "_model")
-        }
-        data["loras"] = [
-            {
-                "enabled": lora.enabled,
-                "name": lora.name,
-                "filename": lora.filename,
-                "version": lora.version,
-                "path": lora.path,
-                "weight": lora.weight,
-            }
-            for lora in rendering_generation_data.loras
-        ]
-        data["model"] = {
-            "name": rendering_generation_data.model.name,
-            "path": rendering_generation_data.model.path,
-            "type": rendering_generation_data.model.type,
-            "version": rendering_generation_data.model.version,
-        }
-        data["vae"] = {
-            "name": rendering_generation_data.vae.name,
-            "path": rendering_generation_data.vae.path,
-        }
-        serialized_data = json.dumps(data)
-        return serialized_data
-
-    def deserialize_image_data(self, serialized_data: str) -> ImageGenData:
-        data = json.loads(serialized_data)
-        data = {key.strip("_"): value for key, value in data.items()}
-        return data
-
     def update_progress_bar(self, value):
         self.progress_bar.setValue(value)
 
-    def generation_finished(self, image, duration: float = None):
+    def generation_finished(self, image: Image, duration: float = None):
         if duration is not None:
             self.status_bar.showMessage(
                 f"Ready - {round(duration, 1)} s ({round(duration * 1000, 2)} ms)"
@@ -623,30 +591,20 @@ class TextToImageModule(BaseModule):
         self.progress_bar.setMaximum(100)
         self.progress_bar.setValue(100)
 
-        image_data = image.tobytes()
+        image_processor = ImageProcessor()
+        image_processor.set_pillow_image(image)
         image = None
 
-        qimage = QImage(
-            image_data,
-            self.rendering_generation_data.image_width,
-            self.rendering_generation_data.image_height,
-            QImage.Format.Format_RGB888,
+        self.image_viewer.set_pixmap(image_processor.get_qpixmap())
+        serialized_data = image_processor.serialize_image_data(
+            self.rendering_generation_data, self.preferences
         )
-
-        qpixmap = QPixmap.fromImage(qimage)
-        self.image_viewer.set_pixmap(qpixmap)
-        self.image_viewer.serialized_data = self.serialize_image_data(
-            self.rendering_generation_data
-        )
+        self.image_viewer.serialized_data = serialized_data
 
         if self.auto_save:
-            timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
-            writer = QImageWriter(
-                os.path.join(self.directories.outputs_images, f"{timestamp}.png"),
-                b"png",
-            )
-            writer.setText("data", self.image_viewer.serialized_data)
-            writer.write(qimage)
+            if self.preferences.save_image_metadata:
+                image_processor.set_serialized_data(serialized_data)
+            image_processor.save_to_png(self.directories.outputs_images)
 
         self.prompt_window.set_button_generate()
         self.generating = False
@@ -692,16 +650,18 @@ class TextToImageModule(BaseModule):
         torch.cuda.ipc_collect()
 
     def auto_generate(self, generation_data):
-        self.image_generation_data.loras = []
-        error = self.image_generation_data.update_attributes(
-            self.deserialize_image_data(generation_data)
-        )
-        if error is not None:
-            self.show_error(error)
+        image = ImageProcessor()
+        image.serialized_data = generation_data
 
-        self.notify_observers()
-        self.prompt_window.unblock_seed()
-        self.generation_clicked()
+        try:
+            self.image_generation_data = image.get_image_generation_data(
+                self.image_generation_data
+            )
+            self.notify_observers()
+            self.prompt_window.unblock_seed()
+            self.generation_clicked()
+        except ValueError as e:
+            self.show_error(e)
 
     def on_abort(self):
         if self.pipeline_setup_thread is not None:
