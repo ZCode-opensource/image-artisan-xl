@@ -46,18 +46,29 @@ class ArtisanApplication(QApplication):
         use_tomes = settings.value("use_tomes", False, type=bool)
         sequential_offload = settings.value("sequential_offload", False, type=bool)
         model_offload = settings.value("model_offload", False, type=bool)
+        save_image_metadata = settings.value("save_image_metadata", False, type=bool)
+        save_image_control_annotators = settings.value(
+            "save_image_control_annotators", False, type=bool
+        )
+        save_image_control_sources = settings.value(
+            "save_image_control_sources", False, type=bool
+        )
 
         self.preferences = PreferencesObject(
             intermediate_images=intermediate_images,
             use_tomes=use_tomes,
             sequential_offload=sequential_offload,
             model_offload=model_offload,
+            save_image_metadata=save_image_metadata,
+            save_image_control_annotators=save_image_control_annotators,
+            save_image_control_sources=save_image_control_sources,
         )
 
         models_diffusers = settings.value("models_diffusers", None, type=str)
         models_safetensors = settings.value("models_safetensors", None, type=str)
         vaes = settings.value("vaes", None, type=str)
         models_loras = settings.value("models_loras", None, type=str)
+        models_controlnets = settings.value("models_controlnets", None, type=str)
         outputs_images = settings.value("outputs_images", None, type=str)
 
         self.directories = DirectoriesObject(
@@ -65,6 +76,7 @@ class ArtisanApplication(QApplication):
             models_safetensors=models_safetensors,
             vaes=vaes,
             models_loras=models_loras,
+            models_controlnets=models_controlnets,
             outputs_images=outputs_images,
         )
 
@@ -75,6 +87,7 @@ class ArtisanApplication(QApplication):
                 models_safetensors,
                 vaes,
                 models_loras,
+                models_controlnets,
                 outputs_images,
             ]
         ):

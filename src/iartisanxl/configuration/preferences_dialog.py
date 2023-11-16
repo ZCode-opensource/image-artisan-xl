@@ -8,6 +8,7 @@ from PyQt6.QtWidgets import (
     QFileDialog,
     QCheckBox,
     QGridLayout,
+    QSpacerItem,
 )
 from PyQt6.QtCore import Qt, QSettings
 from PyQt6.QtGui import QPainter, QPen, QColor
@@ -86,7 +87,7 @@ class PreferencesDialog(QDialog):
 
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint)
         self.setWindowTitle("Preferences")
-        self.setMinimumSize(900, 600)
+        self.setMinimumSize(1050, 750)
 
         self.settings = QSettings("ZCode", "ImageArtisanXL")
         self.settings.beginGroup("preferences_dialog")
@@ -133,10 +134,17 @@ class PreferencesDialog(QDialog):
             self.directories.models_loras, "LoRAs", 4, self.on_select_directory
         )
         left_layout.addWidget(loras_widget, stretch=1)
+        controlnets_widget = SelectDirectoryWidget(
+            self.directories.models_controlnets,
+            "ControlNets",
+            5,
+            self.on_select_directory,
+        )
+        left_layout.addWidget(controlnets_widget, stretch=1)
         images_widget = SelectDirectoryWidget(
             self.directories.outputs_images,
             "Output images",
-            5,
+            6,
             self.on_select_directory,
         )
         left_layout.addWidget(images_widget, stretch=1)
@@ -170,6 +178,43 @@ class PreferencesDialog(QDialog):
         )
         inner_right_layout.addWidget(self.sequential_offload_checkbox, 1, 1)
         right_layout.addLayout(inner_right_layout)
+
+        right_layout.addSpacerItem(QSpacerItem(0, 10))
+
+        image_options_layout = QGridLayout()
+        image_options_layout.setSpacing(10)
+        self.save_image_metadata_checkbox = QCheckBox("Save image metadata")
+        self.save_image_metadata_checkbox.setChecked(
+            self.preferences.save_image_metadata
+        )
+        self.save_image_metadata_checkbox.stateChanged.connect(
+            self.on_checkbox_state_changed
+        )
+        image_options_layout.addWidget(self.save_image_metadata_checkbox, 0, 0)
+        self.save_image_control_annotators_checkbox = QCheckBox(
+            "Save image control annotators"
+        )
+        self.save_image_control_annotators_checkbox.setChecked(
+            self.preferences.save_image_control_annotators
+        )
+        self.save_image_control_annotators_checkbox.stateChanged.connect(
+            self.on_checkbox_state_changed
+        )
+        image_options_layout.addWidget(
+            self.save_image_control_annotators_checkbox, 0, 1
+        )
+        self.save_image_control_sources_checkbox = QCheckBox(
+            "Save image control sources"
+        )
+        self.save_image_control_sources_checkbox.setChecked(
+            self.preferences.save_image_control_sources
+        )
+        self.save_image_control_sources_checkbox.stateChanged.connect(
+            self.on_checkbox_state_changed
+        )
+        image_options_layout.addWidget(self.save_image_control_sources_checkbox, 1, 0)
+        right_layout.addLayout(image_options_layout)
+
         right_layout.addStretch()
 
         self.main_layout.addLayout(left_layout)
@@ -197,6 +242,15 @@ class PreferencesDialog(QDialog):
         elif sender == self.sequential_offload_checkbox:
             settings.setValue("sequential_offload", sender.isChecked())
             self.preferences.sequential_offload = sender.isChecked()
+        elif sender == self.save_image_metadata_checkbox:
+            settings.setValue("save_image_metadata", sender.isChecked())
+            self.preferences.save_image_metadata = sender.isChecked()
+        elif sender == self.save_image_control_annotators_checkbox:
+            settings.setValue("save_image_control_annotators", sender.isChecked())
+            self.preferences.save_image_control_annotators = sender.isChecked()
+        elif sender == self.save_image_control_sources_checkbox:
+            settings.setValue("save_image_control_sources", sender.isChecked())
+            self.preferences.save_image_control_sources = sender.isChecked()
 
     def on_select_directory(self, dir_type):
         dialog = QFileDialog()
@@ -234,6 +288,12 @@ class PreferencesDialog(QDialog):
             )
             self.directories.models_loras = selected_path
             settings.setValue("models_loras", selected_path)
+        elif dir_type == 5:
+            selected_path = dialog.getExistingDirectory(
+                None, "Select a directory", self.directories.models_controlnets
+            )
+            self.directories.models_controlnets = selected_path
+            settings.setValue("models_controlnets", selected_path)
         else:
             selected_path = dialog.getExistingDirectory(
                 None, "Select a directory", self.directories.outputs_images
