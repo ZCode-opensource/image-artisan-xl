@@ -23,7 +23,6 @@ class LoraPanel(BasePanel):
 
         self.loras = []
         self.lora_scale = 1.0
-        self.lora_dialog = None
         self.init_ui()
         self.update_ui()
 
