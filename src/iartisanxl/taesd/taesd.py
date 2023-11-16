@@ -121,7 +121,6 @@ def main():
         if torch.backends.mps.is_available()
         else "cpu"
     )
-    print("Using device", dev)
     taesd = TAESD().to(dev)
     for im_path in sys.argv[1:]:
         im = TF.to_tensor(Image.open(im_path).convert("RGB")).unsqueeze(0).to(dev)
@@ -130,7 +129,6 @@ def main():
         im_enc = taesd.scale_latents(taesd.encoder(im)).mul_(255).round_().byte()
         enc_path = im_path + ".encoded.png"
         TF.to_pil_image(im_enc[0]).save(enc_path)
-        print(f"Encoded {im_path} to {enc_path}")
 
         # load the saved file, dequantize, and decode
         im_enc = taesd.unscale_latents(
@@ -138,7 +136,6 @@ def main():
         )
         im_dec = taesd.decoder(im_enc).clamp(0, 1)
         dec_path = im_path + ".decoded.png"
-        print(f"Decoded {enc_path} to {dec_path}")
         TF.to_pil_image(im_dec[0]).save(dec_path)
 
 
