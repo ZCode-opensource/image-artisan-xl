@@ -263,13 +263,15 @@ class ImageEditor(QGraphicsView):
         self._scene.addItem(original_image_item)
 
     def get_painted_image(self):
-        image = QImage(
-            self._scene.sceneRect().size().toSize(), QImage.Format.Format_ARGB32
-        )
+        # Create a QImage with the size of the pixmap
+        image = QImage(self._photo.pixmap().size(), QImage.Format.Format_ARGB32)
         image.fill(Qt.GlobalColor.transparent)
 
         painter = QPainter(image)
-        self._scene.render(painter)
+        # Use the pixmap's rect as the source rectangle
+        self._scene.render(
+            painter, QRectF(image.rect()), QRectF(self._photo.pixmap().rect())
+        )
         painter.end()
 
         return image
