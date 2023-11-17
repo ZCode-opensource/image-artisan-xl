@@ -76,7 +76,7 @@ class ImageEditor(QGraphicsView):
         self.setDragMode(QGraphicsView.DragMode.NoDrag)
         self._photo.setPixmap(pixmap)
         self.update_cursor()
-        self.fitInView()
+        self.fit_in_view()
 
     def set_white_pixmap(self, width, height):
         # Create a white QPixmap
@@ -89,12 +89,12 @@ class ImageEditor(QGraphicsView):
         self.setDragMode(QGraphicsView.DragMode.NoDrag)
         self._photo.setPixmap(self.original_pixmap)
         self.update_cursor()
-        self.fitInView()
+        self.fit_in_view()
 
     def has_photo(self):
         return not self._empty
 
-    def fitInView(self):
+    def fit_in_view(self):
         rect = QRectF(self._photo.pixmap().rect())
         if not rect.isNull():
             self.setSceneRect(rect)
@@ -131,7 +131,7 @@ class ImageEditor(QGraphicsView):
                     )
                     self.scale(factor, factor)
                 elif self._zoom == 0:
-                    self.fitInView()
+                    self.fit_in_view()
                 else:
                     self._zoom = 0
             else:
@@ -172,6 +172,8 @@ class ImageEditor(QGraphicsView):
             self.current_drawing.append(path_item)
 
             self.last_point = current_point
+
+        super().mouseMoveEvent(event)
 
     def draw(self):
         if self.drawing:
