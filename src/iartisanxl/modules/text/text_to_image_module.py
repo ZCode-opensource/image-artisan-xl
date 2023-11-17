@@ -177,6 +177,7 @@ class TextToImageModule(BaseModule):
             self.image_generation_data,
             self.image_viewer,
             self.prompt_window,
+            self.show_error,
             self.auto_generate,
             self.open_dialog,
         )
@@ -189,7 +190,7 @@ class TextToImageModule(BaseModule):
             "Generation", GenerationPanel, schedulers, self.module_options
         )
         right_menu.add_panel("LoRAs", LoraPanel)
-        right_menu.add_panel("ControlNet", ControlNetPanel)
+        right_menu.add_panel("ControlNet", ControlNetPanel, self.preferences)
 
         main_layout.setStretch(0, 16)
         main_layout.setStretch(1, 0)
@@ -285,28 +286,6 @@ class TextToImageModule(BaseModule):
                 self.image_processor_thread.image_error.connect(self.show_error)
                 self.image_processor_thread.finished.connect(self.reset_thread)
                 self.image_processor_thread.start()
-                # self.update_status_bar("Getting generation data from image...")
-                # image = ImageProcessor()
-                # image.open_image(path)
-
-                # self.update_status_bar(
-                #     "Setting up generation from metada found in the image..."
-                # )
-
-                # if image.serialized_data is None:
-                #     self.show_error("No metadata found in the image.")
-                #     self.update_status_bar("No metadata found in the image.")
-                # else:
-                #     try:
-                #         self.image_generation_data = image.get_image_generation_data(
-                #             self.image_generation_data
-                #         )
-                #         self.image_viewer.set_pixmap(image.get_qpixmap())
-                #         self.update_status_bar("Ready")
-                #         self.notify_observers()
-                #         self.prompt_window.unblock_seed()
-                #     except ValueError as e:
-                #         self.show_error(e)
 
     def on_generation_data_obtained(self, generation_data: ImageGenData):
         # self.logger.debug(generation_data)
