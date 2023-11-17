@@ -3,7 +3,6 @@ from PyQt6.QtWidgets import (
     QGraphicsPixmapItem,
     QGraphicsView,
     QSizePolicy,
-    QApplication,
     QGraphicsPathItem,
 )
 from PyQt6.QtCore import Qt, QRectF, QPoint
@@ -50,6 +49,9 @@ class ImageEditor(QGraphicsView):
         self.redo_stack = []
         self.current_drawing = []
 
+        self.moving = False
+        self.setMouseTracking(True)
+
         self.drop_lightbox = DropLightBox(self)
         self.drop_lightbox.setText("Drop file here")
 
@@ -93,6 +95,10 @@ class ImageEditor(QGraphicsView):
                 self.scale(factor, factor)
             self._zoom = 0
 
+    def enterEvent(self, event):
+        self.setFocus()  # Set focus to this widget when mouse enters
+        super().enterEvent(event)
+
     def wheelEvent(self, event):
         if self.has_photo():
             if event.modifiers() == Qt.KeyboardModifier.ControlModifier:
@@ -116,8 +122,7 @@ class ImageEditor(QGraphicsView):
 
     def mousePressEvent(self, event):
         if event.button() == Qt.MouseButton.LeftButton:
-            modifiers = QApplication.keyboardModifiers()
-            if modifiers == Qt.KeyboardModifier.ControlModifier:
+            if self.moving:
                 self.setDragMode(QGraphicsView.DragMode.ScrollHandDrag)
                 super().mousePressEvent(event)
             else:
@@ -164,6 +169,27 @@ class ImageEditor(QGraphicsView):
         else:
             super().mouseReleaseEvent(event)
 
+    def keyPressEvent(self, event):
+        if event.key() == Qt.Key.Key_Space:
+            self.setCursor(Qt.CursorShape.OpenHandCursor)
+            self.moving = True
+        super().keyPressEvent(event)
+
+    def keyReleaseEvent(self, event):
+        key = event.key()
+        modifiers = event.modifiers()
+        if key == Qt.Key.Key_Z and modifiers == Qt.KeyboardModifier.ControlModifier:
+            self.undo()
+        elif key == Qt.Key.Key_Z and modifiers == (
+            Qt.KeyboardModifier.ControlModifier | Qt.KeyboardModifier.ShiftModifier
+        ):
+            self.redo()
+        elif key == Qt.Key.Key_Space:
+            self.moving = False
+            self.setCursor(Qt.CursorShape.ArrowCursor)
+        else:
+            super().keyReleaseEvent(event)
+
     def undo(self):
         if self.undo_stack:
             drawing = self.undo_stack.pop()
@@ -182,18 +208,6 @@ class ImageEditor(QGraphicsView):
                 self._scene.addItem(path_item)
                 undo_drawing.append(path_item)
             self.undo_stack.append(undo_drawing)
-
-    def keyReleaseEvent(self, event):
-        key = event.key()
-        modifiers = event.modifiers()
-        if key == Qt.Key.Key_Z and modifiers == Qt.KeyboardModifier.ControlModifier:
-            self.undo()
-        elif key == Qt.Key.Key_Z and modifiers == (
-            Qt.KeyboardModifier.ControlModifier | Qt.KeyboardModifier.ShiftModifier
-        ):
-            self.redo()
-        else:
-            super().keyReleaseEvent(event)
 
     def clear_and_restore(self):
         self._scene.clear()
