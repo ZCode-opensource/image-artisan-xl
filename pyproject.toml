@@ -44,7 +44,7 @@ dev = [
 where = ["src"]
 
 [tool.setuptools.package-data]
-iartisanxl = ["theme/stylesheet.qss", "theme/icons/*.*", "theme/images/*.*"]
+iartisanxl = ["theme/stylesheet.qss", "theme/icons/*.*", "theme/images/*.*", "theme/cursors/*.svg"]
 
 [project.gui-scripts]
 iartisanxl = "iartisanxl.__main__:main"

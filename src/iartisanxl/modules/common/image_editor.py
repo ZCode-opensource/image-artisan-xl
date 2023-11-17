@@ -1,3 +1,5 @@
+from importlib.resources import files
+
 from PyQt6.QtWidgets import (
     QGraphicsScene,
     QGraphicsPixmapItem,
@@ -5,7 +7,7 @@ from PyQt6.QtWidgets import (
     QSizePolicy,
     QGraphicsPathItem,
 )
-from PyQt6.QtCore import Qt, QRectF, QPoint
+from PyQt6.QtCore import Qt, QRectF, QPoint, QTimer
 from PyQt6.QtGui import (
     QPixmap,
     QPainter,
@@ -15,12 +17,18 @@ from PyQt6.QtGui import (
     QBrush,
     QPen,
     QImage,
+    QCursor,
+    QGuiApplication,
 )
+from PyQt6.QtSvg import QSvgRenderer
 
 from iartisanxl.modules.common.drop_lightbox import DropLightBox
 
 
 class ImageEditor(QGraphicsView):
+    BRUSH_BLACK = files("iartisanxl.theme.cursors").joinpath("brush_black.svg")
+    BRUSH_WHITE = files("iartisanxl.theme.cursors").joinpath("brush_white.svg")
+
     def __init__(self, parent=None):
         super(ImageEditor, self).__init__(parent)
 
@@ -55,12 +63,15 @@ class ImageEditor(QGraphicsView):
         self.drop_lightbox = DropLightBox(self)
         self.drop_lightbox.setText("Drop file here")
 
+        self.timer = QTimer()
+        self.timer.timeout.connect(self.update_cursor)
+
     def set_pixmap(self, pixmap: QPixmap):
         self.original_pixmap = pixmap
         self._empty = False
         self.setDragMode(QGraphicsView.DragMode.NoDrag)
         self._photo.setPixmap(pixmap)
-        self.setCursor(Qt.CursorShape.ArrowCursor)
+        self.update_cursor()
         self.fitInView()
 
     def set_white_pixmap(self, width, height):
@@ -73,7 +84,7 @@ class ImageEditor(QGraphicsView):
         self._empty = False
         self.setDragMode(QGraphicsView.DragMode.NoDrag)
         self._photo.setPixmap(self.original_pixmap)
-        self.setCursor(Qt.CursorShape.ArrowCursor)
+        self.update_cursor()
         self.fitInView()
 
     def has_photo(self):
@@ -96,7 +107,9 @@ class ImageEditor(QGraphicsView):
             self._zoom = 0
 
     def enterEvent(self, event):
-        self.setFocus()  # Set focus to this widget when mouse enters
+        self.setFocus()
+        self.drawing = False
+        self.timer.start(100)
         super().enterEvent(event)
 
     def wheelEvent(self, event):
@@ -123,9 +136,11 @@ class ImageEditor(QGraphicsView):
     def mousePressEvent(self, event):
         if event.button() == Qt.MouseButton.LeftButton:
             if self.moving:
+                self.timer.stop()
                 self.setDragMode(QGraphicsView.DragMode.ScrollHandDrag)
                 super().mousePressEvent(event)
             else:
+                self.timer.stop()
                 self.drawing = True
                 self.last_point = self.mapToScene(event.pos())
                 path = QPainterPath()
@@ -163,16 +178,19 @@ class ImageEditor(QGraphicsView):
         if event.button() == Qt.MouseButton.LeftButton:
             self.setDragMode(QGraphicsView.DragMode.NoDrag)
             self.drawing = False
-            self.setCursor(Qt.CursorShape.ArrowCursor)
+            self.update_cursor()
             self.undo_stack.append(self.current_drawing)
             self.current_drawing = []
+            self.timer.start(100)
         else:
             super().mouseReleaseEvent(event)
 
     def keyPressEvent(self, event):
         if event.key() == Qt.Key.Key_Space:
+            self.timer.stop()
             self.setCursor(Qt.CursorShape.OpenHandCursor)
             self.moving = True
+
         super().keyPressEvent(event)
 
     def keyReleaseEvent(self, event):
@@ -186,7 +204,7 @@ class ImageEditor(QGraphicsView):
             self.redo()
         elif key == Qt.Key.Key_Space:
             self.moving = False
-            self.setCursor(Qt.CursorShape.ArrowCursor)
+            self.timer.start(100)
         else:
             super().keyReleaseEvent(event)
 
@@ -228,6 +246,38 @@ class ImageEditor(QGraphicsView):
         painter.end()
 
         return image
+
+    def create_cursor(self, svg_path):
+        zoom_factor = self.transform().m11()
+        pixmap_size = int(self.brush_size * 0.8 * zoom_factor)
+        pixmap = QPixmap(pixmap_size, pixmap_size)
+        pixmap.fill(QColor(0, 0, 0, 0))
+        painter = QPainter(pixmap)
+        renderer = QSvgRenderer(svg_path)
+        renderer.render(painter)
+        painter.end()
+        return QCursor(pixmap)
+
+    def update_cursor(self):
+        bg_color = self.get_color_under_cursor()
+
+        brightness = (
+            bg_color.red() * 299 + bg_color.green() * 587 + bg_color.blue() * 114
+        ) / 1000
+
+        if brightness < 128:
+            self.setCursor(self.create_cursor(str(self.BRUSH_WHITE)))
+        else:
+            self.setCursor(self.create_cursor(str(self.BRUSH_BLACK)))
+
+    def get_color_under_cursor(self):
+        screen = QGuiApplication.primaryScreen()
+        cursor_pos = QCursor.pos()
+        pixmap = screen.grabWindow(0, cursor_pos.x(), cursor_pos.y(), 1, 1)
+        image = pixmap.toImage()
+        color = QColor(image.pixelColor(0, 0))
+
+        return color
 
     def set_brush_color(self, color: tuple):
         self.brush_color = QColor(int(color[0]), int(color[1]), int(color[2]), 255)
