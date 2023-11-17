@@ -1,5 +1,3 @@
-import os
-
 import torch
 from PyQt6.QtCore import QThread, pyqtSignal
 
