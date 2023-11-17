@@ -28,6 +28,8 @@ from iartisanxl.modules.common.drop_lightbox import DropLightBox
 class ImageEditor(QGraphicsView):
     BRUSH_BLACK = files("iartisanxl.theme.cursors").joinpath("brush_black.svg")
     BRUSH_WHITE = files("iartisanxl.theme.cursors").joinpath("brush_white.svg")
+    CROSSHAIR_BLACK = files("iartisanxl.theme.cursors").joinpath("crosshair_black.svg")
+    CROSSHAIR_WHITE = files("iartisanxl.theme.cursors").joinpath("crosshair_white.svg")
 
     def __init__(self, parent=None):
         super(ImageEditor, self).__init__(parent)
@@ -52,6 +54,7 @@ class ImageEditor(QGraphicsView):
         self.last_point = QPoint()
         self.brush_color = QColor(0, 0, 0, 255)
         self.brush_size = 32
+        self.last_cursor_size = None
         self.hardness = 0
         self.pressure = 0
         self.undo_stack = []
@@ -276,9 +279,18 @@ class ImageEditor(QGraphicsView):
 
         return image
 
-    def create_cursor(self, svg_path):
-        zoom_factor = self.transform().m11()
-        pixmap_size = int(self.brush_size * 0.8 * zoom_factor)
+    def create_cursor(self, svg_path, use_crosshair):
+        # Check if we should use the crosshair cursor
+        if use_crosshair:
+            # If it is, use the last pixmap size
+            pixmap_size = self.last_cursor_size
+        else:
+            zoom_factor = self.transform().m11()
+            # If it's not, calculate the pixmap size
+            pixmap_size = int(self.brush_size * 0.8 * zoom_factor)
+            # Store the calculated pixmap size
+            self.last_cursor_size = pixmap_size
+
         pixmap = QPixmap(pixmap_size, pixmap_size)
         pixmap.fill(QColor(0, 0, 0, 0))
         painter = QPainter(pixmap)
@@ -288,16 +300,22 @@ class ImageEditor(QGraphicsView):
         return QCursor(pixmap)
 
     def update_cursor(self):
-        bg_color = self.get_color_under_cursor()
+        # Check if the zoom factor is less than 7 and the brush size is smaller than 15
+        use_crosshair = self._zoom < 7 and self.brush_size < 15
 
+        # Determine the color of the cursor
+        bg_color = self.get_color_under_cursor()
         brightness = (
             bg_color.red() * 299 + bg_color.green() * 587 + bg_color.blue() * 114
         ) / 1000
 
+        # Determine the cursor type based on the brightness and whether we should use the crosshair
         if brightness < 128:
-            self.setCursor(self.create_cursor(str(self.BRUSH_WHITE)))
+            cursor_type = self.CROSSHAIR_WHITE if use_crosshair else self.BRUSH_WHITE
         else:
-            self.setCursor(self.create_cursor(str(self.BRUSH_BLACK)))
+            cursor_type = self.CROSSHAIR_BLACK if use_crosshair else self.BRUSH_BLACK
+
+        self.setCursor(self.create_cursor(str(cursor_type), use_crosshair))
 
     def get_color_under_cursor(self):
         screen = QGuiApplication.primaryScreen()
