@@ -41,6 +41,9 @@ class ControlNetDialog(BaseDialog):
         self.control_guidance_start = 0.0
         self.control_guidance_end = 1.0
 
+        self.canny_low = 100
+        self.canny_high = 300
+
         self.init_ui()
 
     def init_ui(self):
@@ -55,6 +58,18 @@ class ControlNetDialog(BaseDialog):
         self.controlnet_combo.addItem("Depth", "depth")
         self.controlnet_combo.addItem("Pose", "pose")
         control_layout.addWidget(self.controlnet_combo)
+
+        canny_label = QLabel("Canny tresholds:")
+        control_layout.addWidget(canny_label)
+        self.canny_low_label = QLabel(f"{self.canny_low}")
+        control_layout.addWidget(self.canny_low_label)
+        canny_slider = QDoubleRangeSlider(Qt.Orientation.Horizontal)
+        canny_slider.setRange(0, 600)
+        canny_slider.setValue((self.canny_low, self.canny_high))
+        canny_slider.valueChanged.connect(self.on_canny_threshold_changed)
+        control_layout.addWidget(canny_slider)
+        self.canny_high_label = QLabel(f"{self.canny_high}")
+        control_layout.addWidget(self.canny_high_label)
 
         conditioning_scale_label = QLabel("Conditioning scale:")
         control_layout.addWidget(conditioning_scale_label)
@@ -178,8 +193,8 @@ class ControlNetDialog(BaseDialog):
                     source_image.height(), source_image.width(), 4
                 )
 
-                low_threshold = 50
-                high_threshold = 200
+                low_threshold = self.canny_low
+                high_threshold = self.canny_high
 
                 image = cv2.Canny(  # pylint: disable=no-member
                     image, low_threshold, high_threshold
@@ -248,3 +263,9 @@ class ControlNetDialog(BaseDialog):
         self.guidance_end_value_label.setText(
             f"{int(self.control_guidance_end * 100)}%"
         )
+
+    def on_canny_threshold_changed(self, values):
+        self.canny_low = int(values[0])
+        self.canny_high = int(values[1])
+        self.canny_low_label.setText(f"{self.canny_low}")
+        self.canny_high_label.setText(f"{self.canny_high}")
