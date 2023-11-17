@@ -11,6 +11,7 @@ from PyQt6.QtCore import Qt
 from iartisanxl.modules.common.panels.base_panel import BasePanel
 from iartisanxl.modules.common.dialogs.lora_dialog import LoraDialog
 from iartisanxl.modules.common.lora_added_item import LoraAddedItem
+from iartisanxl.generation.generation_data_object import ImageGenData
 
 
 class LoraPanel(BasePanel):
@@ -24,7 +25,7 @@ class LoraPanel(BasePanel):
         self.loras = []
         self.lora_scale = 1.0
         self.init_ui()
-        self.update_ui()
+        self.update_ui(self.image_generation_data)
 
     def init_ui(self):
         main_layout = QVBoxLayout()
@@ -72,7 +73,9 @@ class LoraPanel(BasePanel):
             if widget is not None:
                 widget.deleteLater()
 
-    def update_ui(self):
+    def update_ui(self, image_generation_data: ImageGenData):
+        super().update_ui(image_generation_data)
+
         self.lora_scale = self.image_generation_data.lora_scale
         self.lora_slider.setValue(int(self.lora_scale * 10))
         self.lbl_lora_scale.setText(f"{self.lora_scale:.1f}")

@@ -17,6 +17,7 @@ from iartisanxl.modules.common.panels.base_panel import BasePanel
 from iartisanxl.modules.common.image_dimensions import ImageDimensionsWidget
 from iartisanxl.modules.common.dialogs.model_dialog import ModelDialog
 from iartisanxl.generation.vae_data_object import VaeDataObject
+from iartisanxl.generation.generation_data_object import ImageGenData
 
 
 class GenerationPanel(BasePanel):
@@ -37,7 +38,7 @@ class GenerationPanel(BasePanel):
 
         self.model_dialog = None
         self.init_ui()
-        self.update_ui()
+        self.update_ui(self.image_generation_data)
 
     def init_ui(self):
         main_layout = QVBoxLayout()
@@ -176,7 +177,9 @@ class GenerationPanel(BasePanel):
         self.image_generation_data.clip_skip = value
         self.clip_skip_value_label.setText(f"{value}")
 
-    def update_ui(self):
+    def update_ui(self, image_generation_data: ImageGenData):
+        super().update_ui(image_generation_data)
+
         if len(self.image_generation_data.positive_prompt_clipl) > 0:
             self.split_positive_prompt.setChecked(True)
             self.module_options["positive_prompt_split"] = True

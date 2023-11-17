@@ -3,10 +3,10 @@ import attr
 
 @attr.s
 class ModelDataObject:
-    name = attr.ib(type=str)
-    path = attr.ib(type=str)
-    version = attr.ib(type=str)
-    type = attr.ib(type=str)
+    name: str = attr.ib(default="")
+    path: str = attr.ib(default="")
+    version: str = attr.ib(default="")
+    type: str = attr.ib(default="")
 
     def copy(self):
         new_obj = ModelDataObject(

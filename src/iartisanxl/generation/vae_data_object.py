@@ -3,8 +3,8 @@ import attr
 
 @attr.s
 class VaeDataObject:
-    name = attr.ib(type=str)
-    path = attr.ib(type=str)
+    name: str = attr.ib(default="")
+    path: str = attr.ib(default="")
 
     def copy(self):
         new_obj = VaeDataObject(

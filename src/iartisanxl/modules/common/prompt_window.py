@@ -23,7 +23,7 @@ class PromptWindow(QFrame):
         self, image_generation_data: ImageGenData, module_options: dict, *args, **kwargs
     ):
         super().__init__(*args, **kwargs)
-        self.image_generation_data = image_generation_data
+        self.image_generation_data = None
         self.module_options = module_options
 
         self.tokenizer = CLIPTokenizer.from_pretrained(
@@ -32,7 +32,7 @@ class PromptWindow(QFrame):
         self.max_tokens = self.tokenizer.model_max_length - 2
 
         self.init_ui()
-        self.update_ui()
+        self.update_ui(image_generation_data)
         self.set_button_generate()
 
     def init_ui(self):
@@ -128,7 +128,8 @@ class PromptWindow(QFrame):
             self.generate_button.auto_save, self.generate_button.continuous_generation
         )
 
-    def update_ui(self):
+    def update_ui(self, image_generation_data: ImageGenData):
+        self.image_generation_data = image_generation_data
         self.split_positive_prompt(self.module_options.get("positive_prompt_split"))
         self.positive_prompt.setPlainText(
             self.image_generation_data.positive_prompt_clipg

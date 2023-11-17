@@ -12,8 +12,8 @@ class BasePanel(QWidget):
     def __init__(
         self,
         directories: DirectoriesObject,
-        image_generation_data: ImageGenData,
         prompt_window: PromptWindow,
+        image_generation_data: ImageGenData,
         *args,
         **kwargs,
     ):
@@ -22,5 +22,8 @@ class BasePanel(QWidget):
         self.image_generation_data = image_generation_data
         self.prompt_window = prompt_window
 
-    def update_ui(self):
-        pass
+    def update_ui(self, image_generation_data: ImageGenData):
+        self.image_generation_data = image_generation_data
+
+    def __del__(self):
+        self.image_generation_data = None

@@ -92,7 +92,6 @@ class RightMenu(QFrame):
             "args": (
                 *args,
                 self.directories,
-                self.image_generation_data,
                 self.prompt_window,
             ),
             "kwargs": kwargs,
@@ -166,18 +165,22 @@ class RightMenu(QFrame):
             and self.current_panel is not None
             and self.current_panel != panel_class
         ):
+            self.current_panel.image_generation_data = None
             self.current_panel.setParent(None)
+            del self.current_panel
 
-        panel = panel_class(*args, **kwargs)
+        panel = panel_class(*(args + (self.image_generation_data,)), **kwargs)
         panel.dialog_opened.connect(self.on_open_dialog)
         self.panel_layout.addWidget(panel)
 
         self.current_panel = panel
         self.current_panel_text = text
 
-    def update_ui(self):
+    def update_ui(self, image_generation_data: ImageGenData):
+        self.image_generation_data = image_generation_data
+
         if self.current_panel is not None:
-            self.current_panel.update_ui()
+            self.current_panel.update_ui(self.image_generation_data)
 
     def on_open_dialog(self, dialog_class, title):
         dialog = dialog_class(
@@ -188,5 +191,7 @@ class RightMenu(QFrame):
             self.prompt_window,
             self.auto_generate_function,
         )
-        dialog.generation_updated.connect(self.update_ui)
+        dialog.generation_updated.connect(
+            lambda: self.update_ui(self.image_generation_data)
+        )
         self.module_open_dialog(dialog)

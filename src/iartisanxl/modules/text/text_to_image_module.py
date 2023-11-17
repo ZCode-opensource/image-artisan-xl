@@ -35,6 +35,7 @@ from iartisanxl.threads.pipeline_setup_thread import PipelineSetupThread
 from iartisanxl.threads.lora_setup_thread import LoraSetupThread
 from iartisanxl.threads.image_generation_thread import ImageGenerationThread
 from iartisanxl.threads.taesd_loader_thread import TaesdLoaderThread
+from iartisanxl.threads.image_processor_thread import ImageProcesorThread
 from iartisanxl.pipelines.txt_pipeline import ImageArtisanTextPipeline
 from iartisanxl.formats.image import ImageProcessor
 
@@ -114,12 +115,14 @@ class TextToImageModule(BaseModule):
         self.pipeline_setup_thread = None
         self.lora_setup_thread = None
         self.image_generation_thread = None
+        self.image_processor_thread = None
 
         self.threads = {
             "taesd_loader_thread": self.taesd_loader_thread,
             "pipeline_setup_thread": self.pipeline_setup_thread,
             "lora_setup_thread": self.lora_setup_thread,
             "image_generation_thread": self.image_generation_thread,
+            "image_processor_thread": self.image_processor_thread,
         }
 
         self.generating = False
@@ -268,28 +271,52 @@ class TextToImageModule(BaseModule):
         for url in event.mimeData().urls():
             path = url.toLocalFile()
             if path.endswith(".png"):
-                self.update_status_bar("Getting generation data from image...")
-                image = ImageProcessor()
-                image.open_image(path)
-
-                self.update_status_bar(
-                    "Setting up generation from metada found in the image..."
+                self.image_processor_thread = ImageProcesorThread(path)
+                self.threads["image_processor_thread"] = self.image_processor_thread
+                self.image_processor_thread.generation_data_obtained.connect(
+                    self.on_generation_data_obtained
                 )
+                self.image_processor_thread.status_changed.connect(
+                    self.update_status_bar
+                )
+                self.image_processor_thread.image_loaded.connect(
+                    self.on_dropped_image_loaded
+                )
+                self.image_processor_thread.image_error.connect(self.show_error)
+                self.image_processor_thread.finished.connect(self.reset_thread)
+                self.image_processor_thread.start()
+                # self.update_status_bar("Getting generation data from image...")
+                # image = ImageProcessor()
+                # image.open_image(path)
 
-                if image.serialized_data is None:
-                    self.show_error("No metadata found in the image.")
-                    self.update_status_bar("No metadata found in the image.")
-                else:
-                    try:
-                        self.image_generation_data = image.get_image_generation_data(
-                            self.image_generation_data
-                        )
-                        self.image_viewer.set_pixmap(image.get_qpixmap())
-                        self.update_status_bar("Ready")
-                        self.notify_observers()
-                        self.prompt_window.unblock_seed()
-                    except ValueError as e:
-                        self.show_error(e)
+                # self.update_status_bar(
+                #     "Setting up generation from metada found in the image..."
+                # )
+
+                # if image.serialized_data is None:
+                #     self.show_error("No metadata found in the image.")
+                #     self.update_status_bar("No metadata found in the image.")
+                # else:
+                #     try:
+                #         self.image_generation_data = image.get_image_generation_data(
+                #             self.image_generation_data
+                #         )
+                #         self.image_viewer.set_pixmap(image.get_qpixmap())
+                #         self.update_status_bar("Ready")
+                #         self.notify_observers()
+                #         self.prompt_window.unblock_seed()
+                #     except ValueError as e:
+                #         self.show_error(e)
+
+    def on_generation_data_obtained(self, generation_data: ImageGenData):
+        # self.logger.debug(generation_data)
+        self.image_generation_data = generation_data
+        self.notify_observers()
+        self.prompt_window.unblock_seed()
+
+    def on_dropped_image_loaded(self, image: QPixmap):
+        self.image_viewer.set_pixmap(image)
+        self.update_status_bar("Ready")
 
     def generation_clicked(
         self, auto_save: bool = False, continuous_generation: bool = False
@@ -357,8 +384,8 @@ class TextToImageModule(BaseModule):
         if self.rendering_generation_data is not None:
             self.changed_parameters = []
 
-            for attr in ImageGenData.__slots__:
-                if attr == "_loras":
+            for attr in ImageGenData.__annotations__:
+                if attr == "loras":
                     # Check if the number of Lora objects has changed
                     if len(self.image_generation_data.loras) != len(
                         self.rendering_generation_data.loras
@@ -373,7 +400,8 @@ class TextToImageModule(BaseModule):
                                 ):
                                     self.changed_parameters.append(attr)
                                     break
-                elif attr == "_controlnets":
+
+                elif attr == "controlnets":
                     if len(self.image_generation_data.controlnets) != len(
                         self.rendering_generation_data.controlnets
                     ):
@@ -429,7 +457,7 @@ class TextToImageModule(BaseModule):
                                 "Model cpu offload disabled, reloading model."
                             )
 
-        if self.base_pipeline is None or "_model" in self.changed_parameters:
+        if self.base_pipeline is None or "model" in self.changed_parameters:
             self.status_bar.showMessage("Setting up the pipeline...")
             self.base_pipeline = None
             self.lora_setup_thread = None
@@ -464,7 +492,7 @@ class TextToImageModule(BaseModule):
         if pipeline is not None:
             self.base_pipeline = pipeline
 
-            if "_vae" in self.changed_parameters:
+            if "vae" in self.changed_parameters:
                 self.update_status_bar("Changing to selected vae...")
                 try:
                     if len(self.rendering_generation_data.vae.path) > 0:
@@ -508,7 +536,7 @@ class TextToImageModule(BaseModule):
                     self.logger.debug("OSError exception", exc_info=True)
                     return
 
-            if "_base_scheduler" in self.changed_parameters:
+            if "base_scheduler" in self.changed_parameters:
                 self.update_status_bar("Changing the scheduler...")
                 self.base_pipeline.scheduler = load_scheduler(
                     self.rendering_generation_data.base_scheduler
@@ -521,7 +549,7 @@ class TextToImageModule(BaseModule):
                 self.status_bar.showMessage("Token merging is disabled...")
                 tomesd.remove_patch(self.base_pipeline)
 
-            if self.new_pipeline or "_loras" in self.changed_parameters:
+            if self.new_pipeline or "loras" in self.changed_parameters:
                 self.lora_setup_thread = LoraSetupThread(
                     self.base_pipeline, self.rendering_generation_data.loras
                 )
@@ -621,7 +649,7 @@ class TextToImageModule(BaseModule):
     def notify_observers(self):
         self.logger.debug("Notifying observers: %s", self.observers)
         for observer in self.observers:
-            observer.update_ui()
+            observer.update_ui(self.image_generation_data)
 
     def update_status_bar(self, text):
         self.status_bar.showMessage(text)
@@ -654,9 +682,7 @@ class TextToImageModule(BaseModule):
         image.serialized_data = generation_data
 
         try:
-            self.image_generation_data = image.get_image_generation_data(
-                self.image_generation_data
-            )
+            self.image_generation_data = image.get_image_generation_data()
             self.notify_observers()
             self.prompt_window.unblock_seed()
             self.generation_clicked()

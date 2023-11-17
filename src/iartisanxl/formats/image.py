@@ -28,7 +28,6 @@ class ImageProcessor:
         data = metadata.get("data")
 
         if data is not None:
-            self.logger.debug(data)
             self.serialized_data = data
 
         self.set_pillow_image(pil_image)
@@ -91,16 +90,12 @@ class ImageProcessor:
 
         image.save(output_filepath, pnginfo=metadata)
 
-    def get_image_generation_data(
-        self, image_generation_data: ImageGenData
-    ) -> ImageGenData:
+    def get_image_generation_data(self) -> ImageGenData:
         try:
             data = json.loads(self.serialized_data)
             data = {key.strip("_"): value for key, value in data.items()}
 
-            image_generation_data.loras = []
-            image_generation_data.controlnets = []
-            image_generation_data.update_attributes(data)
+            image_generation_data = ImageGenData.from_dict(data)
 
             return image_generation_data
         except json.JSONDecodeError as json_error:

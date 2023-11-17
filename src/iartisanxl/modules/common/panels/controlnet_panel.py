@@ -3,6 +3,7 @@ from PyQt6.QtWidgets import QVBoxLayout, QPushButton, QWidget
 from iartisanxl.modules.common.panels.base_panel import BasePanel
 from iartisanxl.modules.common.dialogs.controlnet_dialog import ControlNetDialog
 from iartisanxl.modules.common.controlnet_added_item import ControlNetAddedItem
+from iartisanxl.generation.generation_data_object import ImageGenData
 
 
 class ControlNetPanel(BasePanel):
@@ -15,7 +16,7 @@ class ControlNetPanel(BasePanel):
 
         self.controlnets = []
         self.init_ui()
-        self.update_ui()
+        self.update_ui(self.image_generation_data)
 
     def init_ui(self):
         main_layout = QVBoxLayout()
@@ -34,7 +35,9 @@ class ControlNetPanel(BasePanel):
     def open_controlnet_dialog(self):
         self.dialog_opened.emit(ControlNetDialog, "ControlNet")
 
-    def update_ui(self):
+    def update_ui(self, image_generation_data: ImageGenData):
+        super().update_ui(image_generation_data)
+
         controlnets = self.image_generation_data.controlnets
         self.clear_controlnets()
 
