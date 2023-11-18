@@ -71,6 +71,9 @@ class ImageProcessor:
         qpixmap = QPixmap.fromImage(qimage)
         return qpixmap
 
+    def get_pillow_image(self) -> Image:
+        return Image.open(io.BytesIO(self.image_data))
+
     def save_to_png(self, output_path: str):
         if os.path.isdir(output_path):
             timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
