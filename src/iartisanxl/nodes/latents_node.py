@@ -21,7 +21,7 @@ class LatentsNode(Node):
         super().__init__(**kwargs)
         self.generator = torch.Generator(device="cpu").manual_seed(self.seed)
 
-    def process(self):
+    def __call__(self):
         shape = (
             1,
             self.num_channels_latents,

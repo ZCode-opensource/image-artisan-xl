@@ -1,3 +1,6 @@
+from typing import Any
+
+
 class Node:
     REQUIRED_ARGS = []
 
@@ -8,5 +11,5 @@ class Node:
         for key, value in kwargs.items():
             setattr(self, key, value)
 
-    def process(self):
+    def __call__(self, *args: Any, **kwargs: Any) -> Any:
         raise NotImplementedError

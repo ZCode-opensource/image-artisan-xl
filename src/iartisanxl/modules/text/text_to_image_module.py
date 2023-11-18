@@ -23,7 +23,6 @@ from iartisanxl.modules.common.prompt_window import PromptWindow
 from iartisanxl.modules.common.panels.generation_panel import GenerationPanel
 from iartisanxl.modules.common.panels.lora_panel import LoraPanel
 from iartisanxl.modules.common.panels.controlnet_panel import ControlNetPanel
-from iartisanxl.modules.common.diffusers_utils import load_vae_from_safetensors
 from iartisanxl.menu.right_menu import RightMenu
 from iartisanxl.generation.generation_data_object import ImageGenData
 from iartisanxl.generation.model_data_object import ModelDataObject
@@ -480,6 +479,12 @@ class TextToImageModule(BaseModule):
     # pylint: disable=no-member
     def pipeline_ready(self, pipeline: Optional[ImageArtisanTextPipeline] = None):
         if pipeline is not None:
+            if pipeline.unet is None:
+                self.show_error(
+                    "There was an error loading the model, please select it again."
+                )
+                return
+
             self.base_pipeline = pipeline
 
             if "vae" in self.changed_parameters:
@@ -501,11 +506,10 @@ class TextToImageModule(BaseModule):
                                 use_safetensors=True,
                             )
                         else:
-                            self.update_status_bar("Changing to model vae...")
-                            vae = load_vae_from_safetensors(
-                                self.rendering_generation_data.model.path,
-                                "./configs/sd_xl_base.yaml",
+                            self.show_error(
+                                "Using the model vae is not enabled when using single file checkpoints."
                             )
+                            return
 
                     self.base_pipeline.vae = vae
                 except AttributeError as attribute_error:

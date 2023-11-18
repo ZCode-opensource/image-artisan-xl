@@ -1,35 +1,22 @@
 import inspect
-import json
 import logging
 import gc
 from typing import Any, Callable, Dict, Optional, Tuple, Union, List
 
 import torch
-from omegaconf import OmegaConf
 from PIL import Image
 import numpy as np
-from accelerate import init_empty_weights
-from accelerate.utils import set_module_tensor_to_device
-from safetensors.torch import load_file as safe_load
 from transformers import CLIPTextModel, CLIPTextModelWithProjection, CLIPTokenizer
 from diffusers.loaders import (
     StableDiffusionXLLoraLoaderMixin,
 )
 from diffusers.models import AutoencoderKL, UNet2DConditionModel, ControlNetModel
-from diffusers.schedulers import KarrasDiffusionSchedulers, EulerDiscreteScheduler
+from diffusers.schedulers import KarrasDiffusionSchedulers
 from diffusers.utils import scale_lora_layers, unscale_lora_layers
 from diffusers.pipelines.pipeline_utils import DiffusionPipeline
 from diffusers.pipelines.controlnet.multicontrolnet import MultiControlNetModel
 from diffusers.image_processor import PipelineImageInput, VaeImageProcessor
 
-from iartisanxl.convert_model.convert_functions import (
-    create_unet_diffusers_config,
-    convert_ldm_unet_checkpoint,
-    convert_ldm_clip_checkpoint,
-    convert_open_clip_checkpoint,
-    create_vae_diffusers_config,
-    convert_ldm_vae_checkpoint,
-)
 from iartisanxl.nodes.latents_node import LatentsNode
 from iartisanxl.nodes.encode_prompts_node import EncodePromptsNode
 
@@ -91,104 +78,6 @@ class ImageArtisanControlNetTextPipeline(
 
         self.model_cpu_offloaded = False
         self.sequential_cpu_offloaded = False
-
-    @classmethod
-    def from_single_file(
-        cls, pretrained_model_link_or_path, vae: AutoencoderKL = None, **kwargs
-    ):
-        original_config_file = kwargs.pop("original_config_file", None)
-        torch_dtype = kwargs.pop("torch_dtype", None)
-        scheduler = kwargs.pop("scheduler", None)
-        pipeline_class = ImageArtisanControlNetTextPipeline
-
-        try:
-            checkpoint = safe_load(pretrained_model_link_or_path, device="cpu")
-        except FileNotFoundError as exc:
-            raise FileNotFoundError("Model file not found.") from exc
-
-        original_config = OmegaConf.load(original_config_file)
-
-        image_size = 1024
-
-        if scheduler is None:
-            scheduler_config = None
-            with open(
-                "./configs/scheduler_config.json", "r", encoding="utf-8"
-            ) as config_file:
-                scheduler_config = json.load(config_file)
-
-            scheduler = EulerDiscreteScheduler.from_config(scheduler_config)
-            scheduler.register_to_config(clip_sample=False)
-
-        unet_config = create_unet_diffusers_config(
-            original_config, image_size=image_size
-        )
-        path = pretrained_model_link_or_path
-        converted_unet_checkpoint = convert_ldm_unet_checkpoint(
-            checkpoint, unet_config, path=path, extract_ema=False
-        )
-
-        ctx = init_empty_weights
-        with ctx():
-            unet = UNet2DConditionModel(**unet_config)
-
-        if vae is None:
-            vae_config = create_vae_diffusers_config(
-                original_config, image_size=image_size
-            )
-            converted_vae_checkpoint = convert_ldm_vae_checkpoint(
-                checkpoint, vae_config
-            )
-            vae_scaling_factor = original_config.model.params.scale_factor
-            vae_config["scaling_factor"] = vae_scaling_factor
-            ctx = init_empty_weights
-            with ctx():
-                vae = AutoencoderKL(**vae_config)
-
-            for param_name, param in converted_vae_checkpoint.items():
-                set_module_tensor_to_device(
-                    vae, param_name, "cpu", value=param, dtype=torch.float16
-                )
-
-        tokenizer = CLIPTokenizer.from_pretrained(
-            "./configs/clip-vit-large-patch14",
-            local_files_only=True,
-        )
-        text_encoder = convert_ldm_clip_checkpoint(checkpoint, local_files_only=True)
-        tokenizer_2 = CLIPTokenizer.from_pretrained(
-            "./configs/CLIP-ViT-bigG-14-laion2B-39B-b160k",
-            pad_token="!",
-            local_files_only=True,
-        )
-
-        config_name = "./configs/CLIP-ViT-bigG-14-laion2B-39B-b160k"
-        config_kwargs = {"projection_dim": 1280}
-        text_encoder_2 = convert_open_clip_checkpoint(
-            checkpoint,
-            config_name,
-            prefix="conditioner.embedders.1.model.",
-            has_projection=True,
-            **config_kwargs,
-        )
-
-        for param_name, param in converted_unet_checkpoint.items():
-            set_module_tensor_to_device(
-                unet, param_name, "cpu", value=param, dtype=torch.float16
-            )
-
-        pipe = pipeline_class(
-            vae=vae,
-            text_encoder=text_encoder,
-            tokenizer=tokenizer,
-            text_encoder_2=text_encoder_2,
-            tokenizer_2=tokenizer_2,
-            unet=unet,
-            controlnet=None,
-            scheduler=scheduler,
-        )
-
-        pipe.to(dtype=torch_dtype)
-        return pipe
 
     def prepare_image(
         self,
@@ -444,7 +333,7 @@ class ImageArtisanControlNetTextPipeline(
             dtype=prompt_embeds.dtype,
         )
 
-        latents, generator = latents_node.process()
+        latents, generator = latents_node()
         latents = latents * self.scheduler.init_noise_sigma
 
         status_update("Preparing extra steps kwargs...")

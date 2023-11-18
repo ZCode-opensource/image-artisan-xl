@@ -11,13 +11,18 @@ from omegaconf import OmegaConf
 from accelerate import init_empty_weights
 from accelerate.utils import set_module_tensor_to_device
 from safetensors.torch import load_file as safe_load
-from transformers import CLIPTextModel, CLIPTextModelWithProjection, CLIPTokenizer
+from transformers import (
+    CLIPTextModel,
+    CLIPTextConfig,
+    CLIPTextModelWithProjection,
+    CLIPTokenizer,
+)
 from diffusers.models import AutoencoderKL, UNet2DConditionModel
 from diffusers.schedulers import KarrasDiffusionSchedulers, EulerDiscreteScheduler
 from diffusers.pipelines.pipeline_utils import DiffusionPipeline
 from diffusers.utils.torch_utils import is_compiled_module
 
-from iartisanxl.convert_model.convert_functions import (
+from diffusers.pipelines.stable_diffusion.convert_from_ckpt import (
     create_unet_diffusers_config,
     convert_ldm_unet_checkpoint,
     convert_ldm_clip_checkpoint,
@@ -134,7 +139,16 @@ class ImageArtisanConvertPipeline(
             "./configs/clip-vit-large-patch14",
             local_files_only=True,
         )
-        text_encoder = convert_ldm_clip_checkpoint(checkpoint, local_files_only=True)
+        config = CLIPTextConfig.from_pretrained(
+            "./configs/clip-vit-large-patch14", local_files_only=True
+        )
+        ctx = init_empty_weights
+        with ctx():
+            text_encoder = CLIPTextModel(config)
+        text_encoder = convert_ldm_clip_checkpoint(
+            checkpoint, local_files_only=True, text_encoder=text_encoder
+        )
+
         tokenizer_2 = CLIPTokenizer.from_pretrained(
             "./configs/CLIP-ViT-bigG-14-laion2B-39B-b160k",
             pad_token="!",
@@ -175,7 +189,6 @@ class ImageArtisanConvertPipeline(
         status_update: callable,
         safe_serialization: bool = True,
         variant: Optional[str] = None,
-        **kwargs,
     ):
         steps = 1
         model_index_dict = dict(self.config)
