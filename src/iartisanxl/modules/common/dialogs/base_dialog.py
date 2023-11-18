@@ -23,6 +23,8 @@ class CustomSizeGrip(QSizeGrip):
 
 class BaseDialog(QDialog):
     generation_updated = pyqtSignal()
+    dialog_updated = pyqtSignal()
+
     border_color = QColor("#ff6b6b6b")
 
     def __init__(

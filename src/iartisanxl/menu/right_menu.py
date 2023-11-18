@@ -7,6 +7,7 @@ from iartisanxl.generation.generation_data_object import ImageGenData
 from iartisanxl.app.directories import DirectoriesObject
 from iartisanxl.modules.common.image_viewer_simple import ImageViewerSimple
 from iartisanxl.modules.common.prompt_window import PromptWindow
+from iartisanxl.modules.common.dialogs.base_dialog import BaseDialog
 
 
 class RightMenu(QFrame):
@@ -20,6 +21,7 @@ class RightMenu(QFrame):
         image_generation_data: ImageGenData,
         image_viewer: ImageViewerSimple,
         prompt_window: PromptWindow,
+        show_error: callable,
         auto_generate_function: callable,
         open_dialog: callable,
         *args,
@@ -32,6 +34,7 @@ class RightMenu(QFrame):
         self.image_generation_data = image_generation_data
         self.image_viewer = image_viewer
         self.prompt_window = prompt_window
+        self.show_error = show_error
         self.auto_generate_function = auto_generate_function
         self.module_open_dialog = open_dialog
 
@@ -89,11 +92,7 @@ class RightMenu(QFrame):
 
         self.panels[text] = {
             "class": panel_class,
-            "args": (
-                *args,
-                self.directories,
-                self.prompt_window,
-            ),
+            "args": (*args, self.directories, self.prompt_window, self.show_error),
             "kwargs": kwargs,
         }
 
@@ -182,6 +181,10 @@ class RightMenu(QFrame):
         if self.current_panel is not None:
             self.current_panel.update_ui(self.image_generation_data)
 
+    def process_dialog(self, dialog: BaseDialog):
+        if self.current_panel is not None:
+            self.current_panel.process_dialog(dialog)
+
     def on_open_dialog(self, dialog_class, title):
         dialog = dialog_class(
             self.directories,
@@ -194,4 +197,5 @@ class RightMenu(QFrame):
         dialog.generation_updated.connect(
             lambda: self.update_ui(self.image_generation_data)
         )
+        dialog.dialog_updated.connect(lambda: self.process_dialog(dialog))
         self.module_open_dialog(dialog)

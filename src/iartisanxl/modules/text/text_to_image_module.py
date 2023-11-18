@@ -110,6 +110,7 @@ class TextToImageModule(BaseModule):
         self.batch_size = 1
         self.taesd_dec = None
         self.changed_parameters = []
+        self.deleted_loras = []
 
         self.taesd_loader_thread = None
         self.pipeline_setup_thread = None
@@ -171,7 +172,7 @@ class TextToImageModule(BaseModule):
         main_layout.addWidget(self.prompt_window)
         self.subscribe(self.prompt_window)
 
-        right_menu = RightMenu(
+        self.right_menu = RightMenu(
             self.module_options,
             self.directories,
             self.image_generation_data,
@@ -181,16 +182,16 @@ class TextToImageModule(BaseModule):
             self.auto_generate,
             self.open_dialog,
         )
-        top_layout.addWidget(right_menu)
-        self.subscribe(right_menu)
+        top_layout.addWidget(self.right_menu)
+        self.subscribe(self.right_menu)
         top_layout.setStretch(0, 1)
 
         # Add the panels to the menu
-        right_menu.add_panel(
+        self.right_menu.add_panel(
             "Generation", GenerationPanel, schedulers, self.module_options
         )
-        right_menu.add_panel("LoRAs", LoraPanel)
-        right_menu.add_panel("ControlNet", ControlNetPanel, self.preferences)
+        self.right_menu.add_panel("LoRAs", LoraPanel)
+        self.right_menu.add_panel("ControlNet", ControlNetPanel, self.preferences)
 
         main_layout.setStretch(0, 16)
         main_layout.setStretch(1, 0)
@@ -288,7 +289,7 @@ class TextToImageModule(BaseModule):
                 self.image_processor_thread.start()
 
     def on_generation_data_obtained(self, generation_data: ImageGenData):
-        # self.logger.debug(generation_data)
+        self.logger.debug(generation_data)
         self.image_generation_data = generation_data
         self.notify_observers()
         self.prompt_window.unblock_seed()
@@ -362,6 +363,7 @@ class TextToImageModule(BaseModule):
     def setup_pipeline(self):
         if self.rendering_generation_data is not None:
             self.changed_parameters = []
+            self.deleted_loras = []
 
             for attr in ImageGenData.__annotations__:
                 if attr == "loras":
@@ -370,6 +372,15 @@ class TextToImageModule(BaseModule):
                         self.rendering_generation_data.loras
                     ):
                         self.changed_parameters.append(attr)
+                        generation_loras = set(
+                            lora.filename.replace(".", "_")
+                            for lora in self.image_generation_data.loras
+                        )
+                        rendering_loras = set(
+                            lora.filename.replace(".", "_")
+                            for lora in self.rendering_generation_data.loras
+                        )
+                        self.deleted_loras = list(rendering_loras - generation_loras)
                     else:
                         # Check if the attributes of each Lora object have changed
                         for i, lora in enumerate(self.image_generation_data.loras):
@@ -530,7 +541,9 @@ class TextToImageModule(BaseModule):
 
             if self.new_pipeline or "loras" in self.changed_parameters:
                 self.lora_setup_thread = LoraSetupThread(
-                    self.base_pipeline, self.rendering_generation_data.loras
+                    self.base_pipeline,
+                    self.rendering_generation_data.loras,
+                    self.deleted_loras,
                 )
                 self.threads["lora_setup_thread"] = self.lora_setup_thread
                 self.lora_setup_thread.status_changed.connect(self.update_status_bar)

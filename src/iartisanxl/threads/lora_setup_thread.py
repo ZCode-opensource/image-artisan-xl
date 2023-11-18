@@ -12,13 +12,19 @@ class LoraSetupThread(QThread):
     loras_error = pyqtSignal(str)
     lora_setup_aborted = pyqtSignal()
 
-    def __init__(self, pipeline: ImageArtisanTextPipeline, loras: list[LoraDataObject]):
+    def __init__(
+        self,
+        pipeline: ImageArtisanTextPipeline,
+        loras: list[LoraDataObject],
+        deleted_loras: list[str],
+    ):
         super().__init__()
 
         self.logger = logging.getLogger()
 
         self.pipeline = pipeline
         self.loras = loras
+        self.deleted_loras = deleted_loras
         self.abort = False
 
     def run(self):
@@ -27,6 +33,7 @@ class LoraSetupThread(QThread):
         if len(self.loras) > 0:
             names = []
             weights = []
+
             for lora in self.loras:
                 if lora.enabled:
                     lora_name = lora.filename.replace(".", "_")
@@ -88,6 +95,7 @@ class LoraSetupThread(QThread):
                     names.append(lora_name)
                     weights.append(lora.weight)
 
+            self.pipeline.delete_adapters(self.deleted_loras)
             self.logger.debug("%s %s", names, weights)
 
             try:
