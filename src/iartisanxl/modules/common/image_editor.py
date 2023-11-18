@@ -265,6 +265,17 @@ class ImageEditor(QGraphicsView):
         self._photo = original_image_item
         self._scene.addItem(original_image_item)
 
+    def clear(self):
+        self._scene.clear()
+        self.undo_stack.clear()
+        self.redo_stack.clear()
+        original_image_item = QGraphicsPixmapItem()
+        self._photo = original_image_item
+        self._scene.addItem(original_image_item)
+
+        self.original_pixmap = None
+        self._empty = True
+
     def get_painted_image(self):
         # Create a QImage with the size of the pixmap
         image = QImage(self._photo.pixmap().size(), QImage.Format.Format_ARGB32)
