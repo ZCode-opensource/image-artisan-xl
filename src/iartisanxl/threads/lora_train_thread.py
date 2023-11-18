@@ -21,7 +21,8 @@ from diffusers import (
     StableDiffusionXLPipeline,
 )
 from diffusers.models.attention_processor import LoRAAttnProcessor, LoRAAttnProcessor2_0
-from diffusers.loaders import LoraLoaderMixin, text_encoder_lora_state_dict
+from diffusers.loaders.lora import LoraLoaderMixin
+from diffusers.models.lora import text_encoder_lora_state_dict
 from diffusers.optimization import get_scheduler
 
 from iartisanxl.train.local_image_dataset import LocalImageTextDataset
