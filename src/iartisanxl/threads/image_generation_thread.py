@@ -51,7 +51,17 @@ class ImageGenerationThread(QThread):
             control_guidance_start = []
             control_guidance_end = []
 
+            self.logger.debug(
+                "Total controlnets: %s", len(self.image_generation_data.controlnets)
+            )
+
             for controlnet in self.image_generation_data.controlnets:
+                self.logger.debug(
+                    "name: %s, scale: %s, path: %s",
+                    controlnet.name,
+                    controlnet.conditioning_scale,
+                    controlnet.model_path,
+                )
                 images.append(controlnet.annotator_image)
                 controlnet_conditioning_scale.append(controlnet.conditioning_scale)
                 control_guidance_start.append(controlnet.guidance_start)

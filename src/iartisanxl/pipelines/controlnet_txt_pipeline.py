@@ -311,6 +311,10 @@ class ImageArtisanControlNetTextPipeline(
         device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         self.logger.debug("Using device: %s", device)
 
+        print(f"Num controlnets: {len(self.controlnet.nets)}")
+        for control in self.controlnet.nets:
+            print(f"type: {control.config._name_or_path}")
+
         # align format for control guidance
         if not isinstance(control_guidance_start, list) and isinstance(
             control_guidance_end, list

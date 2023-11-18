@@ -115,10 +115,15 @@ class ImageGenData:
     @classmethod
     def from_dict(cls, data: dict):
         loras = [LoraDataObject(**lora_data) for lora_data in data.get("loras", [])]
-        controlnets = [
-            ControlNetDataObject(**controlnet_data)
-            for controlnet_data in data.get("controlnets", [])
-        ]
+
+        try:
+            controlnets = [
+                ControlNetDataObject(**controlnet_data)
+                for controlnet_data in data.get("controlnets", [])
+            ]
+        except TypeError:
+            controlnets = []
+
         model = ModelDataObject(**data.get("model", {}))
         vae = VaeDataObject(**data.get("vae", {}))
 

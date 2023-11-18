@@ -4,6 +4,7 @@ from PIL import Image
 
 @attr.s
 class ControlNetDataObject:
+    controlnet_id = attr.ib(type=int)
     enabled = attr.ib(type=bool)
     name = attr.ib(type=str)
     model_path = attr.ib(type=str)
@@ -18,6 +19,7 @@ class ControlNetDataObject:
 
     def copy(self):
         new_obj = ControlNetDataObject(
+            controlnet_id=self.controlnet_id,
             enabled=self.enabled,
             name=self.name,
             model_path=self.model_path,
