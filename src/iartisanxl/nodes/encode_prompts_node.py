@@ -21,7 +21,7 @@ class EncodePromptsNode(Node):
         "device",
     ]
 
-    def process(self):
+    def __call__(self):
         # Get tokens with first tokenizer
         prompt_tokens, prompt_weights = self.get_tokens_and_weights(
             self.prompt1, self.tokenizer1
