@@ -272,7 +272,7 @@ class ImageArtisanControlNetTextPipeline(
             negative_prompt_embeds,
             pooled_prompt_embeds,
             negative_pooled_prompt_embeds,
-        ) = encode_prompts_node.process()
+        ) = encode_prompts_node()
 
         if self.abort:
             on_aborted_function()
