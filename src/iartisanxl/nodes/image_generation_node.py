@@ -24,6 +24,7 @@ class ImageGenerationNode(Node):
         self.negative_crops_coords_top_left = kwargs.get(
             "negative_crops_coords_top_left", (0, 0)
         )
+        self.abort = kwargs.get("abort", False)
 
     def __call__(
         self,
@@ -118,6 +119,9 @@ class ImageGenerationNode(Node):
                 "time_ids": add_time_ids,
             }
 
+            if self.abort():
+                return latents
+
             noise_pred = self.unet(
                 latent_model_input,
                 t,
@@ -127,6 +131,9 @@ class ImageGenerationNode(Node):
                 added_cond_kwargs=added_cond_kwargs,
                 return_dict=False,
             )[0]
+
+            if self.abort():
+                return latents
 
             # perform guidance
             if do_classifier_free_guidance:
@@ -140,6 +147,9 @@ class ImageGenerationNode(Node):
                 noise_pred, t, latents, **scheduler_kwargs, return_dict=False
             )[0]
 
+            if self.abort():
+                return latents
+
             # call the callback, if provided
             if i == len(timesteps) - 1 or (
                 (i + 1) > num_warmup_steps and (i + 1) % scheduler.order == 0
@@ -147,6 +157,9 @@ class ImageGenerationNode(Node):
                 if callback is not None:
                     step_idx = i // getattr(scheduler, "order", 1)
                     callback(step_idx, t, latents)
+
+            if self.abort():
+                return latents
 
         return latents
 

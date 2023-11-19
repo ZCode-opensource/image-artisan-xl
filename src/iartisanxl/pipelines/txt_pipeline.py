@@ -105,6 +105,7 @@ class ImageArtisanTextPipeline(
             on_aborted_function()
             return
 
+        status_update("Generating embeddings..")
         encode_prompts_node = EncodePromptsNode(
             prompt1=prompt,
             prompt2=prompt_2,
@@ -117,6 +118,10 @@ class ImageArtisanTextPipeline(
             clip_skip=clip_skip,
             device=device,
         )
+
+        if self.abort:
+            on_aborted_function()
+            return
 
         (
             prompt_embeds,
@@ -132,6 +137,10 @@ class ImageArtisanTextPipeline(
         unscale_lora_layers(self.text_encoder, text_encoder_lora_scale)
         unscale_lora_layers(self.text_encoder_2, text_encoder_lora_scale)
 
+        if self.abort:
+            on_aborted_function()
+            return
+
         status_update("Generating latents...")
         latents_node = LatentsNode(
             width=width,
@@ -143,10 +152,25 @@ class ImageArtisanTextPipeline(
             dtype=prompt_embeds.dtype,
         )
 
+        if self.abort:
+            on_aborted_function()
+            return
+
         latents, generator = latents_node()
 
+        if self.abort:
+            on_aborted_function()
+            return
+
         status_update("Generating image...")
-        image_generation_node = ImageGenerationNode(unet=self.unet, device=device)
+        image_generation_node = ImageGenerationNode(
+            unet=self.unet, device=device, abort=lambda: self.abort
+        )
+
+        if self.abort:
+            on_aborted_function()
+            return
+
         latents = image_generation_node(
             width=width,
             height=height,
