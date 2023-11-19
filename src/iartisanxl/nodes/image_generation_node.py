@@ -110,7 +110,8 @@ class ImageGenerationNode(Node):
             if do_classifier_free_guidance:
                 latent_model_input = torch.cat([latents] * 2)
             else:
-                latent_model_input = scheduler.scale_model_input(latents, t)
+                latent_model_input = latents
+            latent_model_input = scheduler.scale_model_input(latent_model_input, t)
 
             added_cond_kwargs = {
                 "text_embeds": add_text_embeds,
