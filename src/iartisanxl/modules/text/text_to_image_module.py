@@ -27,7 +27,6 @@ from iartisanxl.menu.right_menu import RightMenu
 from iartisanxl.generation.generation_data_object import ImageGenData
 from iartisanxl.generation.model_data_object import ModelDataObject
 from iartisanxl.generation.vae_data_object import VaeDataObject
-from iartisanxl.generation.schedulers.schedulers_utils import load_scheduler
 from iartisanxl.generation.schedulers.schedulers import schedulers
 from iartisanxl.console.console_stream import ConsoleStream
 from iartisanxl.threads.pipeline_setup_thread import PipelineSetupThread
@@ -37,6 +36,7 @@ from iartisanxl.threads.taesd_loader_thread import TaesdLoaderThread
 from iartisanxl.threads.image_processor_thread import ImageProcesorThread
 from iartisanxl.pipelines.txt_pipeline import ImageArtisanTextPipeline
 from iartisanxl.formats.image import ImageProcessor
+from iartisanxl.nodes.scheduler_node import SchedulerNode
 
 
 class TextToImageModule(BaseModule):
@@ -530,7 +530,8 @@ class TextToImageModule(BaseModule):
 
             if "base_scheduler" in self.changed_parameters:
                 self.update_status_bar("Changing the scheduler...")
-                self.base_pipeline.scheduler = load_scheduler(
+                scheduler_node = SchedulerNode()
+                self.base_pipeline.scheduler = scheduler_node(
                     self.rendering_generation_data.base_scheduler
                 )
 
