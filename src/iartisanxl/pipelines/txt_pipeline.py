@@ -145,6 +145,7 @@ class ImageArtisanTextPipeline(
 
         latents, generator = latents_node()
 
+        status_update("Generating image...")
         image_generation_node = ImageGenerationNode(unet=self.unet, device=device)
         latents = image_generation_node(
             width=width,

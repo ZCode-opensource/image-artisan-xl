@@ -71,12 +71,14 @@ class PipelineSetupThread(QThread):
                         torch_dtype=self.torch_dtype,
                     )
 
+                self.status_changed.emit("Setting the scheduler...")
                 scheduler_node = SchedulerNode()
                 scheduler = scheduler_node(self.image_generation_data.base_scheduler)
 
                 if len(self.image_generation_data.controlnets) > 0:
                     controlnets = []
 
+                    self.status_changed.emit("Loading controlnet models...")
                     for controlnet in self.image_generation_data.controlnets:
                         controlnet_model = ControlNetModel.from_pretrained(
                             controlnet.model_path,
@@ -86,6 +88,7 @@ class PipelineSetupThread(QThread):
                         )
                         controlnets.append(controlnet_model)
 
+                    self.status_changed.emit("Initializing the pipeline...")
                     pipeline = ImageArtisanControlNetTextPipeline(
                         vae=vae,
                         text_encoder=text_encoder_1,
@@ -97,6 +100,7 @@ class PipelineSetupThread(QThread):
                         controlnet=controlnets,
                     )
                 else:
+                    self.status_changed.emit("Initializing the pipeline...")
                     pipeline = ImageArtisanTextPipeline(
                         vae=vae,
                         text_encoder=text_encoder_1,
