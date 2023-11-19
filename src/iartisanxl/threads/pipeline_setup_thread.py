@@ -10,8 +10,8 @@ from iartisanxl.pipelines.controlnet_txt_pipeline import (
     ImageArtisanControlNetTextPipeline,
 )
 from iartisanxl.generation.generation_data_object import ImageGenData
-from iartisanxl.generation.schedulers.schedulers_utils import load_scheduler
-from iartisanxl.nodes.stable_difussion_xl_node import StableDiffusionXLModelNode
+from iartisanxl.nodes.stable_difussion_xl_model_node import StableDiffusionXLModelNode
+from iartisanxl.nodes.scheduler_node import SchedulerNode
 
 
 class PipelineSetupThread(QThread):
@@ -71,7 +71,8 @@ class PipelineSetupThread(QThread):
                         torch_dtype=self.torch_dtype,
                     )
 
-                scheduler = load_scheduler(self.image_generation_data.base_scheduler)
+                scheduler_node = SchedulerNode()
+                scheduler = scheduler_node(self.image_generation_data.base_scheduler)
 
                 if len(self.image_generation_data.controlnets) > 0:
                     controlnets = []

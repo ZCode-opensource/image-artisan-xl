@@ -31,7 +31,6 @@ class StableDiffusionXLModelNode(Node):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.path = self.path
         self.torch_dtype = kwargs.get("torch_dtype", torch.float16)
         self.single_checkpoint = kwargs.get("single_checkpoint", False)
 
