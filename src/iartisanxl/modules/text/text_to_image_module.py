@@ -288,9 +288,7 @@ class TextToImageModule(BaseModule):
                 self.image_processor_thread.start()
 
     def on_generation_data_obtained(self, generation_data: ImageGenData):
-        self.logger.debug(generation_data)
-        self.image_generation_data = generation_data
-        self.notify_observers()
+        self.notify_observers(generation_data)
         self.prompt_window.unblock_seed()
 
     def on_dropped_image_loaded(self, image: QPixmap):
@@ -642,10 +640,21 @@ class TextToImageModule(BaseModule):
     def unsubscribe(self, observer):
         self.observers.remove(observer)
 
-    def notify_observers(self):
+    def notify_observers(self, generation_data: ImageGenData, generate: bool = False):
+        self.image_generation_data = generation_data
+        self.logger.debug(self.image_generation_data)
+
+        for dialog in self.dialogs.values():
+            dialog.update_dialog(self.image_generation_data)
+
         self.logger.debug("Notifying observers: %s", self.observers)
         for observer in self.observers:
             observer.update_ui(self.image_generation_data)
+
+        self.prompt_window.unblock_seed()
+
+        if generate:
+            self.generation_clicked()
 
     def update_status_bar(self, text):
         self.status_bar.showMessage(text)
@@ -678,10 +687,8 @@ class TextToImageModule(BaseModule):
         image.serialized_data = generation_data
 
         try:
-            self.image_generation_data = image.get_image_generation_data()
-            self.notify_observers()
-            self.prompt_window.unblock_seed()
-            self.generation_clicked()
+            generation_data = image.get_image_generation_data()
+            self.notify_observers(generation_data, True)
         except ValueError as e:
             self.show_error(e)
 

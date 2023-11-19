@@ -233,6 +233,7 @@ class GenerationPanel(BasePanel):
 
         self.clip_slip_slider.setValue(self.image_generation_data.clip_skip)
 
+        self.image_dimensions.image_generation_data = self.image_generation_data
         self.image_dimensions.update()
 
     def base_scheduler_selected(self, index):
