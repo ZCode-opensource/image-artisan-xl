@@ -3,8 +3,6 @@ import gc
 from typing import Any, Callable, Dict, Optional, Tuple
 
 import torch
-from PIL import Image
-import numpy as np
 from transformers import CLIPTextModel, CLIPTextModelWithProjection, CLIPTokenizer
 from diffusers.loaders import (
     StableDiffusionXLLoraLoaderMixin,
@@ -17,6 +15,7 @@ from diffusers.pipelines.pipeline_utils import DiffusionPipeline
 from iartisanxl.nodes.latents_node import LatentsNode
 from iartisanxl.nodes.encode_prompts_node import EncodePromptsNode
 from iartisanxl.nodes.image_generation_node import ImageGenerationNode
+from iartisanxl.nodes.latents_decoder_node import LatentsDecoderNode
 
 
 class ImageArtisanTextPipeline(
@@ -191,35 +190,12 @@ class ImageArtisanTextPipeline(
             on_aborted_function()
             return
 
-        needs_upcasting = self.vae.config.force_upcast
-        if needs_upcasting:
-            self.vae.to(dtype=torch.float32)
-            latents = latents.to(dtype=torch.float32)
-
         status_update("Decoding latents...")
-        if self.vae.device != latents.device and str(self.vae.device) != "meta":
-            self.vae.to(latents.device)
+        latents_decoder_node = LatentsDecoderNode(vae=self.vae, device=device)
+        image = latents_decoder_node(latents)
 
-        decoded = self.vae.decode(
-            latents / self.vae.config.scaling_factor, return_dict=False
-        )[0]
-
-        if needs_upcasting:
-            self.vae.to(dtype=torch.float16)
-
-        if self.abort:
-            on_aborted_function()
-            return
-
-        image = decoded[0]
-        image = (image / 2 + 0.5).clamp(0, 1)
-        image_np = image.cpu().permute(1, 2, 0).float().numpy()
-        image_pil = Image.fromarray(np.uint8(image_np * 255))
-
-        del image, image_np
         gc.collect()
-
         # Offload all models
         self.maybe_free_model_hooks()
 
-        return image_pil
+        return image
