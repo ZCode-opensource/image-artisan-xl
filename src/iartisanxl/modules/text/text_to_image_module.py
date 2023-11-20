@@ -110,6 +110,7 @@ class TextToImageModule(BaseModule):
         self.taesd_dec = None
         self.changed_parameters = []
         self.deleted_loras = []
+        self.deleted_controlnets = []
 
         self.taesd_loader_thread = None
         self.pipeline_setup_thread = None
@@ -361,49 +362,56 @@ class TextToImageModule(BaseModule):
         if self.rendering_generation_data is not None:
             self.changed_parameters = []
             self.deleted_loras = []
+            self.deleted_controlnets = []
 
             for attr in ImageGenData.__annotations__:
                 if attr == "loras":
-                    # Check if the number of Lora objects has changed
-                    if len(self.image_generation_data.loras) != len(
-                        self.rendering_generation_data.loras
+                    generation_loras = set(
+                        lora.filename for lora in self.image_generation_data.loras
+                    )
+                    rendering_loras = set(
+                        lora.filename for lora in self.rendering_generation_data.loras
+                    )
+
+                    if generation_loras != rendering_loras:
+                        self.changed_parameters.append(attr)
+                        self.deleted_loras = list(rendering_loras - generation_loras)
+                    elif any(
+                        getattr(lora, lora_attr)
+                        != getattr(self.rendering_generation_data.loras[i], lora_attr)
+                        for i, lora in enumerate(self.image_generation_data.loras)
+                        for lora_attr in lora.__dict__
                     ):
                         self.changed_parameters.append(attr)
-                        generation_loras = set(
-                            lora.filename.replace(".", "_")
-                            for lora in self.image_generation_data.loras
-                        )
-                        rendering_loras = set(
-                            lora.filename.replace(".", "_")
-                            for lora in self.rendering_generation_data.loras
-                        )
-                        self.deleted_loras = list(rendering_loras - generation_loras)
-                    else:
-                        # Check if the attributes of each Lora object have changed
-                        for i, lora in enumerate(self.image_generation_data.loras):
-                            for lora_attr in lora.__dict__:
-                                if getattr(lora, lora_attr) != getattr(
-                                    self.rendering_generation_data.loras[i], lora_attr
-                                ):
-                                    self.changed_parameters.append(attr)
-                                    break
 
                 elif attr == "controlnets":
-                    if len(self.image_generation_data.controlnets) != len(
-                        self.rendering_generation_data.controlnets
-                    ):
+                    generation_controlnets = set(
+                        controlnet.controlnet_id
+                        for controlnet in self.image_generation_data.controlnets
+                    )
+                    rendering_controlnets = set(
+                        controlnet.controlnet_id
+                        for controlnet in self.rendering_generation_data.controlnets
+                    )
+
+                    if generation_controlnets != rendering_controlnets:
                         self.changed_parameters.append(attr)
-                    else:
+                        self.deleted_controlnets = list(
+                            rendering_controlnets - generation_controlnets
+                        )
+                    elif any(
+                        getattr(controlnet, controlnet_attr)
+                        != getattr(
+                            self.rendering_generation_data.controlnets[i],
+                            controlnet_attr,
+                        )
                         for i, controlnet in enumerate(
                             self.image_generation_data.controlnets
-                        ):
-                            for controlnet_attr in controlnet.__dict__:
-                                if getattr(controlnet, controlnet_attr) != getattr(
-                                    self.rendering_generation_data.controlnets[i],
-                                    controlnet_attr,
-                                ):
-                                    self.changed_parameters.append(attr)
-                                    break
+                        )
+                        for controlnet_attr in controlnet.__dict__
+                    ):
+                        self.changed_parameters.append(attr)
+
                 else:
                     if getattr(self.image_generation_data, attr) != getattr(
                         self.rendering_generation_data, attr
