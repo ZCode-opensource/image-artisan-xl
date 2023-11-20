@@ -24,7 +24,7 @@ class ImageGenerationNode(Node):
         self.negative_crops_coords_top_left = kwargs.get(
             "negative_crops_coords_top_left", (0, 0)
         )
-        self.abort = kwargs.get("abort", False)
+        self.abort = kwargs.get("abort", lambda: False)
 
     def __call__(
         self,
