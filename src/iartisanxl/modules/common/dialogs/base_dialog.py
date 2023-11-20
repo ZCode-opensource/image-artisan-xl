@@ -31,6 +31,7 @@ class BaseDialog(QDialog):
         self,
         directories: DirectoriesObject,
         title: str,
+        show_error: callable,
         image_generation_data: ImageGenData,
         image_viewer: ImageViewerSimple,
         prompt_window: PromptWindow,
@@ -40,6 +41,7 @@ class BaseDialog(QDialog):
     ):
         super().__init__(*args, **kwargs)
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint)
+        self.show_error = show_error
         self.directories = directories
         self.image_generation_data = image_generation_data
         self.image_viewer = image_viewer

@@ -189,6 +189,7 @@ class RightMenu(QFrame):
         dialog = dialog_class(
             self.directories,
             title,
+            self.show_error,
             self.image_generation_data,
             self.image_viewer,
             self.prompt_window,
