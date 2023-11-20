@@ -31,6 +31,9 @@ class LoraSetupThread(QThread):
         self.status_changed.emit("Loading LoRAs...")
 
         if len(self.loras) > 0:
+            self.logger.debug("Deleting adapters: %s", self.deleted_loras)
+            self.pipeline.delete_adapters(self.deleted_loras)
+
             names = []
             weights = []
 
@@ -95,7 +98,6 @@ class LoraSetupThread(QThread):
                     names.append(lora_name)
                     weights.append(lora.weight)
 
-            self.pipeline.delete_adapters(self.deleted_loras)
             self.logger.debug("%s %s", names, weights)
 
             try:
