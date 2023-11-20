@@ -186,15 +186,11 @@ class LoraDialog(BaseDialog):
         self.prompt_window.positive_prompt.insertTextAtCursor(prompt)
 
     def on_lora_selected(self):
-        lora_found = False
-        for lora in self.image_generation_data.loras:
-            if lora.path == self.selected_lora.path:
-                lora_found = True
-                break
-
-        if not lora_found:
+        try:
             self.image_generation_data.add_lora(self.selected_lora)
             self.generation_updated.emit()
+        except ValueError:
+            self.show_error("Can't add the same LoRA more than once.")
 
     def on_lora_imported(self, path: str):
         if path.endswith(".safetensors"):

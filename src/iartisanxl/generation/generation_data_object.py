@@ -28,7 +28,10 @@ class ImageGenData:
     clip_skip: int = 0
 
     def add_lora(self, lora: LoraDataObject):
-        self.loras.append(lora)
+        if any(existing_lora.filename == lora.filename for existing_lora in self.loras):
+            raise ValueError(f"A LoRA with filename {lora.filename} already exists.")
+        else:
+            self.loras.append(lora)
 
     def remove_lora(self, lora_to_remove: LoraDataObject):
         for index, lora in enumerate(self.loras):
@@ -43,7 +46,15 @@ class ImageGenData:
                 break
 
     def add_controlnet(self, controlnet: ControlNetDataObject):
-        self.controlnets.append(controlnet)
+        if any(
+            existing_controlnet.controlnet_id == controlnet.controlnet_id
+            for existing_controlnet in self.controlnets
+        ):
+            raise ValueError(
+                f"A ControlNet with an ID {controlnet.controlnet_id} already exists."
+            )
+        else:
+            self.controlnets.append(controlnet)
 
     def remove_controlnet(self, controlnet_to_remove: ControlNetDataObject):
         for index, controlnet in enumerate(self.controlnets):
