@@ -10,7 +10,7 @@ class Node:
 
         self.device = None
         self.torch_dtype = None
-        self.can_offload = False
+        self.cpu_offload = False
         self.sequential_offload = False
 
     def connect(self, input_name: str, node, output_name: str):

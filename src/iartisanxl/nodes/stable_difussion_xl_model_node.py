@@ -37,7 +37,6 @@ class StableDiffusionXLModelNode(Node):
     def __init__(self, path, **kwargs):
         super().__init__(**kwargs)
         self.single_checkpoint = kwargs.get("single_checkpoint", False)
-        self.can_offload = True
         self.path = path
 
     def __call__(self):
@@ -48,7 +47,9 @@ class StableDiffusionXLModelNode(Node):
         unet = None
 
         if not self.single_checkpoint and os.path.isdir(self.path):
-            device = "cpu" if self.sequential_offload else self.device
+            device = (
+                "cpu" if self.sequential_offload or self.cpu_offload else self.device
+            )
 
             # simple check to ensure that at least could be a diffusers model
             if os.path.isfile(os.path.join(self.path, "model_index.json")):

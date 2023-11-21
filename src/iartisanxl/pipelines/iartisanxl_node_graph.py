@@ -41,7 +41,7 @@ class ImageArtisanNodeGraph:
         for node in sorted_nodes:
             node.device = self.device
             node.torch_dtype = self.torch_dtype
-            node.can_offload = self.cpu_offload
+            node.cpu_offload = self.cpu_offload
             node.sequential_offload = self.sequential_offload
 
             node()

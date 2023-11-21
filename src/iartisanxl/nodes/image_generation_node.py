@@ -123,6 +123,9 @@ class ImageGenerationNode(Node):
         if accepts_generator:
             scheduler_kwargs["generator"] = self.generator
 
+        if self.cpu_offload:
+            self.unet.to("cuda:0")
+
         for i, t in enumerate(timesteps):
             # expand the latents if doing classifier free guidance
             if do_classifier_free_guidance:
@@ -177,6 +180,9 @@ class ImageGenerationNode(Node):
 
             if self.abort():
                 return latents
+
+        if self.cpu_offload:
+            self.unet.to(self.device)
 
         self.values["latents"] = latents
 

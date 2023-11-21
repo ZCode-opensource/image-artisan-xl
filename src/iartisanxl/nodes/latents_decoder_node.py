@@ -18,6 +18,9 @@ class LatentsDecoderNode(Node):
 
         latents = self.latents
 
+        if self.cpu_offload:
+            self.vae.to("cuda:0")
+
         if needs_upcasting:
             self.vae.to(dtype=torch.float32)
             latents = latents.to(dtype=torch.float32)
@@ -28,6 +31,9 @@ class LatentsDecoderNode(Node):
 
         if needs_upcasting:
             self.vae.to(dtype=self.torch_dtype)
+
+        if self.cpu_offload:
+            self.vae.to(self.device)
 
         image = decoded[0]
         image = (image / 2 + 0.5).clamp(0, 1)

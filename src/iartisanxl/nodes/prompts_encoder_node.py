@@ -29,11 +29,11 @@ class PromptsEncoderNode(Node):
         "negative_pooled_prompt_embeds",
     ]
 
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.device = None
-
     def __call__(self):
+        if self.cpu_offload:
+            self.text_encoder_1.to("cuda:0")
+            self.text_encoder_2.to("cuda:0")
+
         negative_prompt_1 = (
             self.negative_prompt_1 if self.negative_prompt_1 is not None else ""
         )
@@ -170,6 +170,10 @@ class PromptsEncoderNode(Node):
         if self.global_lora_scale is not None:
             unscale_lora_layers(self.text_encoder_1, self.global_lora_scale)
             unscale_lora_layers(self.text_encoder_2, self.global_lora_scale)
+
+        if self.cpu_offload:
+            self.text_encoder_1.to(self.device)
+            self.text_encoder_2.to(self.device)
 
         self.values["prompt_embeds"] = prompt_embeds
         self.values["negative_prompt_embeds"] = negative_prompt_embeds
