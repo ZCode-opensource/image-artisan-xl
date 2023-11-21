@@ -1,4 +1,3 @@
-# pylint: disable=no-member
 from iartisanxl.nodes.node import Node
 import json
 
