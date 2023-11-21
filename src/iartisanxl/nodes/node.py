@@ -1,3 +1,6 @@
+from collections import defaultdict
+
+
 class Node:
     REQUIRED_INPUTS = []
     OPTIONAL_INPUTS = []
@@ -6,7 +9,7 @@ class Node:
     def __init__(self):
         self.dependencies = []
         self.values = {}
-        self.connections = {}
+        self.connections = defaultdict(list)
 
         self.device = None
         self.torch_dtype = None
@@ -26,7 +29,7 @@ class Node:
                 f'The output "{output_name}" is not present in "{node.__class__.__name__}"'
             )
         self.dependencies.append(node)
-        self.connections[input_name] = (node, output_name)
+        self.connections[input_name].append((node, output_name))
 
     def __getattr__(self, name):
         if name in self.REQUIRED_INPUTS + self.OPTIONAL_INPUTS:
@@ -37,8 +40,11 @@ class Node:
 
     def get_input_value(self, input_name):
         if input_name in self.connections:
-            node, output_name = self.connections[input_name]
-            return node.values[output_name]
+            values = [
+                node.values[output_name]
+                for node, output_name in self.connections[input_name]
+            ]
+            return values if len(values) > 1 else values[0]
         elif input_name in self.OPTIONAL_INPUTS:
             return None
         else:
