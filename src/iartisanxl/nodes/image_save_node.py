@@ -1,21 +1,18 @@
-# pylint: disable=no-member
 import os
 from datetime import datetime
-from PIL import Image
 
 from iartisanxl.nodes.node import Node
 
 
 class ImageSaveNode(Node):
-    PRIORITY = 7
-    REQUIRED_ARGS = []
-    INPUTS = ["image"]
+    REQUIRED_INPUTS = ["image"]
     OUTPUTS = []
 
-    def __init__(self, **kwargs):
+    def __init__(self, directory: str = None, filename: str = None, **kwargs):
         super().__init__(**kwargs)
-        self.directory = kwargs.get("directory", None)
-        self.filename = kwargs.get("filename", None)
+
+        self.directory = directory
+        self.filename = filename
 
         if self.directory is None:
             self.directory = "./outputs/images"
@@ -27,5 +24,5 @@ class ImageSaveNode(Node):
             timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
             self.filename = f"{timestamp}.png"
 
-    def __call__(self, image: Image):
-        image.save(os.path.join(self.directory, self.filename))
+    def __call__(self):
+        self.image.save(os.path.join(self.directory, self.filename))

@@ -2,6 +2,7 @@
 import os
 
 import accelerate
+
 from transformers import (
     CLIPTextModel,
     CLIPTextConfig,
@@ -25,10 +26,6 @@ from iartisanxl.nodes.node import Node
 
 
 class StableDiffusionXLModelNode(Node):
-    PRIORITY = 1
-    REQUIRED_ARGS = [
-        "path",
-    ]
     OUTPUTS = [
         "text_encoder_1",
         "text_encoder_2",
@@ -38,21 +35,13 @@ class StableDiffusionXLModelNode(Node):
         "num_channels_latents",
     ]
 
-    def __init__(self, **kwargs):
+    def __init__(self, path, **kwargs):
         super().__init__(**kwargs)
         self.single_checkpoint = kwargs.get("single_checkpoint", False)
         self.can_offload = True
+        self.path = path
 
-    def __call__(
-        self,
-    ) -> tuple[
-        CLIPTextModel,
-        CLIPTextModelWithProjection,
-        CLIPTokenizer,
-        CLIPTokenizer,
-        UNet2DConditionModel,
-        int,
-    ]:
+    def __call__(self):
         text_encoder_1 = None
         text_encoder_2 = None
         tokenizer_1 = None
@@ -167,11 +156,11 @@ class StableDiffusionXLModelNode(Node):
 
         num_channels_latents = unet.config.in_channels
 
-        return (
-            text_encoder_1,
-            text_encoder_2,
-            tokenizer_1,
-            tokenizer_2,
-            unet,
-            num_channels_latents,
-        )
+        self.values["text_encoder_1"] = text_encoder_1
+        self.values["text_encoder_2"] = text_encoder_2
+        self.values["tokenizer_1"] = tokenizer_1
+        self.values["tokenizer_2"] = tokenizer_2
+        self.values["unet"] = unet
+        self.values["num_channels_latents"] = num_channels_latents
+
+        return self.values

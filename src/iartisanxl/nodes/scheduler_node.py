@@ -6,23 +6,23 @@ from iartisanxl.generation.schedulers.schedulers import schedulers
 
 
 class SchedulerNode(Node):
-    PRIORITY = 1
-    REQUIRED_ARGS = []
-    INPUTS = ["scheduler_index"]
     OUTPUTS = ["scheduler"]
 
-    def __init__(self, **kwargs):
+    def __init__(self, scheduler_index, **kwargs):
         super().__init__(**kwargs)
 
+        self.scheduler_index = scheduler_index
         self.scheduler_config = None
+
         with open(
             "./configs/scheduler_config.json", "r", encoding="utf-8"
         ) as config_file:
             self.scheduler_config = json.load(config_file)
 
-    def __call__(self, scheduler_index):
-        scheduler = self.load_scheduler(scheduler_index)
-        return scheduler
+    def __call__(self):
+        scheduler = self.load_scheduler(self.scheduler_index)
+        self.values["scheduler"] = scheduler
+        return self.values
 
     def load_scheduler(self, scheduler_index):
         if self.scheduler_config is not None:

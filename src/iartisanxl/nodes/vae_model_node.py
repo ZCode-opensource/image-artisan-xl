@@ -6,15 +6,12 @@ from iartisanxl.nodes.node import Node
 
 
 class VaeModelNode(Node):
-    PRIORITY = 3
-    REQUIRED_ARGS = [
-        "path",
-    ]
     OUTPUTS = ["vae", "vae_scale_factor"]
 
-    def __init__(self, **kwargs):
+    def __init__(self, path, **kwargs):
         super().__init__(**kwargs)
         self.can_offload = True
+        self.path = path
 
     def __call__(self) -> AutoencoderKL:
         device = "cpu" if self.sequential_offload else self.device
@@ -25,5 +22,7 @@ class VaeModelNode(Node):
         if self.sequential_offload:
             vae = accelerate.cpu_offload(vae, "cuda:0")
 
-        vae_scale_factor = 2 ** (len(vae.config.block_out_channels) - 1)
-        return vae, vae_scale_factor
+        self.values["vae"] = vae
+        self.values["vae_scale_factor"] = 2 ** (len(vae.config.block_out_channels) - 1)
+
+        return self.values
