@@ -27,7 +27,7 @@ class ImageGenerationNode(Node):
         "negative_target_size",
         "crops_coords_top_left",
         "negative_crops_coords_top_left",
-        "active_loras",
+        "lora",
         "cross_attention_kwargs",
     ]
     OUTPUTS = ["latents"]
@@ -50,8 +50,13 @@ class ImageGenerationNode(Node):
             else (0, 0)
         )
 
-        if self.active_loras:
-            self.unet.set_adapters(*self.active_loras)
+        if self.lora:
+            if isinstance(self.lora, list):
+                unzipped_list = zip(*self.lora)
+                reordered_list = [list(item) for item in unzipped_list]
+                self.unet.set_adapters(reordered_list)
+            else:
+                self.unet.set_adapters([self.lora[0]], [self.lora[1]])
 
         self.scheduler.set_timesteps(self.num_inference_steps, device=self.device)
         timesteps = self.scheduler.timesteps

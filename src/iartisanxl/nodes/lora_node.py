@@ -1,4 +1,3 @@
-# pylint: disable=no-member
 import re
 
 from peft import LoraConfig, inject_adapter_in_model, set_peft_model_state_dict
@@ -19,13 +18,19 @@ from iartisanxl.nodes.node import Node
 
 
 class LoraNode(Node):
-    PRIORITY = 2
-    REQUIRED_ARGS = ["path", "adapter_name"]
-    INPUTS = ["unet", "text_encoder_1", "text_encoder_2", "global_lora_scale"]
+    REQUIRED_INPUTS = ["unet", "text_encoder_1", "text_encoder_2", "global_lora_scale"]
+    OUTPUTS = ["lora"]
 
-    def __call__(self, unet, text_encoder_1, text_encoder_2, global_lora_scale):
+    def __init__(self, path: str, adapter_name: str, scale: float, **kwargs):
+        super().__init__(**kwargs)
+
+        self.path = path
+        self.adapter_name = adapter_name
+        self.scale = scale
+
+    def __call__(self):
         state_dict, network_alphas = self.lora_state_dict(
-            self.path, unet_config=unet.config
+            self.path, unet_config=self.unet.config
         )
 
         is_correct_format = all("lora" in key for key in state_dict.keys())
@@ -35,7 +40,7 @@ class LoraNode(Node):
         self.load_lora_into_unet(
             state_dict,
             network_alphas=network_alphas,
-            unet=unet,
+            unet=self.unet,
             adapter_name=self.adapter_name,
         )
 
@@ -46,9 +51,9 @@ class LoraNode(Node):
             self.load_lora_into_text_encoder(
                 text_encoder_state_dict,
                 network_alphas=network_alphas,
-                text_encoder=text_encoder_1,
+                text_encoder=self.text_encoder_1,
                 prefix="text_encoder",
-                lora_scale=global_lora_scale,
+                lora_scale=self.global_lora_scale,
                 adapter_name=self.adapter_name,
             )
 
@@ -59,11 +64,15 @@ class LoraNode(Node):
             self.load_lora_into_text_encoder(
                 text_encoder_2_state_dict,
                 network_alphas=network_alphas,
-                text_encoder=text_encoder_2,
+                text_encoder=self.text_encoder_2,
                 prefix="text_encoder_2",
-                lora_scale=global_lora_scale,
+                lora_scale=self.global_lora_scale,
                 adapter_name=self.adapter_name,
             )
+
+        self.values["lora"] = (self.adapter_name, self.scale)
+
+        return self.values
 
     def lora_state_dict(self, lora_path, **kwargs):
         unet_config = kwargs.pop("unet_config", None)
