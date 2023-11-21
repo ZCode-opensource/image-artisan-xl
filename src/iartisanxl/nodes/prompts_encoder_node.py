@@ -3,45 +3,75 @@ import re
 
 import torch
 from transformers import CLIPTokenizer
+from diffusers.utils.peft_utils import scale_lora_layers, unscale_lora_layers
 
 from iartisanxl.nodes.node import Node
 
 
-class EncodePromptsNode(Node):
-    REQUIRED_ARGS = [
-        "prompt1",
-        "prompt2",
-        "negative_prompt1",
-        "negative_prompt2",
-        "tokenizer1",
-        "tokenizer2",
-        "text_encoder1",
-        "text_encoder2",
-        "clip_skip",
-        "device",
+class PromptsEncoderNode(Node):
+    PRIORITY = 3
+    REQUIRED_ARGS = []
+    INPUTS = [
+        "tokenizer_1",
+        "tokenizer_2",
+        "text_encoder_1",
+        "text_encoder_2",
+        "prompt_1",
+        "prompt_2",
+        "negative_prompt_1",
+        "negative_prompt_2",
+        "global_lora_scale",
+    ]
+    OUTPUTS = [
+        "prompt_embeds",
+        "negative_prompt_embeds",
+        "pooled_prompt_embeds",
+        "negative_pooled_prompt_embeds",
     ]
 
-    def __call__(self):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.device = None
+
+    def __call__(
+        self,
+        tokenizer_1,
+        tokenizer_2,
+        text_encoder_1,
+        text_encoder_2,
+        prompt_1,
+        prompt_2,
+        negative_prompt_1,
+        negative_prompt_2,
+        clip_skip=None,
+        global_lora_scale=None,
+    ):
+        if global_lora_scale is not None:
+            scale_lora_layers(text_encoder_1, global_lora_scale)
+            scale_lora_layers(text_encoder_2, global_lora_scale)
+
         # Get tokens with first tokenizer
         prompt_tokens, prompt_weights = self.get_tokens_and_weights(
-            self.prompt1, self.tokenizer1
+            prompt_1, tokenizer_1
         )
+
         neg_prompt_tokens, neg_prompt_weights = self.get_tokens_and_weights(
-            self.negative_prompt1, self.tokenizer1
+            negative_prompt_1, tokenizer_1
         )
 
-        if not self.prompt2:
-            prompt_2 = self.prompt1
+        if not prompt_2:
+            prompt_2 = prompt_1
 
-        if not self.negative_prompt2:
-            negative_prompt_2 = self.negative_prompt1
+        if not negative_prompt_2:
+            negative_prompt_2 = negative_prompt_1
 
         # Get tokens with second tokenizer
         prompt_tokens_2, prompt_weights_2 = self.get_tokens_and_weights(
-            prompt_2, self.tokenizer1
+            prompt_2, tokenizer_2
         )
+
         neg_prompt_tokens_2, neg_prompt_weights_2 = self.get_tokens_and_weights(
-            negative_prompt_2, self.tokenizer1
+            negative_prompt_2, tokenizer_2
         )
 
         # pylint: disable=unbalanced-tuple-unpacking
@@ -72,17 +102,17 @@ class EncodePromptsNode(Node):
         neg_embeds = []
 
         # positive prompts - use first text encoder
-        prompt_embeds_1 = self.text_encoder1(token_tensor, output_hidden_states=True)
+        prompt_embeds_1 = text_encoder_1(token_tensor, output_hidden_states=True)
 
-        if self.clip_skip is None:
+        if clip_skip is None:
             prompt_embeds_1_hidden_states = prompt_embeds_1.hidden_states[-2]
         else:
             prompt_embeds_1_hidden_states = prompt_embeds_1.hidden_states[
-                -(self.clip_skip + 2)
+                -(clip_skip + 2)
             ]
 
         # positive prompts - use second text encoder
-        prompt_embeds_2 = self.text_encoder2(token_tensor_2, output_hidden_states=True)
+        prompt_embeds_2 = text_encoder_2(token_tensor_2, output_hidden_states=True)
         prompt_embeds_2_hidden_states = prompt_embeds_2.hidden_states[-2]
         pooled_prompt_embeds = prompt_embeds_2[0]
 
@@ -113,13 +143,13 @@ class EncodePromptsNode(Node):
         )
 
         # negative prompts - use first text encoder
-        neg_prompt_embeds_1 = self.text_encoder1(
+        neg_prompt_embeds_1 = text_encoder_1(
             neg_token_tensor.to(self.device), output_hidden_states=True
         )
         neg_prompt_embeds_1_hidden_states = neg_prompt_embeds_1.hidden_states[-2]
 
         # negative prompts - use second text encoder
-        neg_prompt_embeds_2 = self.text_encoder2(
+        neg_prompt_embeds_2 = text_encoder_2(
             neg_token_tensor_2.to(self.device), output_hidden_states=True
         )
         neg_prompt_embeds_2_hidden_states = neg_prompt_embeds_2.hidden_states[-2]
@@ -143,6 +173,10 @@ class EncodePromptsNode(Node):
 
         prompt_embeds = torch.cat(embeds, dim=1)
         negative_prompt_embeds = torch.cat(neg_embeds, dim=1)
+
+        if global_lora_scale is not None:
+            unscale_lora_layers(text_encoder_1, global_lora_scale)
+            unscale_lora_layers(text_encoder_2, global_lora_scale)
 
         return (
             prompt_embeds,

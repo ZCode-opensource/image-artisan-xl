@@ -8,14 +8,31 @@ from iartisanxl.nodes.node import Node
 
 
 class ImageGenerationNode(Node):
-    REQUIRED_ARGS = [
+    PRIORITY = 5
+    REQUIRED_ARGS = []
+    INPUTS = [
         "unet",
-        "device",
+        "width",
+        "height",
+        "scheduler",
+        "latents",
+        "prompt_embeds",
+        "pooled_prompt_embeds",
+        "negative_prompt_embeds",
+        "negative_pooled_prompt_embeds",
+        "generator",
+        "guidance_scale",
+        "num_inference_steps",
+        "active_loras",
+        "cross_attention_kwargs",
     ]
+    OUTPUTS = ["latents"]
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.torch_dtype = kwargs.get("torch_dtype", torch.float16)
+        self.torch_dtype = None
+        self.device = None
+
         self.original_size = kwargs.get("original_size", None)
         self.target_size = kwargs.get("target_size", None)
         self.crops_coords_top_left = kwargs.get("crops_coords_top_left", (0, 0))
@@ -28,8 +45,9 @@ class ImageGenerationNode(Node):
 
     def __call__(
         self,
-        width: int,
-        height: int,
+        unet,
+        width,
+        height,
         scheduler,
         latents,
         prompt_embeds,
@@ -37,11 +55,15 @@ class ImageGenerationNode(Node):
         negative_prompt_embeds,
         negative_pooled_prompt_embeds,
         generator,
-        guidance_scale: float = 7.5,
-        num_inference_steps: int = 20,
-        cross_attention_kwargs: Optional[dict[str, any]] = None,
+        guidance_scale,
+        num_inference_steps,
+        active_loras=None,
+        cross_attention_kwargs=None,
         callback: Optional[Callable[[int, int, torch.FloatTensor], None]] = None,
     ):
+        if active_loras:
+            unet.set_adapters(*active_loras)
+
         scheduler.set_timesteps(num_inference_steps, device=self.device)
         timesteps = scheduler.timesteps
 
@@ -88,10 +110,10 @@ class ImageGenerationNode(Node):
         add_time_ids = add_time_ids.to(self.device)
 
         timestep_cond = None
-        if self.unet.config.time_cond_proj_dim is not None:
+        if unet.config.time_cond_proj_dim is not None:
             guidance_scale_tensor = torch.tensor(guidance_scale - 1).repeat(1)
             timestep_cond = self.get_guidance_scale_embedding(
-                guidance_scale_tensor, embedding_dim=self.unet.config.time_cond_proj_dim
+                guidance_scale_tensor, embedding_dim=unet.config.time_cond_proj_dim
             ).to(device=self.device, dtype=latents.dtype)
 
         num_warmup_steps = max(
@@ -122,7 +144,7 @@ class ImageGenerationNode(Node):
             if self.abort():
                 return latents
 
-            noise_pred = self.unet(
+            noise_pred = unet(
                 latent_model_input,
                 t,
                 encoder_hidden_states=prompt_embeds,

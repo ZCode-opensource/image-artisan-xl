@@ -1,3 +1,4 @@
+# pylint: disable=no-member
 from iartisanxl.nodes.node import Node
 import json
 
@@ -5,7 +6,10 @@ from iartisanxl.generation.schedulers.schedulers import schedulers
 
 
 class SchedulerNode(Node):
+    PRIORITY = 1
     REQUIRED_ARGS = []
+    INPUTS = ["scheduler_index"]
+    OUTPUTS = ["scheduler"]
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -16,7 +20,7 @@ class SchedulerNode(Node):
         ) as config_file:
             self.scheduler_config = json.load(config_file)
 
-    def __call__(self, scheduler_index: int):
+    def __call__(self, scheduler_index):
         scheduler = self.load_scheduler(scheduler_index)
         return scheduler
 

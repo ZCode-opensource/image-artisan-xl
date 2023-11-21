@@ -1,7 +1,7 @@
 # pylint: disable=no-member
 import os
 
-import torch
+import accelerate
 from transformers import (
     CLIPTextModel,
     CLIPTextConfig,
@@ -25,14 +25,23 @@ from iartisanxl.nodes.node import Node
 
 
 class StableDiffusionXLModelNode(Node):
+    PRIORITY = 1
     REQUIRED_ARGS = [
         "path",
+    ]
+    OUTPUTS = [
+        "text_encoder_1",
+        "text_encoder_2",
+        "tokenizer_1",
+        "tokenizer_2",
+        "unet",
+        "num_channels_latents",
     ]
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.torch_dtype = kwargs.get("torch_dtype", torch.float16)
         self.single_checkpoint = kwargs.get("single_checkpoint", False)
+        self.can_offload = True
 
     def __call__(
         self,
@@ -42,6 +51,7 @@ class StableDiffusionXLModelNode(Node):
         CLIPTokenizer,
         CLIPTokenizer,
         UNet2DConditionModel,
+        int,
     ]:
         text_encoder_1 = None
         text_encoder_2 = None
@@ -50,6 +60,8 @@ class StableDiffusionXLModelNode(Node):
         unet = None
 
         if not self.single_checkpoint and os.path.isdir(self.path):
+            device = "cpu" if self.sequential_offload else self.device
+
             # simple check to ensure that at least could be a diffusers model
             if os.path.isfile(os.path.join(self.path, "model_index.json")):
                 # we need to load the text encoders, the tokenizers and the unet
@@ -60,7 +72,10 @@ class StableDiffusionXLModelNode(Node):
                     torch_dtype=self.torch_dtype,
                     local_files_only=True,
                     low_cpu_mem_usage=True,
-                )
+                ).to(device)
+
+                if self.sequential_offload:
+                    text_encoder_1 = accelerate.cpu_offload(text_encoder_1, "cuda:0")
 
                 text_encoder_2 = CLIPTextModelWithProjection.from_pretrained(
                     os.path.join(self.path, "text_encoder_2"),
@@ -69,7 +84,10 @@ class StableDiffusionXLModelNode(Node):
                     torch_dtype=self.torch_dtype,
                     local_files_only=True,
                     low_cpu_mem_usage=True,
-                )
+                ).to(device)
+
+                if self.sequential_offload:
+                    text_encoder_2 = accelerate.cpu_offload(text_encoder_2, "cuda:0")
 
                 tokenizer_1 = CLIPTokenizer.from_pretrained(
                     os.path.join(self.path, "tokenizer")
@@ -85,7 +103,10 @@ class StableDiffusionXLModelNode(Node):
                     variant="fp16",
                     torch_dtype=self.torch_dtype,
                     local_files_only=True,
-                )
+                ).to(device)
+
+                if self.sequential_offload:
+                    unet = accelerate.cpu_offload(unet, "cuda:0")
         else:
             if os.path.isfile(self.path) and self.path.endswith(".safetensors"):
                 original_config = OmegaConf.load(
@@ -144,4 +165,13 @@ class StableDiffusionXLModelNode(Node):
                         unet, param_name, "cpu", value=param, dtype=self.torch_dtype
                     )
 
-        return text_encoder_1, text_encoder_2, tokenizer_1, tokenizer_2, unet
+        num_channels_latents = unet.config.in_channels
+
+        return (
+            text_encoder_1,
+            text_encoder_2,
+            tokenizer_1,
+            tokenizer_2,
+            unet,
+            num_channels_latents,
+        )
