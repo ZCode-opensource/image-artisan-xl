@@ -54,7 +54,7 @@ class ImageGenerationNode(Node):
             if isinstance(self.lora, list):
                 unzipped_list = zip(*self.lora)
                 reordered_list = [list(item) for item in unzipped_list]
-                self.unet.set_adapters(reordered_list)
+                self.unet.set_adapters(*reordered_list)
             else:
                 self.unet.set_adapters([self.lora[0]], [self.lora[1]])
 
