@@ -87,3 +87,15 @@ class Node:
 
     def __call__(self):
         self.updated = False
+
+    def to_dict(self):
+        return {
+            "class": type(self).__name__,
+            "id": self.id,
+        }
+
+    @classmethod
+    def from_dict(cls, node_dict, _callbacks=None):
+        node = cls()
+        node.id = node_dict["id"]
+        return node

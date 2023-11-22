@@ -1,5 +1,6 @@
 from collections import deque
 
+import json
 import torch
 
 from iartisanxl.nodes.node import Node
@@ -63,3 +64,42 @@ class ImageArtisanNodeGraph:
                 node.cpu_offload = self.cpu_offload
                 node.sequential_offload = self.sequential_offload
                 node()
+
+    def save_to_json(self, filename):
+        graph_dict = {
+            "nodes": [node.to_dict() for node in self.nodes],
+            "connections": [],
+        }
+        for node in self.nodes:
+            for input_name, connections in node.connections.items():
+                for connected_node, output_name in connections:
+                    connection_dict = {
+                        "from_node_id": connected_node.id,
+                        "from_output_name": output_name,
+                        "to_node_id": node.id,
+                        "to_input_name": input_name,
+                    }
+                    graph_dict["connections"].append(connection_dict)
+
+        with open(filename, "w", encoding="utf-8") as f:
+            json.dump(graph_dict, f)
+
+    def load_from_json(self, filename, node_classes, callbacks=None):
+        with open(filename, "r", encoding="utf-8") as f:
+            graph_dict = json.load(f)
+
+        id_to_node = {}
+        for node_dict in graph_dict["nodes"]:
+            NodeClass = node_classes[node_dict["class"]]
+            node = NodeClass.from_dict(node_dict, callbacks)
+            id_to_node[node.id] = node
+            self.nodes.append(node)
+
+        for connection_dict in graph_dict["connections"]:
+            from_node = id_to_node[connection_dict["from_node_id"]]
+            to_node = id_to_node[connection_dict["to_node_id"]]
+            to_node.connect(
+                connection_dict["to_input_name"],
+                from_node,
+                connection_dict["from_output_name"],
+            )

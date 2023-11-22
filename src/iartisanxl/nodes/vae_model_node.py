@@ -7,10 +7,20 @@ from iartisanxl.nodes.node import Node
 class VaeModelNode(Node):
     OUTPUTS = ["vae", "vae_scale_factor"]
 
-    def __init__(self, path, **kwargs):
+    def __init__(self, path: str = None, **kwargs):
         super().__init__(**kwargs)
-        self.can_offload = True
         self.path = path
+
+    def to_dict(self):
+        node_dict = super().to_dict()
+        node_dict["path"] = self.path
+        return node_dict
+
+    @classmethod
+    def from_dict(cls, node_dict, _callbacks=None):
+        node = super(VaeModelNode, cls).from_dict(node_dict)
+        node.path = node_dict["path"]
+        return node
 
     def __call__(self) -> AutoencoderKL:
         super().__call__()

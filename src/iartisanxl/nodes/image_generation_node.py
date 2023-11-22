@@ -37,6 +37,23 @@ class ImageGenerationNode(Node):
         self.abort = abort if abort is not None else lambda: False
         self.callback = callback
 
+    def to_dict(self):
+        node_dict = super().to_dict()
+        node_dict["abort"] = self.abort.__name__ if self.abort else None
+        node_dict["callback"] = self.callback.__name__ if self.callback else None
+        return node_dict
+
+    @classmethod
+    def from_dict(cls, node_dict, callbacks=None):
+        node = super(ImageGenerationNode, cls).from_dict(node_dict)
+        node.abort = (
+            callbacks.get(node_dict["abort"], lambda: False)
+            if callbacks
+            else lambda: False
+        )
+        node.callback = callbacks.get(node_dict["callback"]) if callbacks else None
+        return node
+
     def __call__(self):
         super().__call__()
         crops_coords_top_left = (

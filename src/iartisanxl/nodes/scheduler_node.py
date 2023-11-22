@@ -7,7 +7,7 @@ from iartisanxl.generation.schedulers.schedulers import schedulers
 class SchedulerNode(Node):
     OUTPUTS = ["scheduler"]
 
-    def __init__(self, scheduler_index, **kwargs):
+    def __init__(self, scheduler_index: int = None, **kwargs):
         super().__init__(**kwargs)
 
         self.scheduler_index = scheduler_index
@@ -17,6 +17,17 @@ class SchedulerNode(Node):
             "./configs/scheduler_config.json", "r", encoding="utf-8"
         ) as config_file:
             self.scheduler_config = json.load(config_file)
+
+    def to_dict(self):
+        node_dict = super().to_dict()
+        node_dict["scheduler_index"] = self.scheduler_index
+        return node_dict
+
+    @classmethod
+    def from_dict(cls, node_dict, _callbacks=None):
+        node = super(SchedulerNode, cls).from_dict(node_dict)
+        node.scheduler_index = node_dict["scheduler_index"]
+        return node
 
     def __call__(self):
         super().__call__()
