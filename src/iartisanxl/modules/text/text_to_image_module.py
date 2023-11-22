@@ -1,10 +1,10 @@
 import random
 import logging
-from typing import Optional
 
 from PIL import Image
 import torch
-import tomesd
+
+# import tomesd
 from PyQt6.QtWidgets import (
     QVBoxLayout,
     QHBoxLayout,
@@ -14,7 +14,6 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtGui import QImage, QPixmap
 from PyQt6.QtCore import QSettings
-from diffusers.models import AutoencoderKL
 
 from iartisanxl.modules.base_module import BaseModule
 from iartisanxl.modules.common.drop_lightbox import DropLightBox
@@ -29,14 +28,11 @@ from iartisanxl.generation.model_data_object import ModelDataObject
 from iartisanxl.generation.vae_data_object import VaeDataObject
 from iartisanxl.generation.schedulers.schedulers import schedulers
 from iartisanxl.console.console_stream import ConsoleStream
-from iartisanxl.threads.pipeline_setup_thread import PipelineSetupThread
-from iartisanxl.threads.lora_setup_thread import LoraSetupThread
-from iartisanxl.threads.image_generation_thread import ImageGenerationThread
 from iartisanxl.threads.taesd_loader_thread import TaesdLoaderThread
 from iartisanxl.threads.image_processor_thread import ImageProcesorThread
-from iartisanxl.pipelines.txt_pipeline import ImageArtisanTextPipeline
 from iartisanxl.formats.image import ImageProcessor
-from iartisanxl.nodes.scheduler_node import SchedulerNode
+from iartisanxl.threads.node_graph_thread import NodeGraphThread
+from iartisanxl.pipelines.iartisanxl_node_graph import ImageArtisanNodeGraph
 
 
 class TextToImageModule(BaseModule):
@@ -101,11 +97,11 @@ class TextToImageModule(BaseModule):
         self.rendering_generation_data = None
         self.observers = []
 
-        self.base_pipeline = None
-        self.new_pipeline = False
-        self.device = torch.device(
-            "cuda:0" if torch.cuda.is_available() else "cpu"
-        )  # pylint: disable=no-member
+        self.node_graph = None
+        self.new_graph = True
+        self.node_ids = {}
+        self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+        self.torch_dtype = torch.float16
         self.batch_size = 1
         self.taesd_dec = None
         self.changed_parameters = []
@@ -113,16 +109,12 @@ class TextToImageModule(BaseModule):
         self.deleted_controlnets = []
 
         self.taesd_loader_thread = None
-        self.pipeline_setup_thread = None
-        self.lora_setup_thread = None
-        self.image_generation_thread = None
+        self.node_graph_thread = None
         self.image_processor_thread = None
 
         self.threads = {
             "taesd_loader_thread": self.taesd_loader_thread,
-            "pipeline_setup_thread": self.pipeline_setup_thread,
-            "lora_setup_thread": self.lora_setup_thread,
-            "image_generation_thread": self.image_generation_thread,
+            "node_graph_thread": self.node_graph_thread,
             "image_processor_thread": self.image_processor_thread,
         }
 
@@ -243,14 +235,14 @@ class TextToImageModule(BaseModule):
         self.settings.setValue("clip_skip", self.image_generation_data.clip_skip)
         self.settings.endGroup()
 
-        self.base_pipeline = None
+        self.node_graph = None
         self.device = None
+        self.torch_dtype = None
         self.taesd_dec = None
 
         self.taesd_loader_thread = None
-        self.pipeline_setup_thread = None
-        self.lora_setup_thread = None
-        self.image_generation_thread = None
+        self.node_graph_thread = None
+        self.image_processor_thread = None
 
         torch.cuda.empty_cache()
         torch.cuda.ipc_collect()
@@ -346,19 +338,19 @@ class TextToImageModule(BaseModule):
                 torch.cuda.empty_cache()
                 torch.cuda.ipc_collect()
 
-        self.setup_pipeline()
+        self.run_graph()
 
     def taesd_error(self, error_text):
         self.show_error(error_text)
         self.preferences.intermediate_images = False
-        self.setup_pipeline()
+        self.create_graph()
 
     def taesd_loaded(self):
         self.taesd_dec = self.taesd_loader_thread.taesd_dec
         self.status_bar.showMessage("Taesd loaded")
-        self.setup_pipeline()
+        self.create_graph()
 
-    def setup_pipeline(self):
+    def run_graph(self):
         if self.rendering_generation_data is not None:
             self.changed_parameters = []
             self.deleted_loras = []
@@ -423,168 +415,39 @@ class TextToImageModule(BaseModule):
             "The following parameters have changed: %s", self.changed_parameters
         )
 
+        if len(self.changed_parameters) == 0 and not self.new_graph:
+            self.show_snackbar(
+                "Nothing changed from last time, the image would be the same."
+            )
+            self.generating = False
+            self.prompt_window.set_button_generate()
+            return
+
         use_model_offload = False
         use_sequential_offload = False
 
-        if self.base_pipeline is not None:
-            if self.preferences.sequential_offload:
-                if not self.base_pipeline.sequential_cpu_offloaded:
-                    use_sequential_offload = True
-                    self.base_pipeline = None
-            else:
-                if self.base_pipeline.sequential_cpu_offloaded:
-                    self.base_pipeline = None
-                    self.logger.debug(
-                        "Sequential cpu offload disabled, reloading model."
-                    )
+        if self.node_graph is None or self.new_graph:
+            self.node_graph = ImageArtisanNodeGraph()
+            self.node_ids = {}
 
-                    if self.preferences.model_offload:
-                        use_model_offload = True
-                else:
-                    if self.preferences.model_offload:
-                        if not self.base_pipeline.model_cpu_offloaded:
-                            use_model_offload = True
-                            self.base_pipeline = None
-                    else:
-                        if self.base_pipeline.model_cpu_offloaded:
-                            self.base_pipeline = None
-                            self.logger.debug(
-                                "Model cpu offload disabled, reloading model."
-                            )
-
-        if self.base_pipeline is None or "model" in self.changed_parameters:
-            self.status_bar.showMessage("Setting up the pipeline...")
-            self.base_pipeline = None
-            self.lora_setup_thread = None
-            self.image_generation_thread = None
-            self.new_pipeline = True
-            torch.cuda.empty_cache()
-            torch.cuda.ipc_collect()
-
-            if self.preferences.sequential_offload:
-                use_sequential_offload = True
-            else:
-                if self.preferences.model_offload:
-                    use_model_offload = True
-
-            self.pipeline_setup_thread = PipelineSetupThread(
-                self.rendering_generation_data,
-                model_offload=use_model_offload,
-                sequential_offload=use_sequential_offload,
-            )
-            self.threads["pipeline_setup_thread"] = self.pipeline_setup_thread
-            self.pipeline_setup_thread.pipeline_ready.connect(self.pipeline_ready)
-            self.pipeline_setup_thread.pipeline_error.connect(self.show_error)
-            self.pipeline_setup_thread.status_changed.connect(self.update_status_bar)
-            self.pipeline_setup_thread.finished.connect(self.reset_thread)
-            self.pipeline_setup_thread.start()
-        else:
-            self.new_pipeline = False
-            self.pipeline_ready(self.base_pipeline)
-
-    # pylint: disable=no-member
-    def pipeline_ready(self, pipeline: Optional[ImageArtisanTextPipeline] = None):
-        if pipeline is not None:
-            if pipeline.unet is None:
-                self.show_error(
-                    "There was an error loading the model, please select it again."
-                )
-                return
-
-            self.base_pipeline = pipeline
-
-            if "vae" in self.changed_parameters:
-                self.update_status_bar("Changing to selected vae...")
-                try:
-                    if len(self.rendering_generation_data.vae.path) > 0:
-                        vae = AutoencoderKL.from_pretrained(
-                            self.rendering_generation_data.vae.path,
-                            torch_dtype=torch.float16,
-                        )
-                    else:
-                        if self.rendering_generation_data.model.type == "diffusers":
-                            self.update_status_bar("Changing to model vae...")
-                            vae = AutoencoderKL.from_pretrained(
-                                self.rendering_generation_data.model.path,
-                                torch_dtype=torch.float16,
-                                subfolder="vae",
-                                variant="fp16",
-                                use_safetensors=True,
-                            )
-                        else:
-                            self.show_error(
-                                "Using the model vae is not enabled when using single file checkpoints."
-                            )
-                            return
-
-                    self.base_pipeline.vae = vae
-                except AttributeError as attribute_error:
-                    self.show_error(f"{attribute_error}", True)
-                    self.logger.error(
-                        "Attribute error trying to load the vae: %s",
-                        attribute_error,
-                    )
-                    self.logger.debug("AttributeError exception", exc_info=True)
-                    return
-                except OSError as os_error:
-                    self.show_error(f"{os_error}", True)
-                    self.show_error(f"{os_error}", True)
-                    self.logger.error(
-                        "OS error trying to load the vae: %s",
-                        os_error,
-                    )
-                    self.logger.debug("OSError exception", exc_info=True)
-                    return
-
-            if "base_scheduler" in self.changed_parameters:
-                self.update_status_bar("Changing the scheduler...")
-                scheduler_node = SchedulerNode()
-                self.base_pipeline.scheduler = scheduler_node(
-                    self.rendering_generation_data.base_scheduler
-                )
-
-            if self.preferences.use_tomes:
-                self.status_bar.showMessage("Token merging is active...")
-                tomesd.apply_patch(self.base_pipeline, ratio=0.5)
-            else:
-                self.status_bar.showMessage("Token merging is disabled...")
-                tomesd.remove_patch(self.base_pipeline)
-
-            if self.new_pipeline or "loras" in self.changed_parameters:
-                self.lora_setup_thread = LoraSetupThread(
-                    self.base_pipeline,
-                    self.rendering_generation_data.loras,
-                    self.deleted_loras,
-                )
-                self.threads["lora_setup_thread"] = self.lora_setup_thread
-                self.lora_setup_thread.status_changed.connect(self.update_status_bar)
-                self.lora_setup_thread.loras_error.connect(self.show_error)
-                self.lora_setup_thread.loras_ready.connect(self.start_generation)
-                self.lora_setup_thread.finished.connect(self.reset_thread)
-                self.lora_setup_thread.lora_setup_aborted.connect(
-                    self.on_finished_abort
-                )
-                self.lora_setup_thread.start()
-            else:
-                self.start_generation()
-
-    def start_generation(self):
         self.status_bar.showMessage("Setting up generation...")
         self.progress_bar.setMaximum(self.rendering_generation_data.steps)
 
-        self.image_generation_thread = ImageGenerationThread(
-            self.base_pipeline, self.rendering_generation_data
+        self.node_graph_thread = NodeGraphThread(
+            self.node_graph,
+            self.node_ids,
+            self.rendering_generation_data,
+            self.changed_parameters,
+            model_offload=use_model_offload,
+            sequential_offload=use_sequential_offload,
         )
-        self.threads["image_generation_thread"] = self.image_generation_thread
-        self.image_generation_thread.progress_update.connect(self.step_progress_update)
-        self.image_generation_thread.status_changed.connect(self.update_status_bar)
-        self.image_generation_thread.generation_error.connect(self.show_error)
-        self.image_generation_thread.generation_aborted.connect(self.on_finished_abort)
-        self.image_generation_thread.generation_finished.connect(
-            self.generation_finished
-        )
-        self.image_generation_thread.finished.connect(self.reset_thread)
-        self.image_generation_thread.start()
+        self.node_graph_thread.progress_update.connect(self.step_progress_update)
+        self.node_graph_thread.status_changed.connect(self.update_status_bar)
+        self.node_graph_thread.generation_error.connect(self.show_error)
+        self.node_graph_thread.generation_aborted.connect(self.on_finished_abort)
+        self.node_graph_thread.generation_finished.connect(self.generation_finished)
+        self.node_graph_thread.finished.connect(self.reset_thread)
+        self.node_graph_thread.start()
 
     def step_progress_update(self, step, latents):
         self.progress_bar.setValue(step)
@@ -621,6 +484,7 @@ class TextToImageModule(BaseModule):
 
         self.progress_bar.setMaximum(100)
         self.progress_bar.setValue(100)
+        self.new_graph = False
 
         image_processor = ImageProcessor()
         image_processor.set_pillow_image(image)
@@ -670,7 +534,7 @@ class TextToImageModule(BaseModule):
 
     def show_error(self, text, empty_pipeline: bool = False):
         if empty_pipeline:
-            self.base_pipeline = None
+            self.node_graph = None
             torch.cuda.empty_cache()
             torch.cuda.ipc_collect()
 
@@ -702,14 +566,8 @@ class TextToImageModule(BaseModule):
             self.show_error(e)
 
     def on_abort(self):
-        if self.pipeline_setup_thread is not None:
-            self.pipeline_setup_thread.abort = True
-
-        if self.lora_setup_thread is not None:
-            self.lora_setup_thread.abort = True
-
-        if self.image_generation_thread is not None:
-            self.image_generation_thread.abort_generation()
+        if self.node_graph_thread is not None:
+            self.node_graph_thread.abort = True
 
     def on_finished_abort(self):
         self.update_status_bar("Aborted")
