@@ -13,6 +13,7 @@ class VaeModelNode(Node):
         self.path = path
 
     def __call__(self) -> AutoencoderKL:
+        super().__call__()
         device = "cpu" if self.sequential_offload or self.cpu_offload else self.device
 
         vae = AutoencoderKL.from_pretrained(self.path, torch_dtype=self.torch_dtype).to(

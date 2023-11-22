@@ -21,6 +21,7 @@ class LatentsNode(Node):
         self.device = None
 
     def __call__(self):
+        super().__call__()
         generator = torch.Generator(device="cpu").manual_seed(self.seed)
 
         shape = (

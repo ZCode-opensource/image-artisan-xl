@@ -40,6 +40,7 @@ class StableDiffusionXLModelNode(Node):
         self.path = path
 
     def __call__(self):
+        super().__call__()
         text_encoder_1 = None
         text_encoder_2 = None
         tokenizer_1 = None

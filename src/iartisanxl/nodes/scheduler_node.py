@@ -19,6 +19,7 @@ class SchedulerNode(Node):
             self.scheduler_config = json.load(config_file)
 
     def __call__(self):
+        super().__call__()
         scheduler = self.load_scheduler(self.scheduler_index)
         self.values["scheduler"] = scheduler
         return self.values

@@ -57,9 +57,9 @@ class ImageArtisanNodeGraph:
                 dfs(node)
 
         for node in sorted_nodes:
-            node.device = self.device
-            node.torch_dtype = self.torch_dtype
-            node.cpu_offload = self.cpu_offload
-            node.sequential_offload = self.sequential_offload
-
-            node()
+            if node.updated:
+                node.device = self.device
+                node.torch_dtype = self.torch_dtype
+                node.cpu_offload = self.cpu_offload
+                node.sequential_offload = self.sequential_offload
+                node()

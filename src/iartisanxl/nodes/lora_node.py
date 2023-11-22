@@ -29,6 +29,7 @@ class LoraNode(Node):
         self.scale = scale
 
     def __call__(self):
+        super().__call__()
         state_dict, network_alphas = self.lora_state_dict(
             self.path, unet_config=self.unet.config
         )

@@ -8,7 +8,9 @@ class Node:
 
     def __init__(self):
         self.id = None
+        self.updated = True
         self.dependencies = []
+        self.dependents = []
         self.values = {}
         self.connections = defaultdict(list)
 
@@ -31,6 +33,8 @@ class Node:
             )
         self.dependencies.append(node)
         self.connections[input_name].append((node, output_name))
+        node.dependents.append(self)
+        self.updated = True
 
     def disconnect(self, input_name: str, node, output_name: str):
         if input_name in self.connections:
@@ -41,6 +45,8 @@ class Node:
             ]
             if not self.connections[input_name]:
                 del self.connections[input_name]
+        node.dependents.remove(self)
+        self.updated = True
 
     def disconnect_from_node(self, node):
         self.dependencies = [dep for dep in self.dependencies if dep != node]
@@ -50,6 +56,13 @@ class Node:
             ]
             if not self.connections[input_name]:
                 del self.connections[input_name]
+        node.dependents.remove(self)
+        self.updated = True
+
+    def set_updated(self):  # Add this method
+        self.updated = True
+        for dependent in self.dependents:
+            dependent.set_updated()
 
     def __getattr__(self, name):
         if name in self.REQUIRED_INPUTS + self.OPTIONAL_INPUTS:
@@ -71,3 +84,6 @@ class Node:
             raise ValueError(
                 f'The required input "{input_name}" is not connected in "{self.__class__.__name__}"'
             )
+
+    def __call__(self):
+        self.updated = False

@@ -30,6 +30,7 @@ class PromptsEncoderNode(Node):
     ]
 
     def __call__(self):
+        super().__call__()
         if self.cpu_offload:
             self.text_encoder_1.to("cuda:0")
             self.text_encoder_2.to("cuda:0")

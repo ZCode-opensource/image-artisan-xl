@@ -11,4 +11,5 @@ class ImageSendNode(Node):
         self.image_callback = image_callback
 
     def __call__(self):
+        super().__call__()
         self.image_callback(self.image)
