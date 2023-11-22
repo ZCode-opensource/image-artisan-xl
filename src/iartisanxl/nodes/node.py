@@ -7,6 +7,7 @@ class Node:
     OUTPUTS = []
 
     def __init__(self):
+        self.id = None
         self.dependencies = []
         self.values = {}
         self.connections = defaultdict(list)
@@ -30,6 +31,25 @@ class Node:
             )
         self.dependencies.append(node)
         self.connections[input_name].append((node, output_name))
+
+    def disconnect(self, input_name: str, node, output_name: str):
+        if input_name in self.connections:
+            self.connections[input_name] = [
+                (n, out_name)
+                for n, out_name in self.connections[input_name]
+                if not (n == node and out_name == output_name)
+            ]
+            if not self.connections[input_name]:
+                del self.connections[input_name]
+
+    def disconnect_from_node(self, node):
+        self.dependencies = [dep for dep in self.dependencies if dep != node]
+        for input_name, conns in list(self.connections.items()):
+            self.connections[input_name] = [
+                (n, output_name) for n, output_name in conns if n != node
+            ]
+            if not self.connections[input_name]:
+                del self.connections[input_name]
 
     def __getattr__(self, name):
         if name in self.REQUIRED_INPUTS + self.OPTIONAL_INPUTS:

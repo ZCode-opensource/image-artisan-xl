@@ -7,6 +7,7 @@ from iartisanxl.nodes.node import Node
 
 class ImageArtisanNodeGraph:
     def __init__(self):
+        self.node_counter = 0
         self.nodes = []
 
         self.cpu_offload = False
@@ -15,7 +16,24 @@ class ImageArtisanNodeGraph:
         self.torch_dtype = torch.float16
 
     def add_node(self, node: Node):
+        node.id = self.node_counter
         self.nodes.append(node)
+        self.node_counter += 1
+
+    def get_node(self, node_class, node_id):
+        for node in self.nodes:
+            if isinstance(node, node_class) and node.id == node_id:
+                return node
+        return None
+
+    def delete_node(self, node_class, node_id):
+        node = self.get_node(node_class, node_id)
+        if node is not None:
+            # Disconnect the node from all other nodes
+            for other_node in self.nodes:
+                other_node.disconnect_from_node(node)
+            # Remove the node from the graph
+            self.nodes.remove(node)
 
     @torch.no_grad()
     def __call__(self):
