@@ -87,6 +87,7 @@ class MockCycleNode(Node):
 
 
 NODE_CLASSES = {
+    "MockNode": MockNode,
     "MockNumberNode": MockNumberNode,
     "MockSumNumbers": MockSumNumbers,
     "MockMaybeSumNumbers": MockMaybeSumNumbers,
@@ -703,3 +704,113 @@ class TestImageArtisanNodeGraph(unittest.TestCase):
         valid_json = json.dumps(json_string)
 
         self.assertEqual(json_graph, valid_json)
+
+    def test_update_node_counter(self):
+        self.assertEqual(self.graph.node_counter, 0)
+
+        mock_node_one = MockNode()
+        self.graph.add_node(mock_node_one)
+
+        self.assertEqual(self.graph.node_counter, 1)
+
+        mock_node_two = MockNode()
+        self.graph.add_node(mock_node_two)
+
+        self.assertEqual(self.graph.node_counter, 2)
+
+    def test_update_node_counter_on_from_json(self):
+        self.assertEqual(self.graph.node_counter, 0)
+
+        json_string = {
+            "nodes": [
+                {"class": "MockNode", "id": 0},
+                {"class": "MockNode", "id": 1},
+                {"class": "MockNode", "id": 2},
+            ],
+            "connections": [],
+        }
+
+        json_graph = json.dumps(json_string)
+
+        self.graph.from_json(json_graph, NODE_CLASSES)
+
+        self.assertEqual(self.graph.node_counter, 3)
+
+    def test_update_node_counter_random_on_from_json(self):
+        self.assertEqual(self.graph.node_counter, 0)
+
+        json_string = {
+            "nodes": [
+                {"class": "MockNode", "id": 0},
+                {"class": "MockNode", "id": 11},
+                {"class": "MockNode", "id": 3},
+            ],
+            "connections": [],
+        }
+
+        json_graph = json.dumps(json_string)
+
+        self.graph.from_json(json_graph, NODE_CLASSES)
+
+        self.assertEqual(self.graph.node_counter, 12)
+
+    def test_update_node_counter_on_update_from_json(self):
+        self.assertEqual(self.graph.node_counter, 0)
+
+        mock_node_one = MockNode()
+        self.graph.add_node(mock_node_one)
+
+        self.assertEqual(self.graph.node_counter, 1)
+
+        json_string = {
+            "nodes": [
+                {"class": "MockNode", "id": 1},
+                {"class": "MockNode", "id": 4},
+                {"class": "MockNode", "id": 3},
+            ],
+            "connections": [],
+        }
+
+        json_graph = json.dumps(json_string)
+
+        self.graph.update_from_json(json_graph, NODE_CLASSES)
+
+        self.assertEqual(self.graph.node_counter, 5)
+
+    def test_node_deletion(self):
+        # Add a node to the graph
+        mock_node = MockNode()
+        self.graph.add_node(mock_node)
+
+        # Store the id of the node
+        node_id = mock_node.id
+
+        # Delete the node
+        self.graph.delete_node(node_id)
+
+        # Check that the node is not in the graph
+        self.assertIsNone(self.graph.get_node(node_id))
+
+        # Check that there are no references to the node in the graph
+        for node in self.graph.nodes:
+            self.assertNotIn(node_id, [dep.id for dep in node.dependencies])
+            for conns in node.connections.values():
+                self.assertNotIn(node_id, [n.id for n, _ in conns])
+
+    def test_reference_on_output_node(self):
+        mock_number_node1 = MockNumberNode(number_value=3)
+        self.graph.add_node(mock_number_node1)
+
+        mock_number_node2 = MockNumberNode(number_value=4)
+        self.graph.add_node(mock_number_node2)
+
+        mock_sum_node = MockSumNumbers()
+        mock_sum_node.connect("number_one", mock_number_node1, "value")
+        mock_sum_node.connect("number_two", mock_number_node2, "value")
+        self.graph.add_node(mock_sum_node)
+
+        node_id = mock_number_node1.id
+        self.graph.delete_node(node_id)
+        self.assertIsNone(self.graph.get_node(node_id))
+
+        # self.assertIsNone(mock_sum_node.number_one)

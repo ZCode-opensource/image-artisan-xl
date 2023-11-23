@@ -120,3 +120,19 @@ class Node:
 
     def update_inputs(self, node_dict):
         pass
+
+    def delete(self):
+        # Clean up the node's data
+        self.dependencies.clear()
+        self.dependents.clear()
+        self.values.clear()
+        self.connections.clear()
+
+        # Reset other attributes
+        self.id = None
+        self.name = None
+        self.updated = False
+        self.device = None
+        self.torch_dtype = None
+        self.cpu_offload = False
+        self.sequential_offload = False

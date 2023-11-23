@@ -1,6 +1,7 @@
+import gc
+import json
 from collections import deque, defaultdict
 
-import json
 import torch
 
 from iartisanxl.graph.nodes.node import Node
@@ -47,8 +48,16 @@ class ImageArtisanNodeGraph:
             # Disconnect the node from all other nodes
             for other_node in self.nodes:
                 other_node.disconnect_from_node(node)
+            # Call the node's delete method
+            node.delete()
             # Remove the node from the graph
             self.nodes.remove(node)
+            # Delete the node
+            del node
+            # Call the garbage collector
+            gc.collect()
+            torch.cuda.empty_cache()
+            torch.cuda.ipc_collect()
 
     def delete_node_by_name(self, name: str):
         node = self.get_node_by_name(name)
@@ -56,6 +65,14 @@ class ImageArtisanNodeGraph:
             for other_node in self.nodes:
                 other_node.disconnect_from_node(node)
             self.nodes.remove(node)
+            # Call the node's delete method
+            node.delete()
+            # Delete the node
+            del node
+            # Call the garbage collector
+            gc.collect()
+            torch.cuda.empty_cache()
+            torch.cuda.ipc_collect()
 
     @torch.no_grad()
     def __call__(self):
@@ -108,11 +125,14 @@ class ImageArtisanNodeGraph:
         graph_dict = json.loads(json_str)
 
         id_to_node = {}
+        max_id = 0
         for node_dict in graph_dict["nodes"]:
             NodeClass = node_classes[node_dict["class"]]
             node = NodeClass.from_dict(node_dict, callbacks)
             id_to_node[node.id] = node
             self.nodes.append(node)
+            if node.id > max_id:
+                max_id = node.id
 
         for connection_dict in graph_dict["connections"]:
             from_node = id_to_node[connection_dict["from_node_id"]]
@@ -122,6 +142,7 @@ class ImageArtisanNodeGraph:
                 from_node,
                 connection_dict["from_output_name"],
             )
+        self.node_counter = max_id + 1
 
     def save_to_json(self, filename):
         json_str = self.to_json()
@@ -144,6 +165,7 @@ class ImageArtisanNodeGraph:
 
         # Load nodes from the JSON file
         new_id_to_node = {}
+        max_id = 0
         for node_dict in graph_dict["nodes"]:
             node_class = node_classes[node_dict["class"]]
             if node_dict["id"] in current_id_to_node and isinstance(
@@ -162,6 +184,8 @@ class ImageArtisanNodeGraph:
                 node.set_updated(updated_nodes)
                 self.nodes.append(node)
             new_id_to_node[node.id] = node
+            if node.id > max_id:
+                max_id = node.id
 
         # Remove nodes that are not in the JSON file
         for node_id, node in current_id_to_node.items():
@@ -199,6 +223,8 @@ class ImageArtisanNodeGraph:
         for node in self.nodes:
             if node.id not in updated_nodes:
                 node.updated = False
+
+        self.node_counter = max_id + 1
 
     def update_from_json_file(self, filename, node_classes, callbacks=None):
         with open(filename, "r", encoding="utf-8") as f:
