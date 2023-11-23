@@ -176,7 +176,11 @@ class ImageGenData:
             (
                 "ImageGenerationNode",
                 11,
-                {"abort": "<lambda>", "callback": "step_progress_update"},
+                {
+                    "abort": "<lambda>",
+                    "callback": "step_progress_update",
+                    "name": "image_generation",
+                },
             ),
             ("LatentsDecoderNode", 12, {}),
             ("ImageSendNode", 13, {"image_callback": "preview_image"}),

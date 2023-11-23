@@ -384,6 +384,9 @@ class TextToImageModule(BaseModule):
         self.progress_bar.setValue(value)
 
     def generation_finished(self, image: Image, duration: float = None):
+        image_generation_node = self.node_graph.get_node_by_name("image_generation")
+        duration = image_generation_node.elapsed_time
+
         if duration is not None:
             self.status_bar.showMessage(
                 f"Ready - {round(duration, 1)} s ({round(duration * 1000, 2)} ms)"
