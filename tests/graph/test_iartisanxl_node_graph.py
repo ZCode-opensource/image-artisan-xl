@@ -120,9 +120,6 @@ class MockCycleNode(Node):
 
 
 class MockTimerNode(Node):
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-
     def __call__(self):
         super().__call__()
         time.sleep(0.1)
