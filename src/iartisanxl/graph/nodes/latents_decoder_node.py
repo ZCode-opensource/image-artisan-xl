@@ -41,6 +41,8 @@ class LatentsDecoderNode(Node):
         image = image.cpu().permute(1, 2, 0).float().numpy()
         image = Image.fromarray(np.uint8(image * 255))
 
+        torch.cuda.empty_cache()
+
         self.values["image"] = image
 
         return self.values
