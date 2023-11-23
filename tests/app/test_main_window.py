@@ -22,6 +22,7 @@ class TestMainWindow(unittest.TestCase):
             models_safetensors="",
             vaes="",
             models_loras="",
+            models_controlnets="",
             outputs_images="",
         )
 
@@ -30,6 +31,9 @@ class TestMainWindow(unittest.TestCase):
             use_tomes=False,
             sequential_offload=False,
             model_offload=False,
+            save_image_metadata=False,
+            save_image_control_annotators=False,
+            save_image_control_sources=False,
         )
 
         cls.window = MainWindow(cls.directories, cls.preferences)
