@@ -74,6 +74,9 @@ class NodeGraphThread(QThread):
 
         self.node_graph()
 
+        if not self.node_graph.updated:
+            self.generation_error.emit("Nothing was changed", False)
+
     def step_progress_update(self, step, _timestep, latents):
         self.progress_update.emit(step, latents)
 

@@ -11,6 +11,7 @@ class ImageArtisanNodeGraph:
     def __init__(self):
         self.node_counter = 0
         self.nodes = []
+        self.updated = False
 
         self.cpu_offload = False
         self.sequential_offload = False
@@ -76,6 +77,7 @@ class ImageArtisanNodeGraph:
 
     @torch.no_grad()
     def __call__(self):
+        self.updated = False
         sorted_nodes = deque()
         visited = set()
         visiting = set()
@@ -102,6 +104,7 @@ class ImageArtisanNodeGraph:
                 node.cpu_offload = self.cpu_offload
                 node.sequential_offload = self.sequential_offload
                 node()
+                self.updated = True
 
     def to_json(self):
         graph_dict = {
@@ -123,6 +126,10 @@ class ImageArtisanNodeGraph:
 
     def from_json(self, json_str, node_classes, callbacks=None):
         graph_dict = json.loads(json_str)
+
+        # Clear the current graph
+        self.nodes.clear()
+        self.node_counter = 0
 
         id_to_node = {}
         max_id = 0
@@ -182,6 +189,8 @@ class ImageArtisanNodeGraph:
                 # If the node does not exist or is of a different class, create a new node and mark it as updated
                 node = node_class.from_dict(node_dict, callbacks)
                 node.set_updated(updated_nodes)
+                if node_dict["id"] in current_id_to_node:
+                    self.delete_node(node_dict["id"])
                 self.nodes.append(node)
             new_id_to_node[node.id] = node
             if node.id > max_id:

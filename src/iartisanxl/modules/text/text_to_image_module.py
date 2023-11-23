@@ -103,8 +103,13 @@ class TextToImageModule(BaseModule):
         self.taesd_dec = None
 
         self.taesd_loader_thread = None
-        self.node_graph_thread = NodeGraphThread(node_graph=self.node_graph)
         self.image_processor_thread = None
+        self.node_graph_thread = NodeGraphThread(node_graph=self.node_graph)
+        self.node_graph_thread.progress_update.connect(self.step_progress_update)
+        self.node_graph_thread.status_changed.connect(self.update_status_bar)
+        self.node_graph_thread.generation_error.connect(self.show_error)
+        self.node_graph_thread.generation_aborted.connect(self.on_finished_abort)
+        self.node_graph_thread.generation_finished.connect(self.generation_finished)
 
         self.threads = {
             "taesd_loader_thread": self.taesd_loader_thread,
@@ -351,11 +356,6 @@ class TextToImageModule(BaseModule):
         self.node_graph_thread.model_offload = self.preferences.model_offload
         self.node_graph_thread.sequential_offload = self.preferences.sequential_offload
 
-        self.node_graph_thread.progress_update.connect(self.step_progress_update)
-        self.node_graph_thread.status_changed.connect(self.update_status_bar)
-        self.node_graph_thread.generation_error.connect(self.show_error)
-        self.node_graph_thread.generation_aborted.connect(self.on_finished_abort)
-        self.node_graph_thread.generation_finished.connect(self.generation_finished)
         self.node_graph_thread.start()
 
     def step_progress_update(self, step, latents):
