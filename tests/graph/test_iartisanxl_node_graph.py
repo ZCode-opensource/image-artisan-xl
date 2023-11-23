@@ -194,6 +194,34 @@ class TestImageArtisanNodeGraph(unittest.TestCase):
         mock_sum_node.connect("number_two", mock_number_node2, "value")
         self.graph.add_node(mock_sum_node)
 
+        # Save the graph to a variable
+        json_graph = self.graph.to_json()
+
+        # Load the JSON file into a new graph
+        new_graph = ImageArtisanNodeGraph()
+        new_graph.from_json(
+            json_graph,
+            NODE_CLASSES,
+        )
+
+        # Check that the new graph is the same as the original one
+        self.assertEqual(len(new_graph.nodes), len(self.graph.nodes))
+        for node in new_graph.nodes:
+            self.assertIsInstance(node, (MockNumberNode, MockSumNumbers))
+
+    def test_save_and_load_with_file(self):
+        # Add nodes to the graph
+        mock_number_node1 = MockNumberNode(number_value=3)
+        self.graph.add_node(mock_number_node1)
+
+        mock_number_node2 = MockNumberNode(number_value=4)
+        self.graph.add_node(mock_number_node2)
+
+        mock_sum_node = MockSumNumbers()
+        mock_sum_node.connect("number_one", mock_number_node1, "value")
+        mock_sum_node.connect("number_two", mock_number_node2, "value")
+        self.graph.add_node(mock_sum_node)
+
         # Save the graph to a temporary JSON file
         temp_file = tempfile.NamedTemporaryFile(delete=False)
         self.graph.save_to_json(temp_file.name)
@@ -215,6 +243,69 @@ class TestImageArtisanNodeGraph(unittest.TestCase):
         os.unlink(temp_file.name)
 
     def test_update_from_json(self):
+        # Create a graph
+        mock_number_node1 = MockNumberNode(number_value=3)
+        self.graph.add_node(mock_number_node1)
+
+        mock_number_node2 = MockNumberNode(number_value=5)
+        self.graph.add_node(mock_number_node2)
+
+        mock_sum_node = MockSumNumbers()
+        mock_sum_node.connect("number_one", mock_number_node1, "value")
+        mock_sum_node.connect("number_two", mock_number_node2, "value")
+        self.graph.add_node(mock_sum_node)
+
+        # run the graph
+        self.graph()
+
+        # test the initial sum
+        self.assertEqual(mock_sum_node.values["sum_numbers"], 8)
+
+        json_string = {
+            "nodes": [
+                {"class": "MockNumberNode", "id": 0, "number": 5},
+                {"class": "MockNumberNode", "id": 1, "number": 5},
+                {"class": "MockSumNumbers", "id": 2},
+            ],
+            "connections": [
+                {
+                    "from_node_id": 0,
+                    "from_output_name": "value",
+                    "to_node_id": 2,
+                    "to_input_name": "number_one",
+                },
+                {
+                    "from_node_id": 1,
+                    "from_output_name": "value",
+                    "to_node_id": 2,
+                    "to_input_name": "number_two",
+                },
+            ],
+        }
+
+        json_graph = json.dumps(json_string)
+
+        # Load the JSON into a graph
+        self.graph.update_from_json(json_graph, NODE_CLASSES)
+
+        # Check that the graph contains the expected nodes
+        self.assertEqual(len(self.graph.nodes), 3)
+        self.assertIsInstance(self.graph.nodes[0], MockNumberNode)
+        self.assertIsInstance(self.graph.nodes[1], MockNumberNode)
+        self.assertIsInstance(self.graph.nodes[2], MockSumNumbers)
+
+        # Check updated state on each node
+        self.assertEqual(mock_number_node1.updated, True)
+        self.assertEqual(mock_number_node2.updated, False)
+        self.assertEqual(mock_sum_node.updated, True)
+
+        # run the graph again
+        self.graph()
+
+        # Check that the connections and the result of sum_node are correct
+        self.assertEqual(mock_sum_node.values["sum_numbers"], 10)
+
+    def test_update_from_json_file(self):
         # Create a graph
         mock_number_node1 = MockNumberNode(number_value=3)
         self.graph.add_node(mock_number_node1)
@@ -261,7 +352,7 @@ class TestImageArtisanNodeGraph(unittest.TestCase):
         temp_file.close()
 
         # Load the JSON file into a graph
-        self.graph.update_from_json(temp_file.name, NODE_CLASSES)
+        self.graph.update_from_json_file(temp_file.name, NODE_CLASSES)
 
         # Check that the graph contains the expected nodes
         self.assertEqual(len(self.graph.nodes), 3)
@@ -299,7 +390,7 @@ class TestImageArtisanNodeGraph(unittest.TestCase):
         # run the graph
         self.graph()
 
-        json_graph = {
+        json_string = {
             "nodes": [
                 {"class": "MockNumberNode", "id": 0, "number": 3},
                 {"class": "MockNumberNode", "id": 1, "number": 5},
@@ -321,21 +412,15 @@ class TestImageArtisanNodeGraph(unittest.TestCase):
             ],
         }
 
-        temp_file = tempfile.NamedTemporaryFile(delete=False)
-        with open(temp_file.name, "w", encoding="utf-8") as f:
-            json.dump(json_graph, f)
-        temp_file.close()
+        json_graph = json.dumps(json_string)
 
-        # Load the JSON file into a graph
-        self.graph.update_from_json(temp_file.name, NODE_CLASSES)
+        # Load the JSON into a graph
+        self.graph.update_from_json(json_graph, NODE_CLASSES)
 
         # Check the updated state of each node
         self.assertEqual(mock_number_node1.updated, False)
         self.assertEqual(mock_number_node2.updated, False)
         self.assertEqual(mock_sum_node.updated, False)
-
-        # Clean up the temporary file
-        os.unlink(temp_file.name)
 
     def test_update_from_json_without_connections(self):
         # Create a graph
@@ -348,7 +433,7 @@ class TestImageArtisanNodeGraph(unittest.TestCase):
         # run the graph
         self.graph()
 
-        json_graph = {
+        json_string = {
             "nodes": [
                 {"class": "MockNumberNode", "id": 0, "number": 3},
                 {"class": "MockNumberNode", "id": 1, "number": 5},
@@ -356,20 +441,14 @@ class TestImageArtisanNodeGraph(unittest.TestCase):
             "connections": [],
         }
 
-        temp_file = tempfile.NamedTemporaryFile(delete=False)
-        with open(temp_file.name, "w", encoding="utf-8") as f:
-            json.dump(json_graph, f)
-        temp_file.close()
+        json_graph = json.dumps(json_string)
 
-        # Load the JSON file into a graph
-        self.graph.update_from_json(temp_file.name, NODE_CLASSES)
+        # Load the JSON into a graph
+        self.graph.update_from_json(json_graph, NODE_CLASSES)
 
         # Check the updated state of each node
         self.assertEqual(mock_number_node1.updated, False)
         self.assertEqual(mock_number_node2.updated, True)
-
-        # Clean up the temporary file
-        os.unlink(temp_file.name)
 
     def test_update_from_json_adding_node(self):
         # Create a graph
@@ -382,7 +461,7 @@ class TestImageArtisanNodeGraph(unittest.TestCase):
         # run the graph
         self.graph()
 
-        json_graph = {
+        json_string = {
             "nodes": [
                 {"class": "MockNumberNode", "id": 0, "number": 3},
                 {"class": "MockNumberNode", "id": 1, "number": 5},
@@ -391,19 +470,13 @@ class TestImageArtisanNodeGraph(unittest.TestCase):
             "connections": [],
         }
 
-        temp_file = tempfile.NamedTemporaryFile(delete=False)
-        with open(temp_file.name, "w", encoding="utf-8") as f:
-            json.dump(json_graph, f)
-        temp_file.close()
+        json_graph = json.dumps(json_string)
 
-        # Load the JSON file into a graph
-        self.graph.update_from_json(temp_file.name, NODE_CLASSES)
+        # Load the JSON into a graph
+        self.graph.update_from_json(json_graph, NODE_CLASSES)
 
         self.assertEqual(len(self.graph.nodes), 3)
         self.assertIsInstance(self.graph.nodes[2], MockSumNumbers)
-
-        # Clean up the temporary file
-        os.unlink(temp_file.name)
 
     def test_update_from_json_add_node_and_connections(self):
         # Create a graph
@@ -416,7 +489,7 @@ class TestImageArtisanNodeGraph(unittest.TestCase):
         # run the graph
         self.graph()
 
-        json_graph = {
+        json_string = {
             "nodes": [
                 {"class": "MockNumberNode", "id": 0, "number": 3},
                 {"class": "MockNumberNode", "id": 1, "number": 5},
@@ -439,13 +512,10 @@ class TestImageArtisanNodeGraph(unittest.TestCase):
             ],
         }
 
-        temp_file = tempfile.NamedTemporaryFile(delete=False)
-        with open(temp_file.name, "w", encoding="utf-8") as f:
-            json.dump(json_graph, f)
-        temp_file.close()
+        json_graph = json.dumps(json_string)
 
-        # Load the JSON file into a graph
-        self.graph.update_from_json(temp_file.name, NODE_CLASSES)
+        # Load the JSON into a graph
+        self.graph.update_from_json(json_graph, NODE_CLASSES)
 
         self.assertEqual(len(self.graph.nodes), 4)
         self.assertIsInstance(self.graph.nodes[2], MockNumberNode)
@@ -457,9 +527,6 @@ class TestImageArtisanNodeGraph(unittest.TestCase):
         # Check that the connections and the result of sum_node are correct
         mock_sum_node = self.graph.nodes[3]
         self.assertEqual(mock_sum_node.values["sum_numbers"], 13)
-
-        # Clean up the temporary file
-        os.unlink(temp_file.name)
 
     def test_update_from_json_add_connections(self):
         # Create a graph
@@ -479,7 +546,7 @@ class TestImageArtisanNodeGraph(unittest.TestCase):
         # Check value
         self.assertEqual(mock_sum_node.values["sum_numbers"], 3)
 
-        json_graph = {
+        json_string = {
             "nodes": [
                 {"class": "MockNumberNode", "id": 0, "number": 3},
                 {"class": "MockNumberNode", "id": 1, "number": 5},
@@ -501,13 +568,10 @@ class TestImageArtisanNodeGraph(unittest.TestCase):
             ],
         }
 
-        temp_file = tempfile.NamedTemporaryFile(delete=False)
-        with open(temp_file.name, "w", encoding="utf-8") as f:
-            json.dump(json_graph, f)
-        temp_file.close()
+        json_graph = json.dumps(json_string)
 
         # Load the JSON file into a graph
-        self.graph.update_from_json(temp_file.name, NODE_CLASSES)
+        self.graph.update_from_json(json_graph, NODE_CLASSES)
 
         # Check updated state on each node
         self.assertEqual(mock_number_node1.updated, False)
@@ -520,9 +584,6 @@ class TestImageArtisanNodeGraph(unittest.TestCase):
         # Check that the connections and the result of sum_node are correct
         self.assertEqual(mock_sum_node.values["sum_numbers"], 8)
 
-        # Clean up the temporary file
-        os.unlink(temp_file.name)
-
     def test_update_from_json_remove_node(self):
         # Create a graph
         mock_number_node1 = MockNumberNode(number_value=3)
@@ -534,29 +595,23 @@ class TestImageArtisanNodeGraph(unittest.TestCase):
         # run the graph
         self.graph()
 
-        json_graph = {
+        json_string = {
             "nodes": [
                 {"class": "MockNumberNode", "id": 0, "number": 3},
             ],
             "connections": [],
         }
 
-        temp_file = tempfile.NamedTemporaryFile(delete=False)
-        with open(temp_file.name, "w", encoding="utf-8") as f:
-            json.dump(json_graph, f)
-        temp_file.close()
+        json_graph = json.dumps(json_string)
 
         # Load the JSON file into a graph
-        self.graph.update_from_json(temp_file.name, NODE_CLASSES)
+        self.graph.update_from_json(json_graph, NODE_CLASSES)
 
         # check number of nodes
         self.assertEqual(len(self.graph.nodes), 1)
 
         # Check the updated state of each node
         self.assertEqual(mock_number_node1.updated, False)
-
-        # Clean up the temporary file
-        os.unlink(temp_file.name)
 
     def test_input_value_error(self):
         # Create a graph

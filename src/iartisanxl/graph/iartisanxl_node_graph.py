@@ -65,7 +65,7 @@ class ImageArtisanNodeGraph:
                 node.sequential_offload = self.sequential_offload
                 node()
 
-    def save_to_json(self, filename):
+    def to_json(self):
         graph_dict = {
             "nodes": [node.to_dict() for node in self.nodes],
             "connections": [],
@@ -81,12 +81,10 @@ class ImageArtisanNodeGraph:
                     }
                     graph_dict["connections"].append(connection_dict)
 
-        with open(filename, "w", encoding="utf-8") as f:
-            json.dump(graph_dict, f)
+        return json.dumps(graph_dict)
 
-    def load_from_json(self, filename, node_classes, callbacks=None):
-        with open(filename, "r", encoding="utf-8") as f:
-            graph_dict = json.load(f)
+    def from_json(self, json_str, node_classes, callbacks=None):
+        graph_dict = json.loads(json_str)
 
         id_to_node = {}
         for node_dict in graph_dict["nodes"]:
@@ -104,9 +102,18 @@ class ImageArtisanNodeGraph:
                 connection_dict["from_output_name"],
             )
 
-    def update_from_json(self, filename, node_classes, callbacks=None):
+    def save_to_json(self, filename):
+        json_str = self.to_json()
+        with open(filename, "w", encoding="utf-8") as f:
+            f.write(json_str)
+
+    def load_from_json(self, filename, node_classes, callbacks=None):
         with open(filename, "r", encoding="utf-8") as f:
-            graph_dict = json.load(f)
+            json_str = f.read()
+        self.from_json(json_str, node_classes, callbacks)
+
+    def update_from_json(self, json_str, node_classes, callbacks=None):
+        graph_dict = json.loads(json_str)
 
         # Create a dictionary mapping node IDs to nodes for the current graph
         current_id_to_node = {node.id: node for node in self.nodes}
@@ -171,3 +178,8 @@ class ImageArtisanNodeGraph:
         for node in self.nodes:
             if node.id not in updated_nodes:
                 node.updated = False
+
+    def update_from_json_file(self, filename, node_classes, callbacks=None):
+        with open(filename, "r", encoding="utf-8") as f:
+            json_str = f.read()
+        self.update_from_json(json_str, node_classes, callbacks)
