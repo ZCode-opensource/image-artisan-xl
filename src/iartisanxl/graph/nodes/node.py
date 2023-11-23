@@ -45,6 +45,8 @@ class Node:
             ]
             if not self.connections[input_name]:
                 del self.connections[input_name]
+        if node in self.dependencies:
+            self.dependencies.remove(node)
         node.dependents.remove(self)
         self.updated = True
 
