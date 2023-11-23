@@ -111,30 +111,26 @@ class ImageArtisanNodeGraph:
         # Create a dictionary mapping node IDs to nodes for the current graph
         current_id_to_node = {node.id: node for node in self.nodes}
 
-        # Store a copy of the original nodes and connections
-        original_nodes = {node.id: node.to_dict() for node in self.nodes}
-        original_connections = {node.id: node.connections.copy() for node in self.nodes}
-
         # Keep track of which nodes were marked as updated
         updated_nodes = set()
 
         # Load nodes from the JSON file
         new_id_to_node = {}
         for node_dict in graph_dict["nodes"]:
-            NodeClass = node_classes[node_dict["class"]]
+            node_class = node_classes[node_dict["class"]]
             if node_dict["id"] in current_id_to_node and isinstance(
-                current_id_to_node[node_dict["id"]], NodeClass
+                current_id_to_node[node_dict["id"]], node_class
             ):
                 # If the node already exists and is of the same class, check if its inputs have changed
                 node = current_id_to_node[node_dict["id"]]
-                new_node = NodeClass.from_dict(node_dict, callbacks)
+                new_node = node_class.from_dict(node_dict, callbacks)
                 if node.to_dict() != new_node.to_dict():
                     # If the inputs have changed, update the node and mark it as updated
                     node.update_inputs(node_dict)
                     node.set_updated(updated_nodes)
             else:
                 # If the node does not exist or is of a different class, create a new node and mark it as updated
-                node = NodeClass.from_dict(node_dict, callbacks)
+                node = node_class.from_dict(node_dict, callbacks)
                 node.set_updated(updated_nodes)
                 self.nodes.append(node)
             new_id_to_node[node.id] = node
@@ -144,27 +140,36 @@ class ImageArtisanNodeGraph:
             if node_id not in new_id_to_node:
                 self.delete_node(type(node), node_id)
 
-        # Update connections
-        for node in self.nodes:
-            node.dependencies = []
-            node.connections = defaultdict(list)
+        # Collect new connections for each node and map nodes to input names
+        new_connections = defaultdict(list)
+        input_names = {}
         for connection_dict in graph_dict["connections"]:
             from_node = new_id_to_node[connection_dict["from_node_id"]]
             to_node = new_id_to_node[connection_dict["to_node_id"]]
-            to_node.connect(
-                connection_dict["to_input_name"],
-                from_node,
-                connection_dict["from_output_name"],
+            new_connections[to_node.id].append(
+                (from_node.id, connection_dict["from_output_name"])
             )
-            if node.id not in updated_nodes:
-                updated_nodes.add(node.id)
+            input_names[
+                (to_node.id, from_node.id, connection_dict["from_output_name"])
+            ] = connection_dict["to_input_name"]
 
-        # Restore any nodes and connections that haven't changed
+        # Update connections
         for node in self.nodes:
-            if (
-                node.id in original_nodes
-                and node.connections == original_connections[node.id]
-                and node.id not in updated_nodes
-            ):
-                node.connections = original_connections[node.id]
+            if node.connections_changed(new_connections[node.id]):
+                node.dependencies = []
+                node.connections = defaultdict(list)
+                for from_node_id, output_name in new_connections[node.id]:
+                    from_node = new_id_to_node[from_node_id]
+                    input_name = input_names[(node.id, from_node_id, output_name)]
+                    node.connect(
+                        input_name,
+                        from_node,
+                        output_name,
+                    )
+                if node.id not in updated_nodes:
+                    updated_nodes.add(node.id)
+
+        # Restore any nodes that haven't changed
+        for node in self.nodes:
+            if node.id not in updated_nodes:
                 node.updated = False
