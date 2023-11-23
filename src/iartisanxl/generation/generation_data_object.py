@@ -1,5 +1,6 @@
 import attr
 import copy
+import json
 
 from iartisanxl.generation.lora_data_object import LoraDataObject
 from iartisanxl.generation.controlnet_data_object import ControlNetDataObject
@@ -158,3 +159,72 @@ class ImageGenData:
             clip_skip=data.get("clip_skip", 0),
         )
         return new_obj
+
+    def to_json_graph(self):
+        node_attributes = [
+            ("StableDiffusionXLModelNode", 0, {"path": self.model.path}),
+            ("TextNode", 1, {"text": self.positive_prompt_clipg}),
+            ("PromptsEncoderNode", 2, {}),
+            ("VaeModelNode", 3, {"path": self.vae.path}),
+            ("NumberNode", 4, {"number": self.seed}),
+            ("NumberNode", 5, {"number": self.image_height}),
+            ("NumberNode", 6, {"number": self.image_width}),
+            ("LatentsNode", 7, {}),
+            ("SchedulerNode", 8, {"scheduler_index": self.base_scheduler}),
+            ("NumberNode", 9, {"number": self.steps}),
+            ("NumberNode", 10, {"number": self.guidance}),
+            (
+                "ImageGenerationNode",
+                11,
+                {"abort": "<lambda>", "callback": "step_progress_update"},
+            ),
+            ("LatentsDecoderNode", 12, {}),
+            ("ImageSendNode", 13, {"image_callback": "preview_image"}),
+        ]
+        nodes = [
+            {"class": class_name, "id": id, **attributes}
+            for class_name, id, attributes in node_attributes
+        ]
+
+        connection_attributes = [
+            (0, "tokenizer_1", 2, "tokenizer_1"),
+            (0, "tokenizer_2", 2, "tokenizer_2"),
+            (0, "text_encoder_1", 2, "text_encoder_1"),
+            (0, "text_encoder_2", 2, "text_encoder_2"),
+            (1, "value", 2, "prompt_1"),
+            (4, "value", 7, "seed"),
+            (0, "num_channels_latents", 7, "num_channels_latents"),
+            (5, "value", 7, "height"),
+            (6, "value", 7, "width"),
+            (3, "vae_scale_factor", 7, "vae_scale_factor"),
+            (8, "scheduler", 11, "scheduler"),
+            (9, "value", 11, "num_inference_steps"),
+            (7, "latents", 11, "latents"),
+            (2, "pooled_prompt_embeds", 11, "pooled_prompt_embeds"),
+            (5, "value", 11, "height"),
+            (6, "value", 11, "width"),
+            (2, "prompt_embeds", 11, "prompt_embeds"),
+            (10, "value", 11, "guidance_scale"),
+            (2, "negative_prompt_embeds", 11, "negative_prompt_embeds"),
+            (2, "negative_pooled_prompt_embeds", 11, "negative_pooled_prompt_embeds"),
+            (0, "unet", 11, "unet"),
+            (7, "generator", 11, "generator"),
+            (3, "vae", 12, "vae"),
+            (11, "latents", 12, "latents"),
+            (12, "image", 13, "image"),
+        ]
+
+        connections = [
+            {
+                "from_node_id": from_id,
+                "from_output_name": from_name,
+                "to_node_id": to_id,
+                "to_input_name": to_name,
+            }
+            for from_id, from_name, to_id, to_name in connection_attributes
+        ]
+
+        data = {"nodes": nodes, "connections": connections}
+
+        json_graph = json.dumps(data)
+        return json_graph
