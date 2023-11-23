@@ -14,19 +14,41 @@ from diffusers.utils.peft_utils import (
 )
 from diffusers.models.lora import text_encoder_attn_modules, text_encoder_mlp_modules
 
-from iartisanxl.nodes.node import Node
+from iartisanxl.graph.nodes.node import Node
 
 
 class LoraNode(Node):
     REQUIRED_INPUTS = ["unet", "text_encoder_1", "text_encoder_2", "global_lora_scale"]
     OUTPUTS = ["lora"]
 
-    def __init__(self, path: str, adapter_name: str, scale: float, **kwargs):
+    def __init__(
+        self, path: str = None, adapter_name: str = None, scale: float = None, **kwargs
+    ):
         super().__init__(**kwargs)
 
         self.path = path
         self.adapter_name = adapter_name
         self.scale = scale
+
+    def to_dict(self):
+        node_dict = super().to_dict()
+        node_dict["path"] = self.path
+        node_dict["adapter_name"] = self.adapter_name
+        node_dict["scale"] = self.scale
+        return node_dict
+
+    @classmethod
+    def from_dict(cls, node_dict, _callbacks=None):
+        node = super(LoraNode, cls).from_dict(node_dict)
+        node.path = node_dict["path"]
+        node.adapter_name = node_dict["adapter_name"]
+        node.scale = node_dict["scale"]
+        return node
+
+    def update_inputs(self, node_dict):
+        self.path = node_dict["path"]
+        self.adapter_name = node_dict["adapter_name"]
+        self.scale = node_dict["scale"]
 
     def __call__(self):
         super().__call__()

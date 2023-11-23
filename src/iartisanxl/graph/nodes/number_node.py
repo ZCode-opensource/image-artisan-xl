@@ -1,6 +1,6 @@
 from typing import Union
 
-from iartisanxl.nodes.node import Node
+from iartisanxl.graph.nodes.node import Node
 
 
 class NumberNode(Node):
@@ -25,6 +25,9 @@ class NumberNode(Node):
         node = super(NumberNode, cls).from_dict(node_dict)
         node.number = node_dict["number"]
         return node
+
+    def update_inputs(self, node_dict):
+        self.number = node_dict["number"]
 
     def __call__(self):
         super().__call__()

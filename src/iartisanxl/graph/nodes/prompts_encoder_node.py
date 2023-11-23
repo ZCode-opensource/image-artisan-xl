@@ -4,7 +4,7 @@ import torch
 from transformers import CLIPTokenizer
 from diffusers.utils.peft_utils import scale_lora_layers, unscale_lora_layers
 
-from iartisanxl.nodes.node import Node
+from iartisanxl.graph.nodes.node import Node
 
 
 class PromptsEncoderNode(Node):

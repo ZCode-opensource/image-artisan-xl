@@ -1,7 +1,7 @@
 import torch
 from diffusers.utils.torch_utils import randn_tensor
 
-from iartisanxl.nodes.node import Node
+from iartisanxl.graph.nodes.node import Node
 
 
 class LatentsNode(Node):

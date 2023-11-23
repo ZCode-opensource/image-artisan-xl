@@ -1,4 +1,4 @@
-from iartisanxl.nodes.node import Node
+from iartisanxl.graph.nodes.node import Node
 import json
 
 from iartisanxl.generation.schedulers.schedulers import schedulers
@@ -28,6 +28,9 @@ class SchedulerNode(Node):
         node = super(SchedulerNode, cls).from_dict(node_dict)
         node.scheduler_index = node_dict["scheduler_index"]
         return node
+
+    def update_inputs(self, node_dict):
+        self.scheduler_index = node_dict["scheduler_index"]
 
     def __call__(self):
         super().__call__()

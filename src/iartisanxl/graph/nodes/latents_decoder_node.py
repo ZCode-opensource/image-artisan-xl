@@ -2,7 +2,7 @@ import torch
 import numpy as np
 from PIL import Image
 
-from iartisanxl.nodes.node import Node
+from iartisanxl.graph.nodes.node import Node
 
 
 class LatentsDecoderNode(Node):

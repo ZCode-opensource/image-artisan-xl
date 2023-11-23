@@ -6,18 +6,20 @@ from PIL import Image
 from PyQt6.QtCore import QThread, pyqtSignal
 
 from iartisanxl.generation.generation_data_object import ImageGenData
-from iartisanxl.pipelines.iartisanxl_node_graph import ImageArtisanNodeGraph
-from iartisanxl.nodes.stable_difussion_xl_model_node import StableDiffusionXLModelNode
-from iartisanxl.nodes.text_node import TextNode
-from iartisanxl.nodes.prompts_encoder_node import PromptsEncoderNode
-from iartisanxl.nodes.vae_model_node import VaeModelNode
-from iartisanxl.nodes.latents_node import LatentsNode
-from iartisanxl.nodes.number_node import NumberNode
-from iartisanxl.nodes.scheduler_node import SchedulerNode
-from iartisanxl.nodes.image_generation_node import ImageGenerationNode
-from iartisanxl.nodes.latents_decoder_node import LatentsDecoderNode
-from iartisanxl.nodes.image_send_node import ImageSendNode
-from iartisanxl.nodes.lora_node import LoraNode
+from iartisanxl.graph.iartisanxl_node_graph import ImageArtisanNodeGraph
+from iartisanxl.graph.nodes.stable_difussion_xl_model_node import (
+    StableDiffusionXLModelNode,
+)
+from iartisanxl.graph.nodes.text_node import TextNode
+from iartisanxl.graph.nodes.prompts_encoder_node import PromptsEncoderNode
+from iartisanxl.graph.nodes.vae_model_node import VaeModelNode
+from iartisanxl.graph.nodes.latents_node import LatentsNode
+from iartisanxl.graph.nodes.number_node import NumberNode
+from iartisanxl.graph.nodes.scheduler_node import SchedulerNode
+from iartisanxl.graph.nodes.image_generation_node import ImageGenerationNode
+from iartisanxl.graph.nodes.latents_decoder_node import LatentsDecoderNode
+from iartisanxl.graph.nodes.image_send_node import ImageSendNode
+from iartisanxl.graph.nodes.lora_node import LoraNode
 
 
 class NodeGraphThread(QThread):

@@ -1,4 +1,4 @@
-from iartisanxl.nodes.node import Node
+from iartisanxl.graph.nodes.node import Node
 
 
 class TextNode(Node):
@@ -23,6 +23,9 @@ class TextNode(Node):
         node = super(TextNode, cls).from_dict(node_dict)
         node.text = node_dict["text"]
         return node
+
+    def update_inputs(self, node_dict):
+        self.text = node_dict["text"]
 
     def __call__(self):
         super().__call__()

@@ -56,13 +56,16 @@ class Node:
             ]
             if not self.connections[input_name]:
                 del self.connections[input_name]
-        node.dependents.remove(self)
+        if self in node.dependents:
+            node.dependents.remove(self)
         self.updated = True
 
-    def set_updated(self):  # Add this method
+    def set_updated(self, updated_nodes=None):
         self.updated = True
+        if updated_nodes is not None:
+            updated_nodes.add(self.id)
         for dependent in self.dependents:
-            dependent.set_updated()
+            dependent.set_updated(updated_nodes)
 
     def __getattr__(self, name):
         if name in self.REQUIRED_INPUTS + self.OPTIONAL_INPUTS:
@@ -99,3 +102,6 @@ class Node:
         node = cls()
         node.id = node_dict["id"]
         return node
+
+    def update_inputs(self, node_dict):
+        pass

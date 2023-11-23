@@ -2,7 +2,7 @@ import inspect
 
 import torch
 
-from iartisanxl.nodes.node import Node
+from iartisanxl.graph.nodes.node import Node
 
 
 class ImageGenerationNode(Node):

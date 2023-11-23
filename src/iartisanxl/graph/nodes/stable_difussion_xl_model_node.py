@@ -21,7 +21,7 @@ from accelerate import init_empty_weights
 from accelerate.utils import set_module_tensor_to_device
 from safetensors.torch import load_file as safe_load
 
-from iartisanxl.nodes.node import Node
+from iartisanxl.graph.nodes.node import Node
 
 
 class StableDiffusionXLModelNode(Node):
@@ -49,6 +49,9 @@ class StableDiffusionXLModelNode(Node):
         node = super(StableDiffusionXLModelNode, cls).from_dict(node_dict)
         node.path = node_dict["path"]
         return node
+
+    def update_inputs(self, node_dict):
+        self.path = node_dict["path"]
 
     def __call__(self):
         super().__call__()

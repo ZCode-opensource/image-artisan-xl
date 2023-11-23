@@ -32,7 +32,7 @@ from iartisanxl.threads.taesd_loader_thread import TaesdLoaderThread
 from iartisanxl.threads.image_processor_thread import ImageProcesorThread
 from iartisanxl.formats.image import ImageProcessor
 from iartisanxl.threads.node_graph_thread import NodeGraphThread
-from iartisanxl.pipelines.iartisanxl_node_graph import ImageArtisanNodeGraph
+from iartisanxl.graph.iartisanxl_node_graph import ImageArtisanNodeGraph
 
 
 class TextToImageModule(BaseModule):

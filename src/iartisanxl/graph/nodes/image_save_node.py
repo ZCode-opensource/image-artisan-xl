@@ -1,7 +1,7 @@
 import os
 from datetime import datetime
 
-from iartisanxl.nodes.node import Node
+from iartisanxl.graph.nodes.node import Node
 
 
 class ImageSaveNode(Node):

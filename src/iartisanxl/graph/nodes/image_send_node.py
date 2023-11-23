@@ -1,4 +1,4 @@
-from iartisanxl.nodes.node import Node
+from iartisanxl.graph.nodes.node import Node
 
 
 class ImageSendNode(Node):

@@ -1,7 +1,7 @@
 import accelerate
 from diffusers import AutoencoderKL
 
-from iartisanxl.nodes.node import Node
+from iartisanxl.graph.nodes.node import Node
 
 
 class VaeModelNode(Node):
@@ -21,6 +21,9 @@ class VaeModelNode(Node):
         node = super(VaeModelNode, cls).from_dict(node_dict)
         node.path = node_dict["path"]
         return node
+
+    def update_inputs(self, node_dict):
+        self.path = node_dict["path"]
 
     def __call__(self) -> AutoencoderKL:
         super().__call__()
