@@ -1,5 +1,6 @@
 import gc
 import json
+import time
 from collections import deque, defaultdict
 
 import torch
@@ -103,7 +104,10 @@ class ImageArtisanNodeGraph:
                 node.torch_dtype = self.torch_dtype
                 node.cpu_offload = self.cpu_offload
                 node.sequential_offload = self.sequential_offload
+                start_time = time.time()
                 node()
+                end_time = time.time()
+                node.elapsed_time = end_time - start_time
                 self.updated = True
 
     def to_json(self):

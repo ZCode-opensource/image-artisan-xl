@@ -1,6 +1,7 @@
 import os
 import tempfile
 import json
+import time
 
 import unittest
 from unittest.mock import patch
@@ -118,6 +119,15 @@ class MockCycleNode(Node):
         return self.values
 
 
+class MockTimerNode(Node):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+    def __call__(self):
+        super().__call__()
+        time.sleep(0.1)
+
+
 NODE_CLASSES = {
     "MockNode": MockNode,
     "MockTextNode": MockTextNode,
@@ -125,6 +135,7 @@ NODE_CLASSES = {
     "MockSumNumbers": MockSumNumbers,
     "MockMaybeSumNumbers": MockMaybeSumNumbers,
     "MockCycleNode": MockCycleNode,
+    "MockTimerNode": MockTimerNode,
 }
 
 
@@ -958,3 +969,17 @@ class TestImageArtisanNodeGraph(unittest.TestCase):
 
         # Test the number of nodes
         self.assertEqual(len(self.graph.nodes), 3)
+
+    def test_node_elapsed_time(self):
+        mock_node = MockNode()
+        self.graph.add_node(mock_node)
+
+        mock_timer_node = MockTimerNode()
+        self.graph.add_node(mock_timer_node)
+
+        # Run the graph
+        self.graph()
+
+        # Check that elapsed_time has been set for each node
+        self.assertEqual(mock_node.elapsed_time, 0)
+        self.assertGreater(mock_timer_node.elapsed_time, 0.1)

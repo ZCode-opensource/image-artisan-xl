@@ -9,6 +9,7 @@ class Node:
     def __init__(self):
         self.id = None
         self.name = None
+        self.elapsed_time = None
         self.updated = True
         self.dependencies = []
         self.dependents = []
