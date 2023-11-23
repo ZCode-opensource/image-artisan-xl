@@ -1,6 +1,7 @@
 import os
 
 import accelerate
+import torch
 
 from transformers import (
     CLIPTextModel,
@@ -39,6 +40,11 @@ class StableDiffusionXLModelNode(Node):
         self.single_checkpoint = kwargs.get("single_checkpoint", False)
         self.path = path
 
+    def update_path(self, path: str):
+        self.clear_models()
+        self.path = path
+        self.set_updated()
+
     def to_dict(self):
         node_dict = super().to_dict()
         node_dict["path"] = self.path
@@ -51,15 +57,11 @@ class StableDiffusionXLModelNode(Node):
         return node
 
     def update_inputs(self, node_dict):
+        self.clear_models()
         self.path = node_dict["path"]
 
     def __call__(self):
         super().__call__()
-        text_encoder_1 = None
-        text_encoder_2 = None
-        tokenizer_1 = None
-        tokenizer_2 = None
-        unet = None
 
         if not self.single_checkpoint and os.path.isdir(self.path):
             device = (
@@ -69,7 +71,7 @@ class StableDiffusionXLModelNode(Node):
             # simple check to ensure that at least could be a diffusers model
             if os.path.isfile(os.path.join(self.path, "model_index.json")):
                 # we need to load the text encoders, the tokenizers and the unet
-                text_encoder_1 = CLIPTextModel.from_pretrained(
+                self.values["text_encoder_1"] = CLIPTextModel.from_pretrained(
                     os.path.join(self.path, "text_encoder"),
                     use_safetensors=True,
                     variant="fp16",
@@ -81,27 +83,31 @@ class StableDiffusionXLModelNode(Node):
                 if self.sequential_offload:
                     text_encoder_1 = accelerate.cpu_offload(text_encoder_1, "cuda:0")
 
-                text_encoder_2 = CLIPTextModelWithProjection.from_pretrained(
+                self.values[
+                    "text_encoder_2"
+                ] = CLIPTextModelWithProjection.from_pretrained(
                     os.path.join(self.path, "text_encoder_2"),
                     use_safetensors=True,
                     variant="fp16",
                     torch_dtype=self.torch_dtype,
                     local_files_only=True,
                     low_cpu_mem_usage=True,
-                ).to(device)
+                ).to(
+                    device
+                )
 
                 if self.sequential_offload:
                     text_encoder_2 = accelerate.cpu_offload(text_encoder_2, "cuda:0")
 
-                tokenizer_1 = CLIPTokenizer.from_pretrained(
+                self.values["tokenizer_1"] = CLIPTokenizer.from_pretrained(
                     os.path.join(self.path, "tokenizer")
                 )
 
-                tokenizer_2 = CLIPTokenizer.from_pretrained(
+                self.values["tokenizer_2"] = CLIPTokenizer.from_pretrained(
                     os.path.join(self.path, "tokenizer_2")
                 )
 
-                unet = UNet2DConditionModel.from_pretrained(
+                self.values["unet"] = UNet2DConditionModel.from_pretrained(
                     os.path.join(self.path, "unet"),
                     use_safetensors=True,
                     variant="fp16",
@@ -110,7 +116,9 @@ class StableDiffusionXLModelNode(Node):
                 ).to(device)
 
                 if self.sequential_offload:
-                    unet = accelerate.cpu_offload(unet, "cuda:0")
+                    self.values["unet"] = accelerate.cpu_offload(
+                        self.values["unet"], "cuda:0"
+                    )
         else:
             if os.path.isfile(self.path) and self.path.endswith(".safetensors"):
                 original_config = OmegaConf.load(
@@ -131,9 +139,9 @@ class StableDiffusionXLModelNode(Node):
 
                 ctx = init_empty_weights
                 with ctx():
-                    unet = UNet2DConditionModel(**unet_config)
+                    self.values["unet"] = UNet2DConditionModel(**unet_config)
 
-                tokenizer_1 = CLIPTokenizer.from_pretrained(
+                self.values["tokenizer_1"] = CLIPTokenizer.from_pretrained(
                     "./configs/clip-vit-large-patch14",
                     local_files_only=True,
                 )
@@ -142,12 +150,15 @@ class StableDiffusionXLModelNode(Node):
                 )
                 ctx = init_empty_weights
                 with ctx():
-                    text_encoder_1 = CLIPTextModel(config)
-                text_encoder_1 = convert_ldm_clip_checkpoint(
-                    checkpoint, local_files_only=True, text_encoder=text_encoder_1
+                    self.values["text_encoder_1"] = CLIPTextModel(config)
+
+                self.values["text_encoder_1"] = convert_ldm_clip_checkpoint(
+                    checkpoint,
+                    local_files_only=True,
+                    text_encoder=self.values["text_encoder_1"],
                 )
-                text_encoder_1.to(dtype=self.torch_dtype)
-                tokenizer_2 = CLIPTokenizer.from_pretrained(
+                self.values["text_encoder_1"].to(dtype=self.torch_dtype)
+                self.values["tokenizer_2"] = CLIPTokenizer.from_pretrained(
                     "./configs/CLIP-ViT-bigG-14-laion2B-39B-b160k",
                     pad_token="!",
                     local_files_only=True,
@@ -155,27 +166,37 @@ class StableDiffusionXLModelNode(Node):
 
                 config_name = "./configs/CLIP-ViT-bigG-14-laion2B-39B-b160k"
                 config_kwargs = {"projection_dim": 1280}
-                text_encoder_2 = convert_open_clip_checkpoint(
+                self.values["text_encoder_2"] = convert_open_clip_checkpoint(
                     checkpoint,
                     config_name,
                     prefix="conditioner.embedders.1.model.",
                     has_projection=True,
                     **config_kwargs,
                 )
-                text_encoder_2.to(dtype=self.torch_dtype)
+                self.values["text_encoder_2"].to(dtype=self.torch_dtype)
 
                 for param_name, param in converted_unet_checkpoint.items():
                     set_module_tensor_to_device(
-                        unet, param_name, "cpu", value=param, dtype=self.torch_dtype
+                        self.values["unet"],
+                        param_name,
+                        "cpu",
+                        value=param,
+                        dtype=self.torch_dtype,
                     )
 
-        num_channels_latents = unet.config.in_channels
-
-        self.values["text_encoder_1"] = text_encoder_1
-        self.values["text_encoder_2"] = text_encoder_2
-        self.values["tokenizer_1"] = tokenizer_1
-        self.values["tokenizer_2"] = tokenizer_2
-        self.values["unet"] = unet
-        self.values["num_channels_latents"] = num_channels_latents
+        self.values["num_channels_latents"] = self.values["unet"].config.in_channels
 
         return self.values
+
+    def delete(self):
+        self.clear_models()
+        super().delete()
+
+    def clear_models(self):
+        self.values["unet"] = None
+        self.values["text_encoder_1"] = None
+        self.values["text_encoder_2"] = None
+        self.values["tokenizer_1"] = None
+        self.values["tokenizer_2"] = None
+        self.values["num_channels_latents"] = None
+        torch.cuda.empty_cache()

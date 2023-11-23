@@ -94,27 +94,20 @@ class TextToImageModule(BaseModule):
         )
         self.settings.endGroup()
 
-        self.rendering_generation_data = None
         self.observers = []
 
-        self.node_graph = None
-        self.new_graph = True
-        self.node_ids = {}
+        self.node_graph = ImageArtisanNodeGraph()
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         self.torch_dtype = torch.float16
         self.batch_size = 1
         self.taesd_dec = None
-        self.changed_parameters = []
-        self.deleted_loras = []
-        self.deleted_controlnets = []
 
         self.taesd_loader_thread = None
-        self.node_graph_thread = None
+        self.node_graph_thread = NodeGraphThread(node_graph=self.node_graph)
         self.image_processor_thread = None
 
         self.threads = {
             "taesd_loader_thread": self.taesd_loader_thread,
-            "node_graph_thread": self.node_graph_thread,
             "image_processor_thread": self.image_processor_thread,
         }
 
@@ -343,110 +336,26 @@ class TextToImageModule(BaseModule):
     def taesd_error(self, error_text):
         self.show_error(error_text)
         self.preferences.intermediate_images = False
-        self.create_graph()
+        self.run_graph()
 
     def taesd_loaded(self):
         self.taesd_dec = self.taesd_loader_thread.taesd_dec
         self.status_bar.showMessage("Taesd loaded")
-        self.create_graph()
+        self.run_graph()
 
     def run_graph(self):
-        if self.rendering_generation_data is not None:
-            self.changed_parameters = []
-            self.deleted_loras = []
-            self.deleted_controlnets = []
-
-            for attr in ImageGenData.__annotations__:
-                if attr == "loras":
-                    generation_loras = set(
-                        lora.filename for lora in self.image_generation_data.loras
-                    )
-                    rendering_loras = set(
-                        lora.filename for lora in self.rendering_generation_data.loras
-                    )
-
-                    if generation_loras != rendering_loras:
-                        self.changed_parameters.append(attr)
-                        self.deleted_loras = list(rendering_loras - generation_loras)
-                    elif any(
-                        getattr(lora, lora_attr)
-                        != getattr(self.rendering_generation_data.loras[i], lora_attr)
-                        for i, lora in enumerate(self.image_generation_data.loras)
-                        for lora_attr in lora.__dict__
-                    ):
-                        self.changed_parameters.append(attr)
-
-                elif attr == "controlnets":
-                    generation_controlnets = set(
-                        controlnet.controlnet_id
-                        for controlnet in self.image_generation_data.controlnets
-                    )
-                    rendering_controlnets = set(
-                        controlnet.controlnet_id
-                        for controlnet in self.rendering_generation_data.controlnets
-                    )
-
-                    if generation_controlnets != rendering_controlnets:
-                        self.changed_parameters.append(attr)
-                        self.deleted_controlnets = list(
-                            rendering_controlnets - generation_controlnets
-                        )
-                    elif any(
-                        getattr(controlnet, controlnet_attr)
-                        != getattr(
-                            self.rendering_generation_data.controlnets[i],
-                            controlnet_attr,
-                        )
-                        for i, controlnet in enumerate(
-                            self.image_generation_data.controlnets
-                        )
-                        for controlnet_attr in controlnet.__dict__
-                    ):
-                        self.changed_parameters.append(attr)
-
-                else:
-                    if getattr(self.image_generation_data, attr) != getattr(
-                        self.rendering_generation_data, attr
-                    ):
-                        self.changed_parameters.append(attr)
-
-        self.rendering_generation_data = self.image_generation_data.copy()
-        self.logger.debug(
-            "The following parameters have changed: %s", self.changed_parameters
-        )
-
-        if len(self.changed_parameters) == 0 and not self.new_graph:
-            self.show_snackbar(
-                "Nothing changed from last time, the image would be the same."
-            )
-            self.generating = False
-            self.prompt_window.set_button_generate()
-            return
-
-        use_model_offload = False
-        use_sequential_offload = False
-
-        if self.node_graph is None or self.new_graph:
-            self.node_graph = ImageArtisanNodeGraph()
-            self.node_ids = {}
-
         self.status_bar.showMessage("Setting up generation...")
-        self.progress_bar.setMaximum(self.rendering_generation_data.steps)
+        self.progress_bar.setMaximum(self.image_generation_data.steps)
 
-        self.node_graph_thread = NodeGraphThread(
-            self.node_graph,
-            self.node_ids,
-            self.rendering_generation_data,
-            self.changed_parameters,
-            model_offload=use_model_offload,
-            sequential_offload=use_sequential_offload,
-        )
+        self.node_graph_thread.image_generation_data = self.image_generation_data
+        self.node_graph_thread.model_offload = self.preferences.model_offload
+        self.node_graph_thread.sequential_offload = self.preferences.sequential_offload
+
         self.node_graph_thread.progress_update.connect(self.step_progress_update)
         self.node_graph_thread.status_changed.connect(self.update_status_bar)
         self.node_graph_thread.generation_error.connect(self.show_error)
         self.node_graph_thread.generation_aborted.connect(self.on_finished_abort)
         self.node_graph_thread.generation_finished.connect(self.generation_finished)
-        self.node_graph_thread.finished.connect(self.reset_thread)
         self.node_graph_thread.start()
 
     def step_progress_update(self, step, latents):
@@ -484,7 +393,6 @@ class TextToImageModule(BaseModule):
 
         self.progress_bar.setMaximum(100)
         self.progress_bar.setValue(100)
-        self.new_graph = False
 
         image_processor = ImageProcessor()
         image_processor.set_pillow_image(image)
@@ -492,7 +400,7 @@ class TextToImageModule(BaseModule):
 
         self.image_viewer.set_pixmap(image_processor.get_qpixmap())
         serialized_data = image_processor.serialize_image_data(
-            self.rendering_generation_data, self.preferences
+            self.image_generation_data, self.preferences
         )
         self.image_viewer.serialized_data = serialized_data
 
@@ -566,8 +474,7 @@ class TextToImageModule(BaseModule):
             self.show_error(e)
 
     def on_abort(self):
-        if self.node_graph_thread is not None:
-            self.node_graph_thread.abort = True
+        self.node_graph_thread.abort = True
 
     def on_finished_abort(self):
         self.update_status_bar("Aborted")
