@@ -145,6 +145,7 @@ class StableDiffusionXLModelNode(Node):
                     "./configs/clip-vit-large-patch14",
                     local_files_only=True,
                 )
+
                 config = CLIPTextConfig.from_pretrained(
                     "./configs/clip-vit-large-patch14", local_files_only=True
                 )
@@ -157,7 +158,10 @@ class StableDiffusionXLModelNode(Node):
                     local_files_only=True,
                     text_encoder=self.values["text_encoder_1"],
                 )
-                self.values["text_encoder_1"].to(dtype=self.torch_dtype)
+                self.values["text_encoder_1"].to(
+                    device=self.device, dtype=self.torch_dtype
+                )
+
                 self.values["tokenizer_2"] = CLIPTokenizer.from_pretrained(
                     "./configs/CLIP-ViT-bigG-14-laion2B-39B-b160k",
                     pad_token="!",
@@ -173,13 +177,15 @@ class StableDiffusionXLModelNode(Node):
                     has_projection=True,
                     **config_kwargs,
                 )
-                self.values["text_encoder_2"].to(dtype=self.torch_dtype)
+                self.values["text_encoder_2"].to(
+                    device=self.device, dtype=self.torch_dtype
+                )
 
                 for param_name, param in converted_unet_checkpoint.items():
                     set_module_tensor_to_device(
                         self.values["unet"],
                         param_name,
-                        "cpu",
+                        self.device,
                         value=param,
                         dtype=self.torch_dtype,
                     )
