@@ -60,6 +60,15 @@ class Node:
             node.dependents.remove(self)
         self.updated = True
 
+    def connections_changed(self, new_connections):
+        # Convert current connections to a format that can be compared with new_connections
+        current_connections = [
+            (dep.id, output_name)
+            for input_name, deps in self.connections.items()
+            for dep, output_name in deps
+        ]
+        return set(current_connections) != set(new_connections)
+
     def set_updated(self, updated_nodes=None):
         self.updated = True
         if updated_nodes is not None:
