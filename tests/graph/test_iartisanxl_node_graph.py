@@ -116,10 +116,45 @@ class TestImageArtisanNodeGraph(unittest.TestCase):
         retrieved_node = self.graph.get_node(1)
         self.assertEqual(retrieved_node, None)
 
+    def test_add_node_with_name(self):
+        mock_node = MockNode()
+        self.graph.add_node(mock_node, "mock_node")
+        self.assertEqual(self.graph.nodes[0].name, "mock_node")
+
+    def test_add_duplicate_node_with_name(self):
+        mock_node = MockNode()
+        self.graph.add_node(mock_node, "mock_node")
+
+        with self.assertRaises(ValueError) as context:
+            self.graph.add_node(mock_node, "mock_node")
+
+        self.assertTrue(
+            "A node with the name mock_node already exists in the graph."
+            in str(context.exception)
+        )
+
+    def test_get_node_by_name(self):
+        mock_node = MockNode()
+        self.graph.add_node(mock_node, "mock_node")
+        retrieved_node = self.graph.get_node_by_name("mock_node")
+        self.assertEqual(retrieved_node, mock_node)
+
+    def test_get_false_node_by_name(self):
+        mock_node = MockNode()
+        self.graph.add_node(mock_node, "mock_node")
+        retrieved_node = self.graph.get_node_by_name("mock_false_node")
+        self.assertEqual(retrieved_node, None)
+
     def test_delete_node(self):
         mock_node = MockNode()
         self.graph.add_node(mock_node)
         self.graph.delete_node(0)
+        self.assertEqual(len(self.graph.nodes), 0)
+
+    def test_delete_node_by_name(self):
+        mock_node = MockNode()
+        self.graph.add_node(mock_node, "mock_node")
+        self.graph.delete_node_by_name("mock_node")
         self.assertEqual(len(self.graph.nodes), 0)
 
     @patch.object(MockNode, "__call__", return_value=None)
@@ -649,3 +684,22 @@ class TestImageArtisanNodeGraph(unittest.TestCase):
         # Check if ValueError is raised when running the graph
         with self.assertRaises(ValueError):
             self.graph()
+
+    def test_to_json_node_names(self):
+        mock_node_one = MockNode()
+        self.graph.add_node(mock_node_one, "test_node_one")
+        mock_node_two = MockNode()
+        self.graph.add_node(mock_node_two, "test_node_two")
+
+        json_graph = self.graph.to_json()
+
+        json_string = {
+            "nodes": [
+                {"class": "MockNode", "id": 0, "name": "test_node_one"},
+                {"class": "MockNode", "id": 1, "name": "test_node_two"},
+            ],
+            "connections": [],
+        }
+        valid_json = json.dumps(json_string)
+
+        self.assertEqual(json_graph, valid_json)

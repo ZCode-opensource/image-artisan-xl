@@ -8,6 +8,7 @@ class Node:
 
     def __init__(self):
         self.id = None
+        self.name = None
         self.updated = True
         self.dependencies = []
         self.dependents = []
@@ -106,12 +107,15 @@ class Node:
         return {
             "class": type(self).__name__,
             "id": self.id,
+            "name": self.name,
         }
 
     @classmethod
     def from_dict(cls, node_dict, _callbacks=None):
         node = cls()
         node.id = node_dict["id"]
+        if "name" in node_dict:
+            node.name = node_dict["name"]
         return node
 
     def update_inputs(self, node_dict):

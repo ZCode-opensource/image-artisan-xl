@@ -16,7 +16,15 @@ class ImageArtisanNodeGraph:
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         self.torch_dtype = torch.float16
 
-    def add_node(self, node: Node):
+    def add_node(self, node: Node, name: str = None):
+        # Check if the name is not None and is unique
+        if name is not None:
+            for existing_node in self.nodes:
+                if existing_node.name == name:
+                    raise ValueError(
+                        f"A node with the name {name} already exists in the graph."
+                    )
+        node.name = name
         node.id = self.node_counter
         self.nodes.append(node)
         self.node_counter += 1
@@ -27,6 +35,12 @@ class ImageArtisanNodeGraph:
                 return node
         return None
 
+    def get_node_by_name(self, name: str):
+        for node in self.nodes:
+            if node.name == name:
+                return node
+        return None
+
     def delete_node(self, node_id):
         node = self.get_node(node_id)
         if node is not None:
@@ -34,6 +48,13 @@ class ImageArtisanNodeGraph:
             for other_node in self.nodes:
                 other_node.disconnect_from_node(node)
             # Remove the node from the graph
+            self.nodes.remove(node)
+
+    def delete_node_by_name(self, name: str):
+        node = self.get_node_by_name(name)
+        if node is not None:
+            for other_node in self.nodes:
+                other_node.disconnect_from_node(node)
             self.nodes.remove(node)
 
     @torch.no_grad()
