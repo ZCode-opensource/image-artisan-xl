@@ -107,19 +107,19 @@ class TestImageArtisanNodeGraph(unittest.TestCase):
     def test_get_node(self):
         mock_node = MockNode()
         self.graph.add_node(mock_node)
-        retrieved_node = self.graph.get_node(MockNode, 0)
+        retrieved_node = self.graph.get_node(0)
         self.assertEqual(retrieved_node, mock_node)
 
     def test_get_false_node(self):
         mock_node = MockNode()
         self.graph.add_node(mock_node)
-        retrieved_node = self.graph.get_node(MockNode, 1)
+        retrieved_node = self.graph.get_node(1)
         self.assertEqual(retrieved_node, None)
 
     def test_delete_node(self):
         mock_node = MockNode()
         self.graph.add_node(mock_node)
-        self.graph.delete_node(MockNode, 0)
+        self.graph.delete_node(0)
         self.assertEqual(len(self.graph.nodes), 0)
 
     @patch.object(MockNode, "__call__", return_value=None)

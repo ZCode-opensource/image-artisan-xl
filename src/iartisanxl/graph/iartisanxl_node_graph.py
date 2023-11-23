@@ -21,14 +21,14 @@ class ImageArtisanNodeGraph:
         self.nodes.append(node)
         self.node_counter += 1
 
-    def get_node(self, node_class, node_id):
+    def get_node(self, node_id):
         for node in self.nodes:
-            if isinstance(node, node_class) and node.id == node_id:
+            if node.id == node_id:
                 return node
         return None
 
-    def delete_node(self, node_class, node_id):
-        node = self.get_node(node_class, node_id)
+    def delete_node(self, node_id):
+        node = self.get_node(node_id)
         if node is not None:
             # Disconnect the node from all other nodes
             for other_node in self.nodes:
@@ -145,7 +145,7 @@ class ImageArtisanNodeGraph:
         # Remove nodes that are not in the JSON file
         for node_id, node in current_id_to_node.items():
             if node_id not in new_id_to_node:
-                self.delete_node(type(node), node_id)
+                self.delete_node(node_id)
 
         # Collect new connections for each node and map nodes to input names
         new_connections = defaultdict(list)
