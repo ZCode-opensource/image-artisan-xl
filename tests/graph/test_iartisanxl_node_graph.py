@@ -12,6 +12,38 @@ class MockNode(Node):
     pass
 
 
+class MockTextNode(Node):
+    OUTPUTS = ["text"]
+
+    def __init__(self, text: str = None):
+        super().__init__()
+        self.text = text
+
+    def update_text(self, text: str):
+        self.text = text
+        self.set_updated()
+
+    def to_dict(self):
+        node_dict = super().to_dict()
+        node_dict["text"] = self.text
+        return node_dict
+
+    @classmethod
+    def from_dict(cls, node_dict, _callbacks=None):
+        node = super(MockTextNode, cls).from_dict(node_dict)
+        node.text = node_dict["text"]
+        return node
+
+    def update_inputs(self, node_dict):
+        self.text = node_dict["text"]
+        self.set_updated()
+
+    def __call__(self):
+        super().__call__()
+        self.values["text"] = self.text
+        return self.values
+
+
 class MockNumberNode(Node):
     OUTPUTS = ["value"]
 
@@ -88,6 +120,7 @@ class MockCycleNode(Node):
 
 NODE_CLASSES = {
     "MockNode": MockNode,
+    "MockTextNode": MockTextNode,
     "MockNumberNode": MockNumberNode,
     "MockSumNumbers": MockSumNumbers,
     "MockMaybeSumNumbers": MockMaybeSumNumbers,
@@ -103,6 +136,7 @@ class TestImageArtisanNodeGraph(unittest.TestCase):
         mock_node = MockNode()
         self.graph.add_node(mock_node)
         self.assertEqual(self.graph.nodes[0], mock_node)
+        self.assertEqual(len(self.graph.nodes), 1)
         self.assertEqual(mock_node.id, 0)
 
     def test_get_node(self):
@@ -245,6 +279,9 @@ class TestImageArtisanNodeGraph(unittest.TestCase):
         for node in new_graph.nodes:
             self.assertIsInstance(node, (MockNumberNode, MockSumNumbers))
 
+        # Test the number of nodes
+        self.assertEqual(len(self.graph.nodes), 3)
+
     def test_save_and_load_with_file(self):
         # Add nodes to the graph
         mock_number_node1 = MockNumberNode(number_value=3)
@@ -274,6 +311,9 @@ class TestImageArtisanNodeGraph(unittest.TestCase):
         self.assertEqual(len(new_graph.nodes), len(self.graph.nodes))
         for node in new_graph.nodes:
             self.assertIsInstance(node, (MockNumberNode, MockSumNumbers))
+
+        # Test the number of nodes
+        self.assertEqual(len(self.graph.nodes), 3)
 
         # Clean up the temporary file)
         os.unlink(temp_file.name)
@@ -341,6 +381,9 @@ class TestImageArtisanNodeGraph(unittest.TestCase):
         # Check that the connections and the result of sum_node are correct
         self.assertEqual(mock_sum_node.values["sum_numbers"], 10)
 
+        # Test the number of nodes
+        self.assertEqual(len(self.graph.nodes), 3)
+
     def test_update_from_json_file(self):
         # Create a graph
         mock_number_node1 = MockNumberNode(number_value=3)
@@ -407,6 +450,9 @@ class TestImageArtisanNodeGraph(unittest.TestCase):
         # Check that the connections and the result of sum_node are correct
         self.assertEqual(mock_sum_node.values["sum_numbers"], 10)
 
+        # Test the number of nodes
+        self.assertEqual(len(self.graph.nodes), 3)
+
         # Clean up the temporary file
         os.unlink(temp_file.name)
 
@@ -458,6 +504,9 @@ class TestImageArtisanNodeGraph(unittest.TestCase):
         self.assertEqual(mock_number_node2.updated, False)
         self.assertEqual(mock_sum_node.updated, False)
 
+        # Test the number of nodes
+        self.assertEqual(len(self.graph.nodes), 3)
+
     def test_update_from_json_without_connections(self):
         # Create a graph
         mock_number_node1 = MockNumberNode(number_value=3)
@@ -486,6 +535,9 @@ class TestImageArtisanNodeGraph(unittest.TestCase):
         self.assertEqual(mock_number_node1.updated, False)
         self.assertEqual(mock_number_node2.updated, True)
 
+        # Test the number of nodes
+        self.assertEqual(len(self.graph.nodes), 2)
+
     def test_update_from_json_adding_node(self):
         # Create a graph
         mock_number_node1 = MockNumberNode(number_value=3)
@@ -496,6 +548,9 @@ class TestImageArtisanNodeGraph(unittest.TestCase):
 
         # run the graph
         self.graph()
+
+        # Test the number of nodes
+        self.assertEqual(len(self.graph.nodes), 2)
 
         json_string = {
             "nodes": [
@@ -564,6 +619,9 @@ class TestImageArtisanNodeGraph(unittest.TestCase):
         mock_sum_node = self.graph.nodes[3]
         self.assertEqual(mock_sum_node.values["sum_numbers"], 13)
 
+        # Test the number of nodes
+        self.assertEqual(len(self.graph.nodes), 4)
+
     def test_update_from_json_add_connections(self):
         # Create a graph
         mock_number_node1 = MockNumberNode(number_value=3)
@@ -578,6 +636,9 @@ class TestImageArtisanNodeGraph(unittest.TestCase):
 
         # run the graph
         self.graph()
+
+        # Test the number of nodes
+        self.assertEqual(len(self.graph.nodes), 3)
 
         # Check value
         self.assertEqual(mock_sum_node.values["sum_numbers"], 3)
@@ -609,16 +670,22 @@ class TestImageArtisanNodeGraph(unittest.TestCase):
         # Load the JSON file into a graph
         self.graph.update_from_json(json_graph, NODE_CLASSES)
 
-        # Check updated state on each node
+        # Check updated state on old nodes
         self.assertEqual(mock_number_node1.updated, False)
         self.assertEqual(mock_number_node2.updated, False)
-        self.assertEqual(mock_sum_node.updated, True)
+
+        # Check updated on new node
+        new_sum_node = self.graph.get_node(2)
+        self.assertEqual(new_sum_node.updated, True)
 
         # run the graph again
         self.graph()
 
-        # Check that the connections and the result of sum_node are correct
-        self.assertEqual(mock_sum_node.values["sum_numbers"], 8)
+        # Check that the connections and the result of new sum_node are correct
+        self.assertEqual(new_sum_node.values["sum_numbers"], 8)
+
+        # Test the number of nodes
+        self.assertEqual(len(self.graph.nodes), 3)
 
     def test_update_from_json_remove_node(self):
         # Create a graph
@@ -797,20 +864,97 @@ class TestImageArtisanNodeGraph(unittest.TestCase):
             for conns in node.connections.values():
                 self.assertNotIn(node_id, [n.id for n, _ in conns])
 
-    def test_reference_on_output_node(self):
-        mock_number_node1 = MockNumberNode(number_value=3)
-        self.graph.add_node(mock_number_node1)
+    def test_graph_updated_flag(self):
+        # check that the graphs starts as not updated
+        self.assertEqual(self.graph.updated, False)
 
-        mock_number_node2 = MockNumberNode(number_value=4)
-        self.graph.add_node(mock_number_node2)
+        mock_number_node_one = MockNumberNode(number_value=12)
+        self.graph.add_node(mock_number_node_one)
+
+        mock_number_node_two = MockNumberNode(number_value=11)
+        self.graph.add_node(mock_number_node_two)
+
+        mock_text_node = MockTextNode(text="This text is a test")
+        self.graph.add_node(mock_text_node)
 
         mock_sum_node = MockSumNumbers()
-        mock_sum_node.connect("number_one", mock_number_node1, "value")
-        mock_sum_node.connect("number_two", mock_number_node2, "value")
+        mock_sum_node.connect("number_one", mock_number_node_one, "value")
+        mock_sum_node.connect("number_two", mock_number_node_two, "value")
         self.graph.add_node(mock_sum_node)
 
-        node_id = mock_number_node1.id
-        self.graph.delete_node(node_id)
-        self.assertIsNone(self.graph.get_node(node_id))
+        # Run the graph
+        self.graph()
 
-        # self.assertIsNone(mock_sum_node.number_one)
+        # check if the graph was updated
+        self.assertEqual(self.graph.updated, True)
+
+        # First check the values of each node
+        self.assertEqual(mock_number_node_one.number, 12)
+        self.assertEqual(mock_number_node_two.number, 11)
+        self.assertEqual(mock_text_node.text, "This text is a test")
+        self.assertEqual(mock_sum_node.values["sum_numbers"], 23)
+
+        # Run it again without updates
+        self.graph()
+
+        # check if the graph was updated
+        self.assertEqual(self.graph.updated, False)
+
+        # check that the sum did not change
+        self.assertEqual(mock_sum_node.values["sum_numbers"], 23)
+
+        # change manually the text node
+        mock_text_node.update_text("This text is changed for this test")
+
+        # check than only the text node was flagges as updated
+        self.assertEqual(mock_number_node_one.updated, False)
+        self.assertEqual(mock_number_node_two.updated, False)
+        self.assertEqual(mock_text_node.updated, True)
+        self.assertEqual(mock_sum_node.updated, False)
+
+        # Run the graph
+        self.graph()
+
+        # check if the graph was updated
+        self.assertEqual(self.graph.updated, True)
+
+        # now lets test with from json
+        json_string = {
+            "nodes": [
+                {"class": "MockNumberNode", "id": 0, "number": 12},
+                {"class": "MockNumberNode", "id": 1, "number": 11},
+                {"class": "MockSumNumbers", "id": 2},
+            ],
+            "connections": [
+                {
+                    "from_node_id": 0,
+                    "from_output_name": "value",
+                    "to_node_id": 2,
+                    "to_input_name": "number_one",
+                },
+                {
+                    "from_node_id": 1,
+                    "from_output_name": "value",
+                    "to_node_id": 2,
+                    "to_input_name": "number_two",
+                },
+            ],
+        }
+
+        json_graph = json.dumps(json_string)
+        self.graph.update_from_json(json_graph, NODE_CLASSES)
+
+        self.assertEqual(mock_number_node_one.updated, False)
+        self.assertEqual(mock_number_node_two.updated, False)
+
+        # Test the number of nodes
+        self.assertEqual(len(self.graph.nodes), 3)
+
+        # check if the graph was updated
+        self.assertEqual(self.graph.updated, True)
+
+        # Now test if the graph is loaded from json
+        self.graph.from_json(json_graph, NODE_CLASSES)
+
+        # Test the number of nodes
+        self.assertEqual(len(self.graph.nodes), 3)
