@@ -166,8 +166,6 @@ class ImageArtisanNodeGraph:
                         from_node,
                         output_name,
                     )
-                if node.id not in updated_nodes:
-                    updated_nodes.add(node.id)
 
         # Restore any nodes that haven't changed
         for node in self.nodes:
