@@ -12,7 +12,6 @@ class TestBaseDialog(unittest.TestCase):
         directories = None
         title = "Test"
         show_error = lambda x: None
-        image_generation_data = None
         image_viewer = None
         prompt_window = None
         auto_generate_function = lambda: None
@@ -21,7 +20,6 @@ class TestBaseDialog(unittest.TestCase):
             directories,
             title,
             show_error,
-            image_generation_data,
             image_viewer,
             prompt_window,
             auto_generate_function,

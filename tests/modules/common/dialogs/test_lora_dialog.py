@@ -25,7 +25,6 @@ class TestLoraDialog(unittest.TestCase):
 
         title = "Test"
         show_error = lambda x: None
-        image_generation_data = None
         image_viewer = None
         prompt_window = None
         auto_generate_function = lambda: None
@@ -34,7 +33,6 @@ class TestLoraDialog(unittest.TestCase):
             directories,
             title,
             show_error,
-            image_generation_data,
             image_viewer,
             prompt_window,
             auto_generate_function,
@@ -64,7 +62,3 @@ class TestLoraDialog(unittest.TestCase):
             self.assertEqual(self.dialog.selected_lora.filename, data["root_filename"])
             self.assertEqual(self.dialog.selected_lora.version, data["version"])
             self.assertEqual(self.dialog.selected_lora.path, data["filepath"])
-
-
-# def test_lora_selected(self):
-#     self.assertNotEqual(self.dialog.selected_lora, None)
