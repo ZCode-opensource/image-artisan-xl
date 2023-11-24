@@ -980,3 +980,28 @@ class TestImageArtisanNodeGraph(unittest.TestCase):
         # Check that elapsed_time has been set for each node
         self.assertEqual(mock_node.elapsed_time, 0)
         self.assertGreater(mock_timer_node.elapsed_time, 0.1)
+
+    def test_get_all_nodes_class(self):
+        mock_node_one = MockNode()
+        self.graph.add_node(mock_node_one, "name_1")
+
+        mock_node_two = MockTextNode()
+        self.graph.add_node(mock_node_two, "name_2")
+
+        mock_node_three = MockNode()
+        self.graph.add_node(mock_node_three, "name_3")
+
+        mock_node_four = MockTextNode()
+        self.graph.add_node(mock_node_four, "name_4")
+
+        mock_node_five = MockNode()
+        self.graph.add_node(mock_node_five, "name_5")
+
+        nodes = self.graph.get_all_nodes_class(MockNode)
+
+        self.assertEqual(len(nodes), 3)
+
+        for node in nodes:
+            assert isinstance(
+                node, MockNode
+            ), f"Node {node.name} is not an instance of MockNode"
