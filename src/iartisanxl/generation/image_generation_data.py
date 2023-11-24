@@ -1,4 +1,5 @@
 import threading
+import copy
 
 import attr
 
@@ -53,7 +54,7 @@ class ImageGenerationData:
             super().__init__(*args, **kwargs)
 
     def update_previous_state(self):
-        self.previous_state = attr.asdict(self)
+        self.previous_state = copy.deepcopy(attr.asdict(self))
 
     def get_changed_attributes(self):
         current_state = attr.asdict(self)

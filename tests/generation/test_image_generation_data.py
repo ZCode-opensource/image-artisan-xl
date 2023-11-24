@@ -1,4 +1,3 @@
-import copy
 import attr
 import unittest
 
@@ -48,9 +47,9 @@ class TestImageGenerationData(unittest.TestCase):
 
     def test_update_previous_state(self):
         obj = ImageGenerationData()
-        obj_copy = copy.deepcopy(obj)
+        original_state = attr.asdict(obj)
         obj.update_previous_state()
-        self.assertEqual(obj.previous_state, attr.asdict(obj_copy))
+        self.assertEqual(obj.previous_state, original_state)
 
     def test_get_changed_attributes(self):
         obj = ImageGenerationData(module="test_module")
