@@ -1,4 +1,5 @@
 import inspect
+import gc
 
 import torch
 
@@ -205,9 +206,12 @@ class ImageGenerationNode(Node):
                 return latents
 
         if self.cpu_offload:
-            self.unet.to(self.device)
+            self.unet.to("cpu")
 
         self.values["latents"] = latents
+
+        del latents, noise_pred
+        gc.collect()
 
         return self.values
 

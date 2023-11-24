@@ -49,6 +49,13 @@ class NodeGraphThread(QThread):
     def run(self):
         self.status_changed.emit("Generating image...")
 
+        if self.node_graph.sequential_offload != self.sequential_offload:
+            self.check_and_update(
+                "sequential_offload", "sequential_offload", self.sequential_offload
+            )
+        elif self.node_graph.cpu_offload != self.model_offload:
+            self.check_and_update("cpu_offload", "model_offload", self.model_offload)
+
         node_classes = {
             "StableDiffusionXLModelNode": StableDiffusionXLModelNode,
             "TextNode": TextNode,
@@ -82,3 +89,14 @@ class NodeGraphThread(QThread):
 
     def preview_image(self, image):
         self.generation_finished.emit(image, 0)
+
+    def reset_model_path(self, model_name):
+        model_node = self.node_graph.get_node_by_name(model_name)
+        if model_node is not None:
+            model_node.path = ""  # force reload of model
+
+    def check_and_update(self, attr1, attr2, value):
+        if getattr(self.node_graph, attr1) != getattr(self, attr2):
+            self.reset_model_path("sdxl_model")
+            self.reset_model_path("vae_model")
+            setattr(self.node_graph, attr1, value)

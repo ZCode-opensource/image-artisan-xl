@@ -63,11 +63,9 @@ class StableDiffusionXLModelNode(Node):
     def __call__(self):
         super().__call__()
 
-        if not self.single_checkpoint and os.path.isdir(self.path):
-            device = (
-                "cpu" if self.sequential_offload or self.cpu_offload else self.device
-            )
+        device = "cpu" if self.sequential_offload or self.cpu_offload else self.device
 
+        if not self.single_checkpoint and os.path.isdir(self.path):
             # simple check to ensure that at least could be a diffusers model
             if os.path.isfile(os.path.join(self.path, "model_index.json")):
                 # we need to load the text encoders, the tokenizers and the unet
@@ -81,7 +79,9 @@ class StableDiffusionXLModelNode(Node):
                 ).to(device)
 
                 if self.sequential_offload:
-                    text_encoder_1 = accelerate.cpu_offload(text_encoder_1, "cuda:0")
+                    self.values["text_encoder_1"] = accelerate.cpu_offload(
+                        self.values["text_encoder_1"], "cuda:0"
+                    )
 
                 self.values[
                     "text_encoder_2"
@@ -97,7 +97,9 @@ class StableDiffusionXLModelNode(Node):
                 )
 
                 if self.sequential_offload:
-                    text_encoder_2 = accelerate.cpu_offload(text_encoder_2, "cuda:0")
+                    self.values["text_encoder_2"] = accelerate.cpu_offload(
+                        self.values["text_encoder_2"], "cuda:0"
+                    )
 
                 self.values["tokenizer_1"] = CLIPTokenizer.from_pretrained(
                     os.path.join(self.path, "tokenizer")
@@ -158,9 +160,7 @@ class StableDiffusionXLModelNode(Node):
                     local_files_only=True,
                     text_encoder=self.values["text_encoder_1"],
                 )
-                self.values["text_encoder_1"].to(
-                    device=self.device, dtype=self.torch_dtype
-                )
+                self.values["text_encoder_1"].to(device=device, dtype=self.torch_dtype)
 
                 self.values["tokenizer_2"] = CLIPTokenizer.from_pretrained(
                     "./configs/CLIP-ViT-bigG-14-laion2B-39B-b160k",
@@ -177,15 +177,13 @@ class StableDiffusionXLModelNode(Node):
                     has_projection=True,
                     **config_kwargs,
                 )
-                self.values["text_encoder_2"].to(
-                    device=self.device, dtype=self.torch_dtype
-                )
+                self.values["text_encoder_2"].to(device=device, dtype=self.torch_dtype)
 
                 for param_name, param in converted_unet_checkpoint.items():
                     set_module_tensor_to_device(
                         self.values["unet"],
                         param_name,
-                        self.device,
+                        device,
                         value=param,
                         dtype=self.torch_dtype,
                     )

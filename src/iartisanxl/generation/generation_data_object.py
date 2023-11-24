@@ -162,10 +162,14 @@ class ImageGenData:
 
     def to_json_graph(self):
         node_attributes = [
-            ("StableDiffusionXLModelNode", 0, {"path": self.model.path}),
+            (
+                "StableDiffusionXLModelNode",
+                0,
+                {"path": self.model.path, "name": "sdxl_model"},
+            ),
             ("TextNode", 1, {"text": self.positive_prompt_clipg}),
             ("PromptsEncoderNode", 2, {}),
-            ("VaeModelNode", 3, {"path": self.vae.path}),
+            ("VaeModelNode", 3, {"path": self.vae.path, "name": "vae_model"}),
             ("NumberNode", 4, {"number": self.seed}),
             ("NumberNode", 5, {"number": self.image_height}),
             ("NumberNode", 6, {"number": self.image_width}),

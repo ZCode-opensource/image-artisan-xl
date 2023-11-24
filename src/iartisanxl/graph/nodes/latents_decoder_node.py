@@ -1,3 +1,4 @@
+import gc
 import torch
 import numpy as np
 from PIL import Image
@@ -34,15 +35,15 @@ class LatentsDecoderNode(Node):
             self.vae.to(dtype=self.torch_dtype)
 
         if self.cpu_offload:
-            self.vae.to(self.device)
+            self.vae.to("cpu")
 
         image = decoded[0]
         image = (image / 2 + 0.5).clamp(0, 1)
         image = image.cpu().permute(1, 2, 0).float().numpy()
-        image = Image.fromarray(np.uint8(image * 255))
+        self.values["image"] = Image.fromarray(np.uint8(image * 255))
 
+        del image
+        gc.collect()
         torch.cuda.empty_cache()
-
-        self.values["image"] = image
 
         return self.values
