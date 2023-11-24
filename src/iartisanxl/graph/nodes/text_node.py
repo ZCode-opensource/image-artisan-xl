@@ -9,7 +9,7 @@ class TextNode(Node):
         super().__init__()
         self.text = text
 
-    def update_text(self, text: str):
+    def update_value(self, text: str):
         self.text = text
         self.set_updated()
 

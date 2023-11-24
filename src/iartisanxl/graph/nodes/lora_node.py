@@ -18,6 +18,7 @@ from iartisanxl.graph.nodes.node import Node
 
 
 class LoraNode(Node):
+    PRIORITY = 1
     REQUIRED_INPUTS = ["unet", "text_encoder_1", "text_encoder_2", "global_lora_scale"]
     OUTPUTS = ["lora"]
 
@@ -29,6 +30,10 @@ class LoraNode(Node):
         self.path = path
         self.adapter_name = adapter_name
         self.scale = scale
+
+    def update_scale(self, scale: float):
+        self.scale = scale
+        self.set_updated()
 
     def to_dict(self):
         node_dict = super().to_dict()

@@ -2,6 +2,7 @@ from collections import defaultdict
 
 
 class Node:
+    PRIORITY = 0
     REQUIRED_INPUTS = []
     OPTIONAL_INPUTS = []
     OUTPUTS = []

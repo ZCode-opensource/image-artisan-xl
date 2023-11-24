@@ -11,7 +11,7 @@ class NumberNode(Node):
         super().__init__()
         self.number = number
 
-    def update_number(self, number: Union[int, float]):
+    def update_value(self, number: Union[int, float]):
         self.number = number
         self.set_updated()
 

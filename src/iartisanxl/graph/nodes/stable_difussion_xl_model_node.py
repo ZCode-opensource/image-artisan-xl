@@ -17,10 +17,12 @@ from diffusers.pipelines.stable_diffusion.convert_from_ckpt import (
     convert_ldm_clip_checkpoint,
     convert_open_clip_checkpoint,
 )
+from diffusers.utils.peft_utils import delete_adapter_layers
 from omegaconf import OmegaConf
 from accelerate import init_empty_weights
 from accelerate.utils import set_module_tensor_to_device
 from safetensors.torch import load_file as safe_load
+
 
 from iartisanxl.graph.nodes.node import Node
 
@@ -204,3 +206,10 @@ class StableDiffusionXLModelNode(Node):
         self.values["tokenizer_2"] = None
         self.values["num_channels_latents"] = None
         torch.cuda.empty_cache()
+
+    def delete_adapters(self, adapter_names: list[str]):
+        self.values["unet"].delete_adapters(adapter_names)
+
+        for adapter_name in adapter_names:
+            delete_adapter_layers(self.values["text_encoder_1"], adapter_name)
+            delete_adapter_layers(self.values["text_encoder_2"], adapter_name)

@@ -8,15 +8,16 @@ from iartisanxl.graph.nodes.node import Node
 
 
 class PromptsEncoderNode(Node):
+    PRIORITY = 0
     REQUIRED_INPUTS = [
         "tokenizer_1",
         "tokenizer_2",
         "text_encoder_1",
         "text_encoder_2",
-        "prompt_1",
+        "positive_prompt_1",
     ]
     OPTIONAL_INPUTS = [
-        "prompt_2",
+        "positive_prompt_2",
         "negative_prompt_1",
         "negative_prompt_2",
         "clip_skip",
@@ -46,14 +47,18 @@ class PromptsEncoderNode(Node):
 
         # Get tokens with first tokenizer
         prompt_tokens, prompt_weights = self.get_tokens_and_weights(
-            self.prompt_1, self.tokenizer_1
+            self.positive_prompt_1, self.tokenizer_1
         )
 
         neg_prompt_tokens, neg_prompt_weights = self.get_tokens_and_weights(
             negative_prompt_1, self.tokenizer_1
         )
 
-        prompt_2 = self.prompt_2 if self.prompt_2 is not None else self.prompt_1
+        positive_prompt_2 = (
+            self.positive_prompt_2
+            if self.positive_prompt_2 is not None
+            else self.positive_prompt_1
+        )
         negative_prompt_2 = (
             self.negative_prompt_2
             if self.negative_prompt_2 is not None
@@ -62,7 +67,7 @@ class PromptsEncoderNode(Node):
 
         # Get tokens with second tokenizer
         prompt_tokens_2, prompt_weights_2 = self.get_tokens_and_weights(
-            prompt_2, self.tokenizer_2
+            positive_prompt_2, self.tokenizer_2
         )
 
         neg_prompt_tokens_2, neg_prompt_weights_2 = self.get_tokens_and_weights(

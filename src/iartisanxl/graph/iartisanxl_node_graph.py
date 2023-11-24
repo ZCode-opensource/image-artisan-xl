@@ -44,6 +44,9 @@ class ImageArtisanNodeGraph:
                 return node
         return None
 
+    def get_all_nodes_class(self, node_class):
+        return [node for node in self.nodes if isinstance(node, node_class)]
+
     def delete_node(self, node_id):
         node = self.get_node(node_id)
         if node is not None:
@@ -85,7 +88,9 @@ class ImageArtisanNodeGraph:
 
         def dfs(node):
             visiting.add(node)
-            for dependency in node.dependencies:
+            for dependency in sorted(
+                node.dependencies, key=lambda x: x.PRIORITY, reverse=True
+            ):
                 if dependency in visiting:
                     raise ValueError("Graph contains a cycle")
                 if dependency not in visited:
@@ -94,7 +99,7 @@ class ImageArtisanNodeGraph:
             visited.add(node)
             sorted_nodes.append(node)
 
-        for node in self.nodes:
+        for node in sorted(self.nodes, key=lambda x: x.PRIORITY, reverse=True):
             if node not in visited:
                 dfs(node)
 

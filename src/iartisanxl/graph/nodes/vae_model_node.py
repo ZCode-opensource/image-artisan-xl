@@ -1,4 +1,5 @@
 import accelerate
+import torch
 from diffusers import AutoencoderKL
 
 from iartisanxl.graph.nodes.node import Node
@@ -10,6 +11,14 @@ class VaeModelNode(Node):
     def __init__(self, path: str = None, **kwargs):
         super().__init__(**kwargs)
         self.path = path
+
+    def update_path(self, path: str):
+        self.values["vae"] = None
+        self.values["vae_scale_factor"] = None
+        torch.cuda.empty_cache()
+
+        self.path = path
+        self.set_updated()
 
     def to_dict(self):
         node_dict = super().to_dict()
