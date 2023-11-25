@@ -50,9 +50,10 @@ class ImageArtisanNodeGraph:
     def delete_node(self, node_id):
         node = self.get_node(node_id)
         if node is not None:
-            # Disconnect the node from all other nodes
-            for other_node in self.nodes:
+            # Disconnect the node from its dependencies and dependents
+            for other_node in node.dependencies + node.dependents:
                 other_node.disconnect_from_node(node)
+                node.disconnect_from_node(other_node)
             # Call the node's delete method
             node.delete()
             # Remove the node from the graph
@@ -67,8 +68,10 @@ class ImageArtisanNodeGraph:
     def delete_node_by_name(self, name: str):
         node = self.get_node_by_name(name)
         if node is not None:
-            for other_node in self.nodes:
+            # Disconnect the node from its dependencies and dependents
+            for other_node in node.dependencies + node.dependents:
                 other_node.disconnect_from_node(node)
+                node.disconnect_from_node(other_node)
             self.nodes.remove(node)
             # Call the node's delete method
             node.delete()

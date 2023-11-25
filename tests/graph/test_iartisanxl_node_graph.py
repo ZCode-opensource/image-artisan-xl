@@ -91,6 +91,25 @@ class MockSumNumbers(Node):
         return self.values
 
 
+class MockSumNumbersList(Node):
+    REQUIRED_INPUTS = ["numbers"]
+    OUTPUTS = ["sum_numbers"]
+
+    def __call__(self):
+        super().__call__()
+
+        sum_numbers = 0
+
+        if isinstance(self.numbers, list):
+            for number in self.numbers:
+                sum_numbers += number
+        else:
+            sum_numbers = self.numbers
+
+        self.values["sum_numbers"] = sum_numbers
+        return self.values
+
+
 class MockMaybeSumNumbers(Node):
     REQUIRED_INPUTS = ["number_one"]
     OPTIONAL_INPUTS = ["number_two"]
@@ -1005,3 +1024,133 @@ class TestImageArtisanNodeGraph(unittest.TestCase):
             assert isinstance(
                 node, MockNode
             ), f"Node {node.name} is not an instance of MockNode"
+
+    def test_update_on_delete_not_connected(self):
+        mock_number_node_one = MockNumberNode(number_value=3)
+        self.graph.add_node(mock_number_node_one)
+
+        mock_number_node_two = MockNumberNode(number_value=4)
+        self.graph.add_node(mock_number_node_two)
+
+        mock_number_node_three = MockNumberNode(number_value=6)
+        self.graph.add_node(mock_number_node_three)
+
+        mock_sum_node_one = MockSumNumbers()
+        mock_sum_node_one.connect("number_one", mock_number_node_one, "value")
+        mock_sum_node_one.connect("number_two", mock_number_node_two, "value")
+        self.graph.add_node(mock_sum_node_one)
+
+        self.graph()
+        self.assertEqual(mock_number_node_one.updated, False)
+        self.graph.delete_node(mock_number_node_three.id)
+
+        self.assertEqual(mock_number_node_one.updated, False)
+        self.assertEqual(mock_number_node_two.updated, False)
+
+    def test_delete_dependent_node(self):
+        mock_number_node_one = MockNumberNode(number_value=3)
+        self.graph.add_node(mock_number_node_one)
+
+        mock_number_node_two = MockNumberNode(number_value=4)
+        self.graph.add_node(mock_number_node_two)
+
+        mock_sum_node_one = MockSumNumbers()
+        mock_sum_node_one.connect("number_one", mock_number_node_one, "value")
+        mock_sum_node_one.connect("number_two", mock_number_node_two, "value")
+        self.graph.add_node(mock_sum_node_one)
+
+        self.graph()
+        self.graph.delete_node(mock_number_node_one.id)
+        self.assertEqual(mock_sum_node_one.updated, True)
+
+    def test_complex_node_deletion(self):
+        mock_number_node_one = MockNumberNode(number_value=3)
+        self.graph.add_node(mock_number_node_one)
+
+        mock_number_node_two = MockNumberNode(number_value=4)
+        self.graph.add_node(mock_number_node_two)
+
+        mock_number_node_three = MockNumberNode(number_value=6)
+        self.graph.add_node(mock_number_node_three)
+
+        mock_sum_node_one = MockSumNumbers()
+        mock_sum_node_one.connect("number_one", mock_number_node_one, "value")
+        mock_sum_node_one.connect("number_two", mock_number_node_two, "value")
+        self.graph.add_node(mock_sum_node_one)
+
+        mock_sum_node_two = MockSumNumbers()
+        mock_sum_node_two.connect("number_one", mock_number_node_one, "value")
+        mock_sum_node_two.connect("number_two", mock_number_node_three, "value")
+        self.graph.add_node(mock_sum_node_two)
+
+        mock_sum_node_three = MockSumNumbers()
+        mock_sum_node_three.connect("number_one", mock_sum_node_two, "sum_numbers")
+        mock_sum_node_three.connect("number_two", mock_number_node_three, "value")
+        self.graph.add_node(mock_sum_node_three)
+
+        self.graph()
+        self.assertEqual(mock_sum_node_three.values["sum_numbers"], 15)
+
+        self.graph.delete_node(mock_number_node_two.id)
+
+        self.assertEqual(mock_number_node_one.updated, False)
+        self.assertEqual(mock_number_node_three.updated, False)
+        self.assertEqual(mock_sum_node_one.updated, True)
+        self.assertEqual(mock_sum_node_two.updated, False)
+        self.assertEqual(mock_sum_node_three.updated, False)
+
+    def test_second_complex_node_deletion(self):
+        mock_number_node_one = MockNumberNode(number_value=3)
+        self.graph.add_node(mock_number_node_one)
+
+        mock_number_node_two = MockNumberNode(number_value=4)
+        self.graph.add_node(mock_number_node_two)
+
+        mock_number_node_three = MockNumberNode(number_value=6)
+        self.graph.add_node(mock_number_node_three)
+
+        mock_sum_node_one = MockSumNumbers()
+        mock_sum_node_one.connect("number_one", mock_number_node_one, "value")
+        mock_sum_node_one.connect("number_two", mock_number_node_two, "value")
+        self.graph.add_node(mock_sum_node_one)
+
+        mock_sum_node_two = MockSumNumbers()
+        mock_sum_node_two.connect("number_one", mock_number_node_one, "value")
+        mock_sum_node_two.connect("number_two", mock_number_node_three, "value")
+        self.graph.add_node(mock_sum_node_two)
+
+        mock_sum_node_three = MockSumNumbers()
+        mock_sum_node_three.connect("number_one", mock_sum_node_one, "sum_numbers")
+        mock_sum_node_three.connect("number_two", mock_number_node_three, "value")
+        self.graph.add_node(mock_sum_node_three)
+
+        self.graph()
+
+        self.graph.delete_node(mock_number_node_two.id)
+
+        self.assertEqual(mock_sum_node_one.updated, True)
+        self.assertEqual(mock_sum_node_two.updated, False)
+        self.assertEqual(mock_sum_node_three.updated, True)
+
+    def test_delete_one_dependent_list_nodes(self):
+        mock_number_node_one = MockNumberNode(number_value=3)
+        self.graph.add_node(mock_number_node_one)
+
+        mock_number_node_two = MockNumberNode(number_value=4)
+        self.graph.add_node(mock_number_node_two)
+
+        mock_sum_node_one = MockSumNumbersList()
+        mock_sum_node_one.connect("numbers", mock_number_node_one, "value")
+        self.graph.add_node(mock_sum_node_one)
+
+        self.graph()
+        self.assertEqual(mock_sum_node_one.values["sum_numbers"], 3)
+        mock_sum_node_one.connect("numbers", mock_number_node_two, "value")
+
+        self.graph()
+        self.assertEqual(mock_sum_node_one.values["sum_numbers"], 7)
+        self.graph.delete_node(mock_number_node_two.id)
+        self.assertEqual(mock_sum_node_one.updated, True)
+
+        self.graph()
+        self.assertEqual(mock_sum_node_one.values["sum_numbers"], 3)
