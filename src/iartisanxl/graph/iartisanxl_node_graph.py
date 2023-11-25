@@ -110,7 +110,12 @@ class ImageArtisanNodeGraph:
                 node.cpu_offload = self.cpu_offload
                 node.sequential_offload = self.sequential_offload
                 start_time = time.time()
-                node()
+
+                try:
+                    node()
+                except KeyError as e:
+                    raise KeyError("KeyError occurred in node: " + str(e)) from e
+
                 end_time = time.time()
                 node.elapsed_time = end_time - start_time
                 self.updated = True
