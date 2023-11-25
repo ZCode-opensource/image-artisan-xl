@@ -125,6 +125,7 @@ class ImageGenerationData:
         prompts_encoder.connect("positive_prompt_2", positive_prompt_2, "value")
         prompts_encoder.connect("negative_prompt_1", negative_prompt_1, "value")
         prompts_encoder.connect("negative_prompt_2", negative_prompt_2, "value")
+        prompts_encoder.connect("global_lora_scale", lora_scale, "value")
         node_graph.add_node(prompts_encoder, "prompts_encoder")
 
         vae_model = VaeModelNode(path=self.vae.path, vae_name=self.vae.name)
