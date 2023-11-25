@@ -11,7 +11,10 @@ class LoraList:
     _original_loras: list[LoraDataObject] = attr.Factory(list)
 
     def add(self, lora):
-        self.loras.append(lora)
+        if not any(
+            existing_lora.filename == lora.filename for existing_lora in self.loras
+        ):
+            self.loras.append(lora)
 
     def update_lora(self, lora_filename, new_values):
         for lora in self.loras:
@@ -48,14 +51,22 @@ class LoraList:
         self._original_loras = copy.deepcopy(self.loras)
 
     def get_added(self):
-        return [lora for lora in self.loras if lora not in self._original_loras]
+        original_filenames = [lora.filename for lora in self._original_loras]
+        return [lora for lora in self.loras if lora.filename not in original_filenames]
 
     def get_removed(self):
-        return [lora for lora in self._original_loras if lora not in self.loras]
-
-    def get_modified(self):
+        current_filenames = [lora.filename for lora in self.loras]
         return [
             lora
-            for lora, original_lora in zip(self.loras, self._original_loras)
-            if lora != original_lora
+            for lora in self._original_loras
+            if lora.filename not in current_filenames
+        ]
+
+    def get_modified(self):
+        original_loras_dict = {lora.filename: lora for lora in self._original_loras}
+        return [
+            lora
+            for lora in self.loras
+            if lora.filename in original_loras_dict
+            and lora != original_loras_dict[lora.filename]
         ]
