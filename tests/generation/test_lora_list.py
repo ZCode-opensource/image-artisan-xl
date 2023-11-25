@@ -95,4 +95,6 @@ class TestLoraList(unittest.TestCase):
         self.lora_list.add(self.lora_two)
         self.lora_list.save_state()
         self.lora_list.update_lora("test_filename", {"id": 3})
+        self.assertEqual(len(self.lora_list.get_modified()), 1)
         self.assertEqual(self.lora_list.get_modified()[0], self.lora_one)
+        self.assertEqual(len(self.lora_list.get_added()), 0)
