@@ -6,7 +6,7 @@ from iartisanxl.app.directories import DirectoriesObject
 from iartisanxl.app.title_bar import TitleBar
 from iartisanxl.modules.common.image_viewer_simple import ImageViewerSimple
 from iartisanxl.modules.common.prompt_window import PromptWindow
-from iartisanxl.generation.generation_data_object import ImageGenData
+from iartisanxl.generation.image_generation_data import ImageGenerationData
 
 
 class CustomSizeGrip(QSizeGrip):
@@ -32,7 +32,7 @@ class BaseDialog(QDialog):
         directories: DirectoriesObject,
         title: str,
         show_error: callable,
-        image_generation_data: ImageGenData,
+        image_generation_data: ImageGenerationData,
         image_viewer: ImageViewerSimple,
         prompt_window: PromptWindow,
         auto_generate_function: callable,
@@ -40,6 +40,7 @@ class BaseDialog(QDialog):
         **kwargs,
     ):
         super().__init__(*args, **kwargs)
+        self.setWindowTitle(title)
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint)
         self.show_error = show_error
         self.directories = directories
@@ -85,5 +86,5 @@ class BaseDialog(QDialog):
     def dialog_raised(self):
         pass
 
-    def update_dialog(self, image_generation_data: ImageGenData):
+    def update_dialog(self, image_generation_data: ImageGenerationData):
         self.image_generation_data = image_generation_data

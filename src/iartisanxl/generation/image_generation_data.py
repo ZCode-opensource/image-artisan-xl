@@ -1,4 +1,3 @@
-import threading
 import copy
 
 import attr
@@ -22,9 +21,6 @@ from iartisanxl.graph.nodes.image_send_node import ImageSendNode
 
 @attr.s(auto_attribs=True, slots=True)
 class ImageGenerationData:
-    _instance = None
-    _lock = threading.Lock()
-
     module: str = "texttoimage"
     seed: int = 0
     image_width: int = 1024
@@ -42,16 +38,6 @@ class ImageGenerationData:
     clip_skip: int = 0
 
     previous_state: dict = attr.Factory(dict)
-
-    def __new__(cls, *args, **kwargs):
-        with cls._lock:
-            if not cls._instance:
-                cls._instance = super().__new__(cls)
-        return cls._instance
-
-    def __init__(self, *args, **kwargs):
-        if not self._instance:
-            super().__init__(*args, **kwargs)
 
     def update_previous_state(self):
         self.previous_state = copy.deepcopy(attr.asdict(self))

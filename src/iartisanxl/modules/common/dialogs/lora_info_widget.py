@@ -139,13 +139,13 @@ class LoraInfoWidget(QWidget):
     def load_info(self):
         metadata = get_metadata_from_safetensors(self.filepath)
 
-        image = metadata.get("iartisan_image")
-        version = metadata.get("iartisan_version")
-        description = metadata.get("iartisan_description")
-        tags = metadata.get("iartisan_tags")
-        triggers = metadata.get("iartisan_triggers")
-        example_prompt = metadata.get("iartisan_example_prompt")
-        example_generation = metadata.get("iartisan_example_generation")
+        image = metadata.get("iartisan_image", None)
+        version = metadata.get("iartisan_version", None)
+        description = metadata.get("iartisan_description", None)
+        tags = metadata.get("iartisan_tags", None)
+        triggers = metadata.get("iartisan_triggers", None)
+        example_prompt = metadata.get("iartisan_example_prompt", None)
+        example_generation = metadata.get("iartisan_example_generation", None)
 
         if image is not None:
             img_bytes = base64.b64decode(image)

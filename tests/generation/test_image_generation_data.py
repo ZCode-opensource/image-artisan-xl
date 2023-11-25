@@ -55,8 +55,18 @@ class TestImageGenerationData(unittest.TestCase):
         obj = ImageGenerationData(module="test_module")
         obj.update_previous_state()
         obj.module = "new_test_module"
+        obj.image_width = 1152
         changed_attributes = obj.get_changed_attributes()
-        self.assertEqual(changed_attributes, {"module": "new_test_module"})
+        self.assertEqual(
+            changed_attributes, {"module": "new_test_module", "image_width": 1152}
+        )
+        obj.update_previous_state()
+        obj.image_width = 1024
+        obj.image_height = 1152
+        changed_attributes = obj.get_changed_attributes()
+        self.assertEqual(
+            changed_attributes, {"image_height": 1152, "image_width": 1024}
+        )
 
     def test_create_text_to_image_graph(self):
         obj = ImageGenerationData(

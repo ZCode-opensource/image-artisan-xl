@@ -15,6 +15,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtGui import QImage, QPixmap
 from PyQt6.QtCore import QSettings
 
+from iartisanxl.app.event_bus import EventBus
 from iartisanxl.modules.base_module import BaseModule
 from iartisanxl.modules.common.drop_lightbox import DropLightBox
 from iartisanxl.modules.common.image_viewer_simple import ImageViewerSimple
@@ -23,7 +24,8 @@ from iartisanxl.modules.common.panels.generation_panel import GenerationPanel
 from iartisanxl.modules.common.panels.lora_panel import LoraPanel
 from iartisanxl.modules.common.panels.controlnet_panel import ControlNetPanel
 from iartisanxl.menu.right_menu import RightMenu
-from iartisanxl.generation.generation_data_object import ImageGenData
+from iartisanxl.generation.image_generation_data import ImageGenerationData
+from iartisanxl.generation.lora_list import LoraList
 from iartisanxl.generation.model_data_object import ModelDataObject
 from iartisanxl.generation.vae_data_object import VaeDataObject
 from iartisanxl.generation.schedulers.schedulers import schedulers
@@ -32,7 +34,6 @@ from iartisanxl.threads.taesd_loader_thread import TaesdLoaderThread
 from iartisanxl.threads.image_processor_thread import ImageProcesorThread
 from iartisanxl.formats.image import ImageProcessor
 from iartisanxl.threads.node_graph_thread import NodeGraphThread
-from iartisanxl.graph.iartisanxl_node_graph import ImageArtisanNodeGraph
 
 
 class TextToImageModule(BaseModule):
@@ -66,14 +67,14 @@ class TextToImageModule(BaseModule):
         model = ModelDataObject(
             name=model_name, path=model_path, type=model_type, version=model_version
         )
-
         vae_name = self.settings.value("vae_name", "Model default", type=str)
         vae_path = self.settings.value("vae_path", "", type=str)
         vae = VaeDataObject(name=vae_name, path=vae_path)
 
         self.setAcceptDrops(True)
 
-        self.image_generation_data = ImageGenData(
+        self.lora_list = LoraList()
+        self.image_generation_data = ImageGenerationData(
             module="texttoimage",
             seed=0,
             image_width=self.settings.value("image_width", 1024, type=int),
@@ -82,8 +83,6 @@ class TextToImageModule(BaseModule):
             guidance=self.settings.value("guidance", 7.5, type=float),
             base_scheduler=self.settings.value("base_scheduler", 0, type=int),
             lora_scale=1.0,
-            loras=[],
-            controlnets=[],
             model=model,
             vae=vae,
             positive_prompt_clipl="",
@@ -96,7 +95,7 @@ class TextToImageModule(BaseModule):
 
         self.observers = []
 
-        self.node_graph = ImageArtisanNodeGraph()
+        self.node_graph = None
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         self.torch_dtype = torch.float16
         self.batch_size = 1
@@ -119,6 +118,10 @@ class TextToImageModule(BaseModule):
         self.generating = False
         self.auto_save = False
         self.continuous_generation = False
+
+        self.event_bus = EventBus()
+        self.event_bus.subscribe("lora", self.on_lora)
+        self.event_bus.subscribe("image_generation_data", self.on_image_generation_data)
 
         self.init_ui()
 
@@ -278,7 +281,15 @@ class TextToImageModule(BaseModule):
                 self.image_processor_thread.finished.connect(self.reset_thread)
                 self.image_processor_thread.start()
 
-    def on_generation_data_obtained(self, generation_data: ImageGenData):
+    def on_image_generation_data(self, data):
+        if hasattr(self.image_generation_data, data["attr"]):
+            setattr(self.image_generation_data, data["attr"], data["value"])
+
+    def on_lora(self, data):
+        if data["action"] == "add":
+            self.lora_list.add(data["lora"])
+
+    def on_generation_data_obtained(self, generation_data: ImageGenerationData):
         self.notify_observers(generation_data)
         self.prompt_window.unblock_seed()
 
@@ -384,6 +395,10 @@ class TextToImageModule(BaseModule):
         self.progress_bar.setValue(value)
 
     def generation_finished(self, image: Image, duration: float = None):
+        # if the node graph is None, associate it for the first time
+        if self.node_graph is None:
+            self.node_graph = self.node_graph_thread.node_graph
+
         image_generation_node = self.node_graph.get_node_by_name("image_generation")
         duration = image_generation_node.elapsed_time
 
@@ -401,15 +416,15 @@ class TextToImageModule(BaseModule):
         image_processor.set_pillow_image(image)
         image = None
 
-        self.image_viewer.set_pixmap(image_processor.get_qpixmap())
-        serialized_data = image_processor.serialize_image_data(
-            self.image_generation_data, self.preferences
-        )
-        self.image_viewer.serialized_data = serialized_data
+        # self.image_viewer.set_pixmap(image_processor.get_qpixmap())
+        # serialized_data = image_processor.serialize_image_data(
+        #     self.image_generation_data, self.preferences
+        # )
+        # self.image_viewer.serialized_data = serialized_data
 
         if self.auto_save:
-            if self.preferences.save_image_metadata:
-                image_processor.set_serialized_data(serialized_data)
+            # if self.preferences.save_image_metadata:
+            #     image_processor.set_serialized_data(serialized_data)
             image_processor.save_to_png(self.directories.outputs_images)
 
         self.prompt_window.set_button_generate()
@@ -424,7 +439,9 @@ class TextToImageModule(BaseModule):
     def unsubscribe(self, observer):
         self.observers.remove(observer)
 
-    def notify_observers(self, generation_data: ImageGenData, generate: bool = False):
+    def notify_observers(
+        self, generation_data: ImageGenerationData, generate: bool = False
+    ):
         self.image_generation_data = generation_data
         self.logger.debug(self.image_generation_data)
 

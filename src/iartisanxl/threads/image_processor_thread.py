@@ -2,12 +2,12 @@ from PyQt6.QtCore import QThread, pyqtSignal
 from PyQt6.QtGui import QPixmap
 
 from iartisanxl.formats.image import ImageProcessor
-from iartisanxl.generation.generation_data_object import ImageGenData
+from iartisanxl.generation.image_generation_data import ImageGenerationData
 
 
 class ImageProcesorThread(QThread):
     image_loaded = pyqtSignal(QPixmap)
-    generation_data_obtained = pyqtSignal(ImageGenData)
+    generation_data_obtained = pyqtSignal(ImageGenerationData)
     image_error = pyqtSignal(str)
     status_changed = pyqtSignal(str)
 

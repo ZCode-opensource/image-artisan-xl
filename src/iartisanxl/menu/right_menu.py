@@ -3,7 +3,7 @@ from PyQt6.QtCore import QPropertyAnimation, QEasingCurve, QTimer
 
 from iartisanxl.buttons.expand_right_button import ExpandRightButton
 from iartisanxl.buttons.vertical_button import VerticalButton
-from iartisanxl.generation.generation_data_object import ImageGenData
+from iartisanxl.generation.image_generation_data import ImageGenerationData
 from iartisanxl.app.directories import DirectoriesObject
 from iartisanxl.modules.common.image_viewer_simple import ImageViewerSimple
 from iartisanxl.modules.common.prompt_window import PromptWindow
@@ -18,7 +18,7 @@ class RightMenu(QFrame):
         self,
         module_options: dict,
         directories: DirectoriesObject,
-        image_generation_data: ImageGenData,
+        image_generation_data: ImageGenerationData,
         image_viewer: ImageViewerSimple,
         prompt_window: PromptWindow,
         show_error: callable,
@@ -175,7 +175,7 @@ class RightMenu(QFrame):
         self.current_panel = panel
         self.current_panel_text = text
 
-    def update_ui(self, image_generation_data: ImageGenData):
+    def update_ui(self, image_generation_data: ImageGenerationData):
         self.image_generation_data = image_generation_data
 
         if self.current_panel is not None:
