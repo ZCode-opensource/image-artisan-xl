@@ -57,46 +57,48 @@ class LoraNode(Node):
 
     def __call__(self):
         super().__call__()
-        state_dict, network_alphas = self.lora_state_dict(
-            self.path, unet_config=self.unet.config
-        )
 
-        is_correct_format = all("lora" in key for key in state_dict.keys())
-        if not is_correct_format:
-            raise ValueError("Invalid LoRA checkpoint.")
+        if not self.adapter_name in getattr(self.unet, "peft_config", {}):
+            state_dict, network_alphas = self.lora_state_dict(
+                self.path, unet_config=self.unet.config
+            )
 
-        self.load_lora_into_unet(
-            state_dict,
-            network_alphas=network_alphas,
-            unet=self.unet,
-            adapter_name=self.adapter_name,
-        )
+            is_correct_format = all("lora" in key for key in state_dict.keys())
+            if not is_correct_format:
+                raise ValueError("Invalid LoRA checkpoint.")
 
-        text_encoder_state_dict = {
-            k: v for k, v in state_dict.items() if "text_encoder." in k
-        }
-        if len(text_encoder_state_dict) > 0:
-            self.load_lora_into_text_encoder(
-                text_encoder_state_dict,
+            self.load_lora_into_unet(
+                state_dict,
                 network_alphas=network_alphas,
-                text_encoder=self.text_encoder_1,
-                prefix="text_encoder",
-                lora_scale=self.global_lora_scale,
+                unet=self.unet,
                 adapter_name=self.adapter_name,
             )
 
-        text_encoder_2_state_dict = {
-            k: v for k, v in state_dict.items() if "text_encoder_2." in k
-        }
-        if len(text_encoder_2_state_dict) > 0:
-            self.load_lora_into_text_encoder(
-                text_encoder_2_state_dict,
-                network_alphas=network_alphas,
-                text_encoder=self.text_encoder_2,
-                prefix="text_encoder_2",
-                lora_scale=self.global_lora_scale,
-                adapter_name=self.adapter_name,
-            )
+            text_encoder_state_dict = {
+                k: v for k, v in state_dict.items() if "text_encoder." in k
+            }
+            if len(text_encoder_state_dict) > 0:
+                self.load_lora_into_text_encoder(
+                    text_encoder_state_dict,
+                    network_alphas=network_alphas,
+                    text_encoder=self.text_encoder_1,
+                    prefix="text_encoder",
+                    lora_scale=self.global_lora_scale,
+                    adapter_name=self.adapter_name,
+                )
+
+            text_encoder_2_state_dict = {
+                k: v for k, v in state_dict.items() if "text_encoder_2." in k
+            }
+            if len(text_encoder_2_state_dict) > 0:
+                self.load_lora_into_text_encoder(
+                    text_encoder_2_state_dict,
+                    network_alphas=network_alphas,
+                    text_encoder=self.text_encoder_2,
+                    prefix="text_encoder_2",
+                    lora_scale=self.global_lora_scale,
+                    adapter_name=self.adapter_name,
+                )
 
         self.values["lora"] = (self.adapter_name, self.scale)
 
