@@ -1,4 +1,5 @@
 import copy
+import json
 
 import attr
 
@@ -53,6 +54,39 @@ class ImageGenerationData:
         }
         return changed_attributes
 
+    def update_from_json(self, json_graph):
+        data = json.loads(json_graph)
+
+        for node in data["nodes"]:
+            if node["name"] == "lora_scale":
+                self.lora_scale = node["number"]
+            elif node["name"] == "clip_skip":
+                self.clip_skip = node["number"]
+            elif node["name"] == "model":
+                self.model.name = node["model_name"]
+                self.model.path = node["path"]
+                self.model.version = node["version"]
+                self.model.type = node["model_type"]
+            elif node["name"] == "positive_prompt_clipg":
+                self.positive_prompt_clipg = node["text"]
+            elif node["name"] == "positive_prompt_clipl":
+                self.positive_prompt_clipl = node["text"]
+            elif node["name"] == "negative_prompt_clipg":
+                self.negative_prompt_clipg = node["text"]
+            elif node["name"] == "negative_prompt_clipl":
+                self.negative_prompt_clipl = node["text"]
+            elif node["name"] == "vae_model":
+                self.vae.name = node["vae_name"]
+                self.vae.path = node["path"]
+            elif node["name"] == "seed":
+                self.seed = node["number"]
+            elif node["name"] == "image_width":
+                self.image_width = node["number"]
+            elif node["name"] == "image_height":
+                self.image_height = node["number"]
+            elif node["name"] == "base_scheduler":
+                self.base_scheduler = node["scheduler_index"]
+
     def create_text_to_image_graph(self) -> ImageArtisanNodeGraph:
         node_graph = ImageArtisanNodeGraph()
 
@@ -62,7 +96,12 @@ class ImageGenerationData:
         clip_skip = NumberNode(number=self.clip_skip)
         node_graph.add_node(clip_skip, "clip_skip")
 
-        sdxl_model = StableDiffusionXLModelNode(path=self.model.path)
+        sdxl_model = StableDiffusionXLModelNode(
+            path=self.model.path,
+            model_name=self.model.name,
+            version=self.model.version,
+            model_type=self.model.type,
+        )
         node_graph.add_node(sdxl_model, "model")
 
         positive_prompt_1 = TextNode(text=self.positive_prompt_clipg)
@@ -88,7 +127,7 @@ class ImageGenerationData:
         prompts_encoder.connect("negative_prompt_2", negative_prompt_2, "value")
         node_graph.add_node(prompts_encoder, "prompts_encoder")
 
-        vae_model = VaeModelNode(path=self.vae.path)
+        vae_model = VaeModelNode(path=self.vae.path, vae_name=self.vae.name)
         node_graph.add_node(vae_model, "vae_model")
 
         seed = NumberNode(number=self.seed)
@@ -115,7 +154,7 @@ class ImageGenerationData:
         node_graph.add_node(steps, "steps")
 
         guidance_scale = NumberNode(number=self.guidance)
-        node_graph.add_node(guidance_scale, "guidance_scale")
+        node_graph.add_node(guidance_scale, "guidance")
 
         image_generation = ImageGenerationNode()
         image_generation.connect("scheduler", base_scheduler, "scheduler")

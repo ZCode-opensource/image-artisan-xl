@@ -91,6 +91,7 @@ class TextToImageModule(BaseModule):
             negative_prompt_clipg="",
             clip_skip=self.settings.value("clip_skip", 0, type=int),
         )
+        self.image_generation_data.update_previous_state()
         self.settings.endGroup()
 
         self.observers = []
@@ -268,8 +269,8 @@ class TextToImageModule(BaseModule):
             if path.endswith(".png"):
                 self.image_processor_thread = ImageProcesorThread(path)
                 self.threads["image_processor_thread"] = self.image_processor_thread
-                self.image_processor_thread.generation_data_obtained.connect(
-                    self.on_generation_data_obtained
+                self.image_processor_thread.serialized_data_obtained.connect(
+                    self.on_serialized_data_obtained
                 )
                 self.image_processor_thread.status_changed.connect(
                     self.update_status_bar
@@ -289,8 +290,9 @@ class TextToImageModule(BaseModule):
         if data["action"] == "add":
             self.lora_list.add(data["lora"])
 
-    def on_generation_data_obtained(self, generation_data: ImageGenerationData):
-        self.notify_observers(generation_data)
+    def on_serialized_data_obtained(self, json_graph):
+        self.image_generation_data.update_from_json(json_graph)
+        self.notify_observers()
         self.prompt_window.unblock_seed()
 
     def on_dropped_image_loaded(self, image: QPixmap):
@@ -394,7 +396,7 @@ class TextToImageModule(BaseModule):
     def update_progress_bar(self, value):
         self.progress_bar.setValue(value)
 
-    def generation_finished(self, image: Image, duration: float = None):
+    def generation_finished(self, image: Image):
         # if the node graph is None, associate it for the first time
         if self.node_graph is None:
             self.node_graph = self.node_graph_thread.node_graph
@@ -416,11 +418,9 @@ class TextToImageModule(BaseModule):
         image_processor.set_pillow_image(image)
         image = None
 
-        # self.image_viewer.set_pixmap(image_processor.get_qpixmap())
-        # serialized_data = image_processor.serialize_image_data(
-        #     self.image_generation_data, self.preferences
-        # )
-        # self.image_viewer.serialized_data = serialized_data
+        self.image_viewer.set_pixmap(image_processor.get_qpixmap())
+        serialized_data = self.node_graph.to_json()
+        self.image_viewer.serialized_data = serialized_data
 
         if self.auto_save:
             # if self.preferences.save_image_metadata:
@@ -439,10 +439,7 @@ class TextToImageModule(BaseModule):
     def unsubscribe(self, observer):
         self.observers.remove(observer)
 
-    def notify_observers(
-        self, generation_data: ImageGenerationData, generate: bool = False
-    ):
-        self.image_generation_data = generation_data
+    def notify_observers(self, generate: bool = False):
         self.logger.debug(self.image_generation_data)
 
         for dialog in self.dialogs.values():
@@ -487,11 +484,8 @@ class TextToImageModule(BaseModule):
         image = ImageProcessor()
         image.serialized_data = generation_data
 
-        try:
-            generation_data = image.get_image_generation_data()
-            self.notify_observers(generation_data, True)
-        except ValueError as e:
-            self.show_error(e)
+        self.image_generation_data.update_from_json(generation_data)
+        self.notify_observers(True)
 
     def on_abort(self):
         self.node_graph_thread.abort = True
