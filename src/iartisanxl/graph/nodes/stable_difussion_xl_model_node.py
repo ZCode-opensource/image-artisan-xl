@@ -52,7 +52,7 @@ class StableDiffusionXLModelNode(Node):
         self.version = version
         self.model_type = model_type
 
-    def update_path(self, path: str, model_name: str, version: str, model_type: str):
+    def update_model(self, path: str, model_name: str, version: str, model_type: str):
         self.clear_models()
         self.path = path
         self.model_name = model_name

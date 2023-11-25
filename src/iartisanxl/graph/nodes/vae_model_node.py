@@ -13,7 +13,7 @@ class VaeModelNode(Node):
         self.path = path
         self.vae_name = vae_name
 
-    def update_path(self, path: str, vae_name: str):
+    def update_model(self, path: str, vae_name: str):
         self.values["vae"] = None
         self.values["vae_name"] = None
         self.values["vae_scale_factor"] = None
