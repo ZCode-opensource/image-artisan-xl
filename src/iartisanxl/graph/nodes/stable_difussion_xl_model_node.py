@@ -270,11 +270,12 @@ class StableDiffusionXLModelNode(Node):
         set_adapter_layers(self.values["text_encoder_2"], enabled=True)
 
     def delete_adapters(self, adapter_names: list[str]):
-        self.values["unet"].delete_adapters(adapter_names)
+        if self.values["unet"] is not None:
+            self.values["unet"].delete_adapters(adapter_names)
 
-        for adapter_name in adapter_names:
-            delete_adapter_layers(self.values["text_encoder_1"], adapter_name)
-            delete_adapter_layers(self.values["text_encoder_2"], adapter_name)
+            for adapter_name in adapter_names:
+                delete_adapter_layers(self.values["text_encoder_1"], adapter_name)
+                delete_adapter_layers(self.values["text_encoder_2"], adapter_name)
 
     def unload_lora_weights(self):
         recurse_remove_peft_layers(self.values["unet"])
