@@ -22,6 +22,8 @@ from omegaconf import OmegaConf
 from accelerate import init_empty_weights
 from accelerate.utils import set_module_tensor_to_device
 from safetensors.torch import load_file as safe_load
+from peft.tuners.tuners_utils import BaseTunerLayer
+from diffusers.utils.peft_utils import set_adapter_layers, recurse_remove_peft_layers
 
 
 from iartisanxl.graph.nodes.node import Node
@@ -229,9 +231,64 @@ class StableDiffusionXLModelNode(Node):
         self.values["num_channels_latents"] = None
         torch.cuda.empty_cache()
 
+    def get_list_adapters(self) -> dict[str, list[str]]:
+        set_adapters = {}
+
+        if hasattr(self.values["text_encoder_1"], "peft_config"):
+            set_adapters["text_encoder"] = list(
+                self.values["text_encoder_1"].peft_config.keys()
+            )
+
+        if hasattr(self.values["text_encoder_2"], "peft_config"):
+            set_adapters["text_encoder_2"] = list(
+                self.values["text_encoder_2"].peft_config.keys()
+            )
+
+        if hasattr(self.values["unet"], "peft_config"):
+            set_adapters["unet"] = list(self.values["unet"].peft_config.keys())
+
+        return set_adapters
+
+    def get_active_adapters(self) -> list[str]:
+        active_adapters = []
+
+        for module in self.values["unet"].modules():
+            if isinstance(module, BaseTunerLayer):
+                active_adapters = module.active_adapters
+                break
+
+        return active_adapters
+
+    def disable_lora(self):
+        self.values["unet"].disable_lora()
+        set_adapter_layers(self.values["text_encoder_1"], enabled=False)
+        set_adapter_layers(self.values["text_encoder_2"], enabled=False)
+
+    def enable_lora(self):
+        self.values["unet"].enable_lora()
+        set_adapter_layers(self.values["text_encoder_1"], enabled=True)
+        set_adapter_layers(self.values["text_encoder_2"], enabled=True)
+
     def delete_adapters(self, adapter_names: list[str]):
         self.values["unet"].delete_adapters(adapter_names)
 
         for adapter_name in adapter_names:
             delete_adapter_layers(self.values["text_encoder_1"], adapter_name)
             delete_adapter_layers(self.values["text_encoder_2"], adapter_name)
+
+    def unload_lora_weights(self):
+        recurse_remove_peft_layers(self.values["unet"])
+        if hasattr(self.values["unet"], "peft_config"):
+            del self.values["unet"].peft_config
+
+        recurse_remove_peft_layers(self.values["text_encoder_1"])
+        if hasattr(self.values["text_encoder_1"], "peft_config"):
+            del self.values["text_encoder_1"].peft_config
+            # pylint: disable=protected-access
+            self.values["text_encoder_1"]._hf_peft_config_loaded = None
+
+        recurse_remove_peft_layers(self.values["text_encoder_2"])
+        if hasattr(self.values["text_encoder_2"], "peft_config"):
+            del self.values["text_encoder_2"].peft_config
+            # pylint: disable=protected-access
+            self.values["text_encoder_2"]._hf_peft_config_loaded = None

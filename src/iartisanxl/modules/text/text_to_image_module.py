@@ -170,6 +170,7 @@ class TextToImageModule(BaseModule):
             self.module_options,
             self.directories,
             self.image_generation_data,
+            self.lora_list,
             self.image_viewer,
             self.prompt_window,
             self.show_error,
@@ -366,6 +367,7 @@ class TextToImageModule(BaseModule):
         self.progress_bar.setMaximum(self.image_generation_data.steps)
 
         self.node_graph_thread.image_generation_data = self.image_generation_data
+        self.node_graph_thread.lora_list = self.lora_list
         self.node_graph_thread.model_offload = self.preferences.model_offload
         self.node_graph_thread.sequential_offload = self.preferences.sequential_offload
 

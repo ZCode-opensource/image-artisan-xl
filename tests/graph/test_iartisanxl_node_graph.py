@@ -210,7 +210,7 @@ class TestImageArtisanNodeGraph(unittest.TestCase):
     def test_delete_node(self):
         mock_node = MockNode()
         self.graph.add_node(mock_node)
-        self.graph.delete_node(0)
+        self.graph.delete_node_by_id(0)
         self.assertEqual(len(self.graph.nodes), 0)
 
     def test_delete_node_by_name(self):
@@ -880,7 +880,7 @@ class TestImageArtisanNodeGraph(unittest.TestCase):
         node_id = mock_node.id
 
         # Delete the node
-        self.graph.delete_node(node_id)
+        self.graph.delete_node_by_id(node_id)
 
         # Check that the node is not in the graph
         self.assertIsNone(self.graph.get_node(node_id))
@@ -1042,7 +1042,7 @@ class TestImageArtisanNodeGraph(unittest.TestCase):
 
         self.graph()
         self.assertEqual(mock_number_node_one.updated, False)
-        self.graph.delete_node(mock_number_node_three.id)
+        self.graph.delete_node_by_id(mock_number_node_three.id)
 
         self.assertEqual(mock_number_node_one.updated, False)
         self.assertEqual(mock_number_node_two.updated, False)
@@ -1060,7 +1060,7 @@ class TestImageArtisanNodeGraph(unittest.TestCase):
         self.graph.add_node(mock_sum_node_one)
 
         self.graph()
-        self.graph.delete_node(mock_number_node_one.id)
+        self.graph.delete_node_by_id(mock_number_node_one.id)
         self.assertEqual(mock_sum_node_one.updated, True)
 
     def test_complex_node_deletion(self):
@@ -1091,7 +1091,7 @@ class TestImageArtisanNodeGraph(unittest.TestCase):
         self.graph()
         self.assertEqual(mock_sum_node_three.values["sum_numbers"], 15)
 
-        self.graph.delete_node(mock_number_node_two.id)
+        self.graph.delete_node_by_id(mock_number_node_two.id)
 
         self.assertEqual(mock_number_node_one.updated, False)
         self.assertEqual(mock_number_node_three.updated, False)
@@ -1126,11 +1126,36 @@ class TestImageArtisanNodeGraph(unittest.TestCase):
 
         self.graph()
 
-        self.graph.delete_node(mock_number_node_two.id)
+        self.graph.delete_node_by_id(mock_number_node_two.id)
 
         self.assertEqual(mock_sum_node_one.updated, True)
         self.assertEqual(mock_sum_node_two.updated, False)
         self.assertEqual(mock_sum_node_three.updated, True)
+
+    def test_third_complex_node_deletion(self):
+        mock_number_node_one = MockNumberNode(number_value=3)
+        self.graph.add_node(mock_number_node_one)
+
+        mock_number_node_two = MockNumberNode(number_value=4)
+        self.graph.add_node(mock_number_node_two)
+
+        mock_sum_node_one = MockSumNumbersList()
+        mock_sum_node_one.connect("numbers", mock_number_node_one, "value")
+        self.graph.add_node(mock_sum_node_one)
+
+        mock_sum_node_two = MockSumNumbers()
+        mock_sum_node_two.connect("number_one", mock_number_node_one, "value")
+        mock_sum_node_two.connect("number_two", mock_number_node_one, "value")
+        mock_sum_node_one.connect("numbers", mock_sum_node_two, "sum_numbers")
+        self.graph.add_node(mock_sum_node_two)
+
+        self.graph()
+        self.assertEqual(mock_sum_node_one.values["sum_numbers"], 9)
+
+        self.graph.delete_node_by_id(mock_sum_node_two.id)
+        self.assertEqual(mock_number_node_one.updated, False)
+        self.assertEqual(mock_number_node_two.updated, False)
+        self.assertEqual(mock_sum_node_one.updated, True)
 
     def test_delete_one_dependent_list_nodes(self):
         mock_number_node_one = MockNumberNode(number_value=3)
@@ -1149,7 +1174,7 @@ class TestImageArtisanNodeGraph(unittest.TestCase):
 
         self.graph()
         self.assertEqual(mock_sum_node_one.values["sum_numbers"], 7)
-        self.graph.delete_node(mock_number_node_two.id)
+        self.graph.delete_node_by_id(mock_number_node_two.id)
         self.assertEqual(mock_sum_node_one.updated, True)
 
         self.graph()

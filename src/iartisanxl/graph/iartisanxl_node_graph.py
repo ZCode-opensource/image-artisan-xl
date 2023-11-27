@@ -29,6 +29,7 @@ class ImageArtisanNodeGraph:
                     )
         node.name = name
         node.id = self.node_counter
+        node.updated = True  # if the object already exists and the graph was run with it, this can be False
         self.nodes.append(node)
         self.node_counter += 1
 
@@ -47,40 +48,31 @@ class ImageArtisanNodeGraph:
     def get_all_nodes_class(self, node_class):
         return [node for node in self.nodes if isinstance(node, node_class)]
 
-    def delete_node(self, node_id):
+    def delete_node_by_id(self, node_id):
         node = self.get_node(node_id)
         if node is not None:
-            # Disconnect the node from its dependencies and dependents
-            for other_node in node.dependencies + node.dependents:
-                other_node.disconnect_from_node(node)
-                node.disconnect_from_node(other_node)
-            # Call the node's delete method
-            node.delete()
-            # Remove the node from the graph
-            self.nodes.remove(node)
-            # Delete the node
-            del node
-            # Call the garbage collector
-            gc.collect()
-            torch.cuda.empty_cache()
-            torch.cuda.ipc_collect()
+            self.delete_node(node)
 
     def delete_node_by_name(self, name: str):
         node = self.get_node_by_name(name)
         if node is not None:
-            # Disconnect the node from its dependencies and dependents
-            for other_node in node.dependencies + node.dependents:
-                other_node.disconnect_from_node(node)
-                node.disconnect_from_node(other_node)
-            self.nodes.remove(node)
-            # Call the node's delete method
-            node.delete()
-            # Delete the node
-            del node
-            # Call the garbage collector
-            gc.collect()
-            torch.cuda.empty_cache()
-            torch.cuda.ipc_collect()
+            self.delete_node(node)
+
+    def delete_node(self, node):
+        # Disconnect the node from its dependencies and dependents
+        for other_node in node.dependencies + node.dependents:
+            other_node.disconnect_from_node(node)
+            node.disconnect_from_node(other_node)
+        # Call the node's delete method
+        node.delete()
+        # Remove the node from the graph
+        self.nodes.remove(node)
+        # Delete the node
+        del node
+        # Call the garbage collector
+        gc.collect()
+        torch.cuda.empty_cache()
+        torch.cuda.ipc_collect()
 
     @torch.no_grad()
     def __call__(self):
@@ -207,7 +199,7 @@ class ImageArtisanNodeGraph:
                 node = node_class.from_dict(node_dict, callbacks)
                 node.set_updated(updated_nodes)
                 if node_dict["id"] in current_id_to_node:
-                    self.delete_node(node_dict["id"])
+                    self.delete_node_by_id(node_dict["id"])
                 self.nodes.append(node)
             new_id_to_node[node.id] = node
             if node.id > max_id:
@@ -216,7 +208,7 @@ class ImageArtisanNodeGraph:
         # Remove nodes that are not in the JSON file
         for node_id, node in current_id_to_node.items():
             if node_id not in new_id_to_node:
-                self.delete_node(node_id)
+                self.delete_node_by_id(node_id)
 
         # Collect new connections for each node and map nodes to input names
         new_connections = defaultdict(list)

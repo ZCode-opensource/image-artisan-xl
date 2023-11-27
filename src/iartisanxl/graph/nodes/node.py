@@ -52,7 +52,6 @@ class Node:
             self.dependencies.remove(node)
         if self in node.dependents:
             node.dependents.remove(self)
-            node.set_updated()
 
     def disconnect_from_node(self, node):
         self.dependencies = [dep for dep in self.dependencies if dep != node]
@@ -62,10 +61,10 @@ class Node:
             ]
             if not self.connections[input_name]:
                 del self.connections[input_name]
+                self.set_updated()
         if self in node.dependents:
             node.dependents.remove(self)
-            node.set_updated()
-        self.set_updated()
+            self.set_updated()
 
     def connections_changed(self, new_connections):
         # Convert current connections to a format that can be compared with new_connections
@@ -76,12 +75,13 @@ class Node:
         ]
         return set(current_connections) != set(new_connections)
 
-    def set_updated(self, updated_nodes=None):
+    def set_updated(self, updated_nodes=None, update_dependents=True):
         self.updated = True
         if updated_nodes is not None:
             updated_nodes.add(self.id)
-        for dependent in self.dependents:
-            dependent.set_updated(updated_nodes)
+        if update_dependents:
+            for dependent in self.dependents:
+                dependent.set_updated(updated_nodes)
 
     def __getattr__(self, name):
         if name in self.REQUIRED_INPUTS + self.OPTIONAL_INPUTS:

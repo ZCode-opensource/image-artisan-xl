@@ -2,6 +2,7 @@ from iartisanxl.graph.nodes.node import Node
 
 
 class TextNode(Node):
+    PRIORITY = 2
     OUTPUTS = ["value"]
     INPUTS = []
 

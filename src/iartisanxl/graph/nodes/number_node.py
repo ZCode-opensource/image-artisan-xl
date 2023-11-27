@@ -4,6 +4,7 @@ from iartisanxl.graph.nodes.node import Node
 
 
 class NumberNode(Node):
+    PRIORITY = 2
     OUTPUTS = ["value"]
     INPUTS = []
 
