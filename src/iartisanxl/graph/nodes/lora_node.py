@@ -23,13 +23,21 @@ class LoraNode(Node):
     OUTPUTS = ["lora"]
 
     def __init__(
-        self, path: str = None, adapter_name: str = None, scale: float = None, **kwargs
+        self,
+        path: str = None,
+        adapter_name: str = None,
+        scale: float = None,
+        lora_name: str = None,
+        version: str = None,
+        **kwargs,
     ):
         super().__init__(**kwargs)
 
         self.path = path
         self.adapter_name = adapter_name
         self.scale = scale
+        self.lora_name = lora_name
+        self.version = version
 
     def update_scale(self, scale: float):
         self.scale = scale
@@ -40,6 +48,8 @@ class LoraNode(Node):
         node_dict["path"] = self.path
         node_dict["adapter_name"] = self.adapter_name
         node_dict["scale"] = self.scale
+        node_dict["lora_name"] = self.lora_name
+        node_dict["version"] = self.version
         return node_dict
 
     @classmethod
@@ -48,12 +58,16 @@ class LoraNode(Node):
         node.path = node_dict["path"]
         node.adapter_name = node_dict["adapter_name"]
         node.scale = node_dict["scale"]
+        node.lora_name = node_dict["lora_name"]
+        node.version = node_dict["version"]
         return node
 
     def update_inputs(self, node_dict):
         self.path = node_dict["path"]
         self.adapter_name = node_dict["adapter_name"]
         self.scale = node_dict["scale"]
+        self.lora_name = node_dict["lora_name"]
+        self.version = node_dict["version"]
 
     def __call__(self):
         super().__call__()

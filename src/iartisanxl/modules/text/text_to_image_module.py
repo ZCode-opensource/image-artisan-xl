@@ -26,6 +26,7 @@ from iartisanxl.modules.common.panels.controlnet_panel import ControlNetPanel
 from iartisanxl.menu.right_menu import RightMenu
 from iartisanxl.generation.image_generation_data import ImageGenerationData
 from iartisanxl.generation.lora_list import LoraList
+from iartisanxl.generation.lora_data_object import LoraDataObject
 from iartisanxl.generation.model_data_object import ModelDataObject
 from iartisanxl.generation.vae_data_object import VaeDataObject
 from iartisanxl.generation.schedulers.schedulers import schedulers
@@ -292,7 +293,21 @@ class TextToImageModule(BaseModule):
             self.lora_list.add(data["lora"])
 
     def on_serialized_data_obtained(self, json_graph):
-        self.image_generation_data.update_from_json(json_graph)
+        loras = self.image_generation_data.update_from_json(json_graph)
+
+        if len(loras) > 0:
+            self.lora_list.clear_loras()
+
+            for lora in loras:
+                lora_object = LoraDataObject(
+                    name=lora["lora_name"],
+                    filename=lora["name"],
+                    version=lora["version"],
+                    path=lora["path"],
+                    weight=lora["scale"],
+                )
+                self.lora_list.add(lora_object)
+
         self.notify_observers()
         self.prompt_window.unblock_seed()
 

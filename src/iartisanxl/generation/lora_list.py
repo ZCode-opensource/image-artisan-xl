@@ -70,3 +70,6 @@ class LoraList:
             if lora.filename in original_loras_dict
             and lora != original_loras_dict[lora.filename]
         ]
+
+    def clear_loras(self):
+        self.loras.clear()

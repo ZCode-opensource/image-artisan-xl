@@ -57,6 +57,8 @@ class ImageGenerationData:
     def update_from_json(self, json_graph):
         data = json.loads(json_graph)
 
+        loras = []
+
         for node in data["nodes"]:
             if node["name"] == "lora_scale":
                 self.lora_scale = node["number"]
@@ -86,6 +88,11 @@ class ImageGenerationData:
                 self.image_height = node["number"]
             elif node["name"] == "base_scheduler":
                 self.base_scheduler = node["scheduler_index"]
+            else:
+                if node["class"] == "LoraNode":
+                    loras.append(node)
+
+        return loras
 
     def create_text_to_image_graph(self) -> ImageArtisanNodeGraph:
         node_graph = ImageArtisanNodeGraph()

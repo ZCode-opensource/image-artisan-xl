@@ -91,7 +91,11 @@ class NodeGraphThread(QThread):
             if len(new_loras) > 0:
                 for lora in new_loras:
                     lora_node = LoraNode(
-                        path=lora.path, adapter_name=lora.filename, scale=lora.weight
+                        path=lora.path,
+                        adapter_name=lora.filename,
+                        scale=lora.weight,
+                        lora_name=lora.name,
+                        version=lora.version,
                     )
                     lora_node.connect("unet", sdxl_model, "unet")
                     lora_node.connect("text_encoder_1", sdxl_model, "text_encoder_1")
