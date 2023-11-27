@@ -18,6 +18,10 @@ class SchedulerNode(Node):
         ) as config_file:
             self.scheduler_config = json.load(config_file)
 
+    def update_value(self, scheduler_index: int):
+        self.scheduler_index = scheduler_index
+        self.set_updated()
+
     def to_dict(self):
         node_dict = super().to_dict()
         node_dict["scheduler_index"] = self.scheduler_index
