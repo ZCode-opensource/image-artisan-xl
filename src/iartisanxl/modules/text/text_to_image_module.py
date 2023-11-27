@@ -486,7 +486,7 @@ class TextToImageModule(BaseModule):
         self.generation_clicked()
 
     def on_abort(self):
-        self.node_graph_thread.abort = True
+        self.node_graph_thread.abort_graph()
 
     def on_finished_abort(self):
         self.update_status_bar("Aborted")

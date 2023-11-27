@@ -35,7 +35,6 @@ class NodeGraphThread(QThread):
         self.model_offload = model_offload
         self.sequential_offload = sequential_offload
         self.torch_dtype = torch_dtype
-        self.abort = False
 
     def run(self):
         self.status_changed.emit("Generating image...")
@@ -44,6 +43,7 @@ class NodeGraphThread(QThread):
             self.node_graph = self.image_generation_data.create_text_to_image_graph()
 
             # connect the essential callbacks
+            self.node_graph.set_abort_function(self.on_aborted)
             image_generation = self.node_graph.get_node_by_name("image_generation")
             image_generation.callback = self.step_progress_update
 
@@ -219,3 +219,9 @@ class NodeGraphThread(QThread):
             self.reset_model_path("model")
             self.reset_model_path("vae_model")
             setattr(self.node_graph, attr1, value)
+
+    def abort_graph(self):
+        self.node_graph.abort_graph()
+
+    def on_aborted(self):
+        self.generation_aborted.emit()

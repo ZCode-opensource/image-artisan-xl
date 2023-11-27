@@ -9,10 +9,14 @@ from iartisanxl.graph.nodes.node import Node
 
 
 class ImageArtisanNodeGraph:
-    def __init__(self):
+    def __init__(self, abort_function: callable = None):
         self.node_counter = 0
         self.nodes = []
         self.updated = False
+        self.abort_function = (
+            abort_function if abort_function is not None else lambda: None
+        )
+        self.executing_node = None
 
         self.cpu_offload = False
         self.sequential_offload = False
@@ -29,6 +33,7 @@ class ImageArtisanNodeGraph:
                     )
         node.name = name
         node.id = self.node_counter
+        node.abort_callable = self.abort_function
         node.updated = True  # if the object already exists and the graph was run with it, this can be False
         self.nodes.append(node)
         self.node_counter += 1
@@ -107,6 +112,7 @@ class ImageArtisanNodeGraph:
                 start_time = time.time()
 
                 try:
+                    self.executing_node = node
                     node()
                 except KeyError as e:
                     raise KeyError("KeyError occurred in node: " + str(e)) from e
@@ -114,6 +120,12 @@ class ImageArtisanNodeGraph:
                 end_time = time.time()
                 node.elapsed_time = end_time - start_time
                 self.updated = True
+                self.executing_node = None
+
+                if node.abort:
+                    node.abort = False
+                    self.abort_function()
+                    break
 
     def to_json(self):
         graph_dict = {
@@ -248,3 +260,10 @@ class ImageArtisanNodeGraph:
         with open(filename, "r", encoding="utf-8") as f:
             json_str = f.read()
         self.update_from_json(json_str, node_classes, callbacks)
+
+    def abort_graph(self):
+        if self.executing_node is not None:
+            self.executing_node.abort = True
+
+    def set_abort_function(self, abort_callable: callable):
+        self.abort_function = abort_callable

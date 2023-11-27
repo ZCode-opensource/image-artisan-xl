@@ -12,6 +12,7 @@ class Node:
         self.name = None
         self.elapsed_time = None
         self.updated = True
+        self.abort = False
         self.dependencies = []
         self.dependents = []
         self.values = {}
@@ -140,3 +141,6 @@ class Node:
         self.torch_dtype = None
         self.cpu_offload = False
         self.sequential_offload = False
+
+    def abort_call(self):
+        self.abort = True
