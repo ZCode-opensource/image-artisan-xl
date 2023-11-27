@@ -82,6 +82,10 @@ class ImageGenerationData:
                 self.vae.path = node["path"]
             elif node["name"] == "seed":
                 self.seed = node["number"]
+            elif node["name"] == "steps":
+                self.steps = node["number"]
+            elif node["name"] == "guidance":
+                self.guidance = node["number"]
             elif node["name"] == "image_width":
                 self.image_width = node["number"]
             elif node["name"] == "image_height":
