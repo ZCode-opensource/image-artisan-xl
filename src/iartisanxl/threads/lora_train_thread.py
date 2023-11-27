@@ -22,7 +22,6 @@ from diffusers import (
 )
 from diffusers.models.attention_processor import LoRAAttnProcessor, LoRAAttnProcessor2_0
 from diffusers.loaders.lora import LoraLoaderMixin
-from diffusers.models.lora import text_encoder_lora_state_dict
 from diffusers.optimization import get_scheduler
 
 from iartisanxl.train.local_image_dataset import LocalImageTextDataset
@@ -433,40 +432,72 @@ class LoraTrainThread(QThread):
         else:
             self.error.emit(self.error_text)
 
+    def text_encoder_attn_modules(self, text_encoder):
+        attn_modules = []
+
+        if isinstance(text_encoder, (CLIPTextModel, CLIPTextModelWithProjection)):
+            for i, layer in enumerate(text_encoder.text_model.encoder.layers):
+                name = f"text_model.encoder.layers.{i}.self_attn"
+                mod = layer.self_attn
+                attn_modules.append((name, mod))
+
+        return attn_modules
+
+    def text_encoder_lora_state_dict(self, text_encoder):
+        state_dict = {}
+
+        for name, module in self.text_encoder_attn_modules(text_encoder):
+            for k, v in module.q_proj.lora_linear_layer.state_dict().items():
+                state_dict[f"{name}.q_proj.lora_linear_layer.{k}"] = v
+
+            for k, v in module.k_proj.lora_linear_layer.state_dict().items():
+                state_dict[f"{name}.k_proj.lora_linear_layer.{k}"] = v
+
+            for k, v in module.v_proj.lora_linear_layer.state_dict().items():
+                state_dict[f"{name}.v_proj.lora_linear_layer.{k}"] = v
+
+            for k, v in module.out_proj.lora_linear_layer.state_dict().items():
+                state_dict[f"{name}.out_proj.lora_linear_layer.{k}"] = v
+
+        return state_dict
+
     def save_model_hook(self, models, weights, output_dir):
-        # there are only two options here. Either are just the unet attn processor layers
-        # or there are the unet and text encoder atten layers
-        unet_lora_layers_to_save = None
-        text_encoder_one_lora_layers_to_save = None
-        text_encoder_two_lora_layers_to_save = None
+        if self.accelerator.is_main_process:
+            # there are only two options here. Either are just the unet attn processor layers
+            # or there are the unet and text encoder atten layers
+            unet_lora_layers_to_save = None
+            text_encoder_one_lora_layers_to_save = None
+            text_encoder_two_lora_layers_to_save = None
 
-        for model in models:
-            if isinstance(model, type(self.accelerator.unwrap_model(self.unet))):
-                unet_lora_layers_to_save = self.unet_attn_processors_state_dict(model)
-            elif isinstance(
-                model, type(self.accelerator.unwrap_model(self.text_encoder_one))
-            ):
-                text_encoder_one_lora_layers_to_save = text_encoder_lora_state_dict(
-                    model
-                )
-            elif isinstance(
-                model, type(self.accelerator.unwrap_model(self.text_encoder_two))
-            ):
-                text_encoder_two_lora_layers_to_save = text_encoder_lora_state_dict(
-                    model
-                )
-            else:
-                raise ValueError(f"unexpected save model: {model.__class__}")
+            for model in models:
+                if isinstance(model, type(self.accelerator.unwrap_model(self.unet))):
+                    unet_lora_layers_to_save = self.unet_attn_processors_state_dict(
+                        model
+                    )
+                elif isinstance(
+                    model, type(self.accelerator.unwrap_model(self.text_encoder_one))
+                ):
+                    text_encoder_one_lora_layers_to_save = (
+                        self.text_encoder_lora_state_dict(model)
+                    )
+                elif isinstance(
+                    model, type(self.accelerator.unwrap_model(self.text_encoder_two))
+                ):
+                    text_encoder_two_lora_layers_to_save = (
+                        self.text_encoder_lora_state_dict(model)
+                    )
+                else:
+                    raise ValueError(f"unexpected save model: {model.__class__}")
 
-            # make sure to pop weight so that corresponding model is not saved again
-            weights.pop()
+                # make sure to pop weight so that corresponding model is not saved again
+                weights.pop()
 
-        StableDiffusionXLPipeline.save_lora_weights(
-            output_dir,
-            unet_lora_layers=unet_lora_layers_to_save,
-            text_encoder_lora_layers=text_encoder_one_lora_layers_to_save,
-            text_encoder_2_lora_layers=text_encoder_two_lora_layers_to_save,
-        )
+            StableDiffusionXLPipeline.save_lora_weights(
+                output_dir,
+                unet_lora_layers=unet_lora_layers_to_save,
+                text_encoder_lora_layers=text_encoder_one_lora_layers_to_save,
+                text_encoder_2_lora_layers=text_encoder_two_lora_layers_to_save,
+            )
 
     def load_model_hook(self, models, input_dir):
         unet = None

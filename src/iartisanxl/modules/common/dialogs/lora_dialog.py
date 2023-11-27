@@ -12,6 +12,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import QSettings, pyqtSignal, Qt, QSize
 from PyQt6.QtGui import QPixmap
 
+from iartisanxl.app.event_bus import EventBus
 from iartisanxl.generation.lora_data_object import LoraDataObject
 from iartisanxl.modules.common.dialogs.base_dialog import BaseDialog
 from iartisanxl.modules.common.dialogs.lora_info_widget import LoraInfoWidget
@@ -36,6 +37,7 @@ class LoraDialog(BaseDialog):
 
         self.loading_loras = False
         self.selected_lora = None
+        self.event_bus = EventBus()
 
         self.settings = QSettings("ZCode", "ImageArtisanXL")
         self.settings.beginGroup("lora_dialog")
@@ -186,11 +188,7 @@ class LoraDialog(BaseDialog):
         self.prompt_window.positive_prompt.insertTextAtCursor(prompt)
 
     def on_lora_selected(self):
-        try:
-            self.image_generation_data.add_lora(self.selected_lora)
-            self.generation_updated.emit()
-        except ValueError:
-            self.show_error("Can't add the same LoRA more than once.")
+        self.event_bus.publish("lora", {"action": "add", "lora": self.selected_lora})
 
     def on_lora_imported(self, path: str):
         if path.endswith(".safetensors"):

@@ -13,11 +13,12 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import Qt
 
+from iartisanxl.app.event_bus import EventBus
 from iartisanxl.modules.common.panels.base_panel import BasePanel
 from iartisanxl.modules.common.image_dimensions import ImageDimensionsWidget
 from iartisanxl.modules.common.dialogs.model_dialog import ModelDialog
 from iartisanxl.generation.vae_data_object import VaeDataObject
-from iartisanxl.generation.generation_data_object import ImageGenData
+from iartisanxl.generation.image_generation_data import ImageGenerationData
 
 
 class GenerationPanel(BasePanel):
@@ -31,6 +32,7 @@ class GenerationPanel(BasePanel):
         super().__init__(*args, **kwargs)
         self.schedulers = schedulers
         self.module_options = module_options
+        self.event_bus = EventBus()
 
         self.vaes = []
         if self.directories.vaes and os.path.isdir(self.directories.vaes):
@@ -170,17 +172,22 @@ class GenerationPanel(BasePanel):
         self.label_steps_value.setText(f"{value}")
 
     def on_dial_value_changed(self, value):
-        self.image_generation_data.guidance = value / 10.0
+        self.event_bus.publish(
+            "image_generation_data", {"attr": "guidance", "value": value / 10.0}
+        )
         self.guidance_value_label.setText(f"{self.image_generation_data.guidance}")
 
     def on_clip_skip_value_changed(self, value):
         self.image_generation_data.clip_skip = value
         self.clip_skip_value_label.setText(f"{value}")
 
-    def update_ui(self, image_generation_data: ImageGenData):
+    def update_ui(self, image_generation_data: ImageGenerationData):
         super().update_ui(image_generation_data)
 
-        if len(self.image_generation_data.positive_prompt_clipl) > 0:
+        if (
+            self.image_generation_data.positive_prompt_clipl is not None
+            and len(self.image_generation_data.positive_prompt_clipl) > 0
+        ):
             self.split_positive_prompt.setChecked(True)
             self.module_options["positive_prompt_split"] = True
             self.prompt_window.split_positive_prompt(True)
@@ -189,7 +196,10 @@ class GenerationPanel(BasePanel):
                 self.module_options.get("positive_prompt_split")
             )
 
-        if len(self.image_generation_data.negative_prompt_clipl) > 0:
+        if (
+            self.image_generation_data.negative_prompt_clipl is not None
+            and len(self.image_generation_data.negative_prompt_clipl) > 0
+        ):
             self.split_negative_prompt.setChecked(True)
             self.module_options["negative_prompt_split"] = True
             self.prompt_window.split_negative_prompt(True)

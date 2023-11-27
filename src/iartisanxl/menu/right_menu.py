@@ -4,6 +4,7 @@ from PyQt6.QtCore import QPropertyAnimation, QEasingCurve, QTimer
 from iartisanxl.buttons.expand_right_button import ExpandRightButton
 from iartisanxl.buttons.vertical_button import VerticalButton
 from iartisanxl.generation.image_generation_data import ImageGenerationData
+from iartisanxl.generation.lora_list import LoraList
 from iartisanxl.app.directories import DirectoriesObject
 from iartisanxl.modules.common.image_viewer_simple import ImageViewerSimple
 from iartisanxl.modules.common.prompt_window import PromptWindow
@@ -19,6 +20,7 @@ class RightMenu(QFrame):
         module_options: dict,
         directories: DirectoriesObject,
         image_generation_data: ImageGenerationData,
+        lora_list: LoraList,
         image_viewer: ImageViewerSimple,
         prompt_window: PromptWindow,
         show_error: callable,
@@ -32,6 +34,7 @@ class RightMenu(QFrame):
         self.module_options = module_options
         self.directories = directories
         self.image_generation_data = image_generation_data
+        self.lora_list = lora_list
         self.image_viewer = image_viewer
         self.prompt_window = prompt_window
         self.show_error = show_error
@@ -168,7 +171,16 @@ class RightMenu(QFrame):
             self.current_panel.setParent(None)
             del self.current_panel
 
-        panel = panel_class(*(args + (self.image_generation_data,)), **kwargs)
+        panel = panel_class(
+            *(
+                args
+                + (
+                    self.image_generation_data,
+                    self.lora_list,
+                )
+            ),
+            **kwargs,
+        )
         panel.dialog_opened.connect(self.on_open_dialog)
         self.panel_layout.addWidget(panel)
 

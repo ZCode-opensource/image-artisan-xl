@@ -8,10 +8,10 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import Qt
 
+from iartisanxl.app.event_bus import EventBus
 from iartisanxl.modules.common.panels.base_panel import BasePanel
 from iartisanxl.modules.common.dialogs.lora_dialog import LoraDialog
 from iartisanxl.modules.common.lora_added_item import LoraAddedItem
-from iartisanxl.generation.generation_data_object import ImageGenData
 
 
 class LoraPanel(BasePanel):
@@ -25,6 +25,10 @@ class LoraPanel(BasePanel):
         self.loras = []
         self.lora_scale = 1.0
         self.init_ui()
+
+        self.event_bus = EventBus()
+        self.event_bus.subscribe("lora", self.on_lora)
+
         self.update_ui(self.image_generation_data)
 
     def init_ui(self):
@@ -73,13 +77,13 @@ class LoraPanel(BasePanel):
             if widget is not None:
                 widget.deleteLater()
 
-    def update_ui(self, image_generation_data: ImageGenData):
+    def update_ui(self, image_generation_data):
         super().update_ui(image_generation_data)
 
         self.lora_scale = self.image_generation_data.lora_scale
         self.lora_slider.setValue(int(self.lora_scale * 10))
         self.lbl_lora_scale.setText(f"{self.lora_scale:.1f}")
-        loras = self.image_generation_data.loras
+        loras = self.lora_list.loras
         self.clear_loras()
 
         if len(loras) > 0:
@@ -99,10 +103,21 @@ class LoraPanel(BasePanel):
         if index != -1:
             self.loras_layout.takeAt(index)
             lora_widget.deleteLater()
-            self.image_generation_data.remove_lora(self.loras[index].lora)
+            self.lora_list.remove(self.loras[index].lora)
             del self.loras[index]
 
     def on_lora_enabled(self, lora_widget: LoraAddedItem):
-        self.image_generation_data.change_lora_enabled(
-            lora_widget.lora, lora_widget.enabled_checkbox.isChecked()
+        self.lora_list.update_lora(
+            lora_widget.lora.filename,
+            {"enabled": lora_widget.enabled_checkbox.isChecked()},
         )
+
+    def on_lora(self, data):
+        if data["action"] == "add":
+            lora_widget = LoraAddedItem(data["lora"])
+            lora_widget.remove_clicked.connect(
+                lambda lw=lora_widget: self.on_remove_lora(lw)
+            )
+            lora_widget.enabled.connect(lambda lw=lora_widget: self.on_lora_enabled(lw))
+            self.loras_layout.addWidget(lora_widget)
+            self.loras.append(lora_widget)
