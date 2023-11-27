@@ -9,6 +9,7 @@ from iartisanxl.generation.lora_data_object import LoraDataObject
 class LoraList:
     loras: list[LoraDataObject] = attr.Factory(list)
     _original_loras: list[LoraDataObject] = attr.Factory(list)
+    dropped_image: bool = attr.ib(default=False)
 
     def add(self, lora):
         if not any(

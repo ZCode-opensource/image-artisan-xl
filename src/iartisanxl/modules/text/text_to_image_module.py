@@ -307,6 +307,7 @@ class TextToImageModule(BaseModule):
                 self.lora_list.add(lora_object)
 
         self.event_bus.publish("update_from_json", {})
+        self.lora_list.dropped_image = True
         self.prompt_window.unblock_seed()
 
     def on_dropped_image_loaded(self, image: QPixmap):

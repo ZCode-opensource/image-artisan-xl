@@ -79,8 +79,6 @@ class NodeGraphThread(QThread):
 
         # process loras
         if len(self.lora_list.loras) > 0:
-            new_loras = self.lora_list.get_added()
-
             sdxl_model = self.node_graph.get_node_by_name("model")
             image_generation = self.node_graph.get_node_by_name("image_generation")
             lora_scale = self.node_graph.get_node_by_name("lora_scale")
@@ -88,7 +86,16 @@ class NodeGraphThread(QThread):
             decoder = self.node_graph.get_node_by_name("decoder")
             image_send = self.node_graph.get_node_by_name("image_send")
 
-            if len(new_loras) > 0:
+            # if there's a image dropped to generate, reset all the loras since its impossible
+            # to keep track of the ids for the nodes
+            if self.lora_list.dropped_image:
+                sdxl_model.unload_lora_weights()
+                lora_nodes = self.node_graph.get_all_nodes_class(LoraNode)
+                for lora_node in lora_nodes:
+                    self.node_graph.delete_node_by_id(lora_node.id)
+
+                new_loras = self.lora_list.loras
+
                 for lora in new_loras:
                     lora_node = LoraNode(
                         path=lora.path,
@@ -112,33 +119,64 @@ class NodeGraphThread(QThread):
                     decoder.updated = True
                     image_send.updated = True
 
-            modified_loras = self.lora_list.get_modified()
+            else:
+                new_loras = self.lora_list.get_added()
 
-            if len(modified_loras) > 0:
-                for lora in modified_loras:
-                    lora_node = self.node_graph.get_node(lora.id)
-                    lora_node.update_scale(lora.weight)
+                if len(new_loras) > 0:
+                    for lora in new_loras:
+                        lora_node = LoraNode(
+                            path=lora.path,
+                            adapter_name=lora.filename,
+                            scale=lora.weight,
+                            lora_name=lora.name,
+                            version=lora.version,
+                        )
+                        lora_node.connect("unet", sdxl_model, "unet")
+                        lora_node.connect(
+                            "text_encoder_1", sdxl_model, "text_encoder_1"
+                        )
+                        lora_node.connect(
+                            "text_encoder_2", sdxl_model, "text_encoder_2"
+                        )
+                        lora_node.connect("global_lora_scale", lora_scale, "value")
+                        self.node_graph.add_node(lora_node, lora.filename)
+                        lora.id = lora_node.id
+                        image_generation.connect("lora", lora_node, "lora")
+
+                        # this is manually updated since it doesn't have a relation with the node (add a system for this)
+                        prompts_encoder.updated = True
+
+                        # ugly patch while I find why they dont get flagged as updated
+                        decoder.updated = True
+                        image_send.updated = True
+
+                modified_loras = self.lora_list.get_modified()
+
+                if len(modified_loras) > 0:
+                    for lora in modified_loras:
+                        lora_node = self.node_graph.get_node(lora.id)
+                        lora_node.update_scale(lora.weight)
+
+                        # same as before
+                        prompts_encoder.updated = True
+                        decoder.updated = True
+                        image_send.updated = True
+
+                removed_loras = self.lora_list.get_removed()
+
+                if len(removed_loras) > 0:
+                    adapter_names = []
+                    for lora in removed_loras:
+                        self.node_graph.delete_node_by_id(lora.id)
+                        adapter_names.append(lora.filename)
+
+                    if len(adapter_names) > 0:
+                        sdxl_model.delete_adapters(adapter_names)
 
                     # same as before
                     prompts_encoder.updated = True
                     decoder.updated = True
                     image_send.updated = True
-
-            removed_loras = self.lora_list.get_removed()
-
-            if len(removed_loras) > 0:
-                adapter_names = []
-                for lora in removed_loras:
-                    self.node_graph.delete_node_by_id(lora.id)
-                    adapter_names.append(lora.filename)
-
-                if len(adapter_names) > 0:
-                    sdxl_model.delete_adapters(adapter_names)
-
-                # same as before
-                prompts_encoder.updated = True
-                decoder.updated = True
-                image_send.updated = True
         else:
             removed_loras = self.lora_list.get_removed()
 
@@ -154,6 +192,7 @@ class NodeGraphThread(QThread):
                 image_send.updated = True
 
         self.lora_list.save_state()
+        self.lora_list.dropped_image = False
 
         try:
             self.node_graph()

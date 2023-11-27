@@ -278,18 +278,21 @@ class StableDiffusionXLModelNode(Node):
                 delete_adapter_layers(self.values["text_encoder_2"], adapter_name)
 
     def unload_lora_weights(self):
-        recurse_remove_peft_layers(self.values["unet"])
-        if hasattr(self.values["unet"], "peft_config"):
-            del self.values["unet"].peft_config
+        unet = self.values.get("unet")
 
-        recurse_remove_peft_layers(self.values["text_encoder_1"])
-        if hasattr(self.values["text_encoder_1"], "peft_config"):
-            del self.values["text_encoder_1"].peft_config
-            # pylint: disable=protected-access
-            self.values["text_encoder_1"]._hf_peft_config_loaded = None
+        if unet is not None:
+            recurse_remove_peft_layers(unet)
+            if hasattr(unet, "peft_config"):
+                del unet.peft_config
 
-        recurse_remove_peft_layers(self.values["text_encoder_2"])
-        if hasattr(self.values["text_encoder_2"], "peft_config"):
-            del self.values["text_encoder_2"].peft_config
-            # pylint: disable=protected-access
-            self.values["text_encoder_2"]._hf_peft_config_loaded = None
+            recurse_remove_peft_layers(self.values["text_encoder_1"])
+            if hasattr(self.values["text_encoder_1"], "peft_config"):
+                del self.values["text_encoder_1"].peft_config
+                # pylint: disable=protected-access
+                self.values["text_encoder_1"]._hf_peft_config_loaded = None
+
+            recurse_remove_peft_layers(self.values["text_encoder_2"])
+            if hasattr(self.values["text_encoder_2"], "peft_config"):
+                del self.values["text_encoder_2"].peft_config
+                # pylint: disable=protected-access
+                self.values["text_encoder_2"]._hf_peft_config_loaded = None
