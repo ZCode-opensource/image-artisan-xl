@@ -25,6 +25,10 @@ class ImageProcesorThread(QThread):
             "Setting up generation from metada found in the image..."
         )
 
+        if image.serialized_data is None:
+            self.image_error.emit("Image generation data not found.")
+            return
+
         self.serialized_data_obtained.emit(image.serialized_data)
         pixmap = image.get_qpixmap()
         self.image_loaded.emit(pixmap)

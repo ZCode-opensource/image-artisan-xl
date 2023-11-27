@@ -439,8 +439,8 @@ class TextToImageModule(BaseModule):
         self.image_viewer.serialized_data = serialized_data
 
         if self.auto_save:
-            # if self.preferences.save_image_metadata:
-            #     image_processor.set_serialized_data(serialized_data)
+            if self.preferences.save_image_metadata:
+                image_processor.set_serialized_data(serialized_data)
             image_processor.save_to_png(self.directories.outputs_images)
 
         self.prompt_window.set_button_generate()
