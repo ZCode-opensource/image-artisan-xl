@@ -11,6 +11,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import pyqtSignal, Qt
 from transformers import CLIPTokenizer
 
+from iartisanxl.app.event_bus import EventBus
 from iartisanxl.generation.image_generation_data import ImageGenerationData
 from iartisanxl.modules.common.prompt_input import PromptInput
 from iartisanxl.modules.common.generate_button import GenerateButton
@@ -34,8 +35,13 @@ class PromptWindow(QFrame):
         )
         self.max_tokens = self.tokenizer.model_max_length - 2
 
+        self.image_generation_data = image_generation_data
+
+        self.event_bus = EventBus()
+        self.event_bus.subscribe("update_from_json", self.update_ui)
+
         self.init_ui()
-        self.update_ui(image_generation_data)
+        self.update_ui()
         self.set_button_generate()
 
     def init_ui(self):
@@ -129,9 +135,9 @@ class PromptWindow(QFrame):
             self.generate_button.auto_save, self.generate_button.continuous_generation
         )
 
-    def update_ui(self, image_generation_data: ImageGenerationData):
-        self.image_generation_data = image_generation_data
+    def update_ui(self, _data=None):
         self.split_positive_prompt(self.module_options.get("positive_prompt_split"))
+
         self.positive_prompt.setPlainText(
             self.image_generation_data.positive_prompt_clipg
         )

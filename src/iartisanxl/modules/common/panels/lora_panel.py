@@ -28,8 +28,9 @@ class LoraPanel(BasePanel):
 
         self.event_bus = EventBus()
         self.event_bus.subscribe("lora", self.on_lora)
+        self.event_bus.subscribe("update_from_json", self.update_ui)
 
-        self.update_ui(self.image_generation_data)
+        self.update_ui()
 
     def init_ui(self):
         main_layout = QVBoxLayout()
@@ -77,9 +78,7 @@ class LoraPanel(BasePanel):
             if widget is not None:
                 widget.deleteLater()
 
-    def update_ui(self, image_generation_data):
-        super().update_ui(image_generation_data)
-
+    def update_ui(self, _data=None):
         self.lora_scale = self.image_generation_data.lora_scale
         self.lora_slider.setValue(int(self.lora_scale * 10))
         self.lbl_lora_scale.setText(f"{self.lora_scale:.1f}")

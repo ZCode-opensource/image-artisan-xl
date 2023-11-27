@@ -165,7 +165,6 @@ class TextToImageModule(BaseModule):
         )
         self.prompt_window.generate_signal.connect(self.generation_clicked)
         main_layout.addWidget(self.prompt_window)
-        self.subscribe(self.prompt_window)
 
         self.right_menu = RightMenu(
             self.module_options,
@@ -179,7 +178,6 @@ class TextToImageModule(BaseModule):
             self.open_dialog,
         )
         top_layout.addWidget(self.right_menu)
-        self.subscribe(self.right_menu)
         top_layout.setStretch(0, 1)
 
         # Add the panels to the menu
@@ -308,7 +306,7 @@ class TextToImageModule(BaseModule):
                 )
                 self.lora_list.add(lora_object)
 
-        self.notify_observers()
+        self.event_bus.publish("update_from_json", {})
         self.prompt_window.unblock_seed()
 
     def on_dropped_image_loaded(self, image: QPixmap):
@@ -450,27 +448,6 @@ class TextToImageModule(BaseModule):
         if self.continuous_generation:
             self.generation_clicked(self.auto_save, self.continuous_generation)
 
-    def subscribe(self, observer):
-        self.observers.append(observer)
-
-    def unsubscribe(self, observer):
-        self.observers.remove(observer)
-
-    def notify_observers(self, generate: bool = False):
-        self.logger.debug(self.image_generation_data)
-
-        for dialog in self.dialogs.values():
-            dialog.update_dialog(self.image_generation_data)
-
-        self.logger.debug("Notifying observers: %s", self.observers)
-        for observer in self.observers:
-            observer.update_ui(self.image_generation_data)
-
-        self.prompt_window.unblock_seed()
-
-        if generate:
-            self.generation_clicked()
-
     def update_status_bar(self, text):
         self.status_bar.showMessage(text)
 
@@ -502,7 +479,6 @@ class TextToImageModule(BaseModule):
         image.serialized_data = generation_data
 
         self.image_generation_data.update_from_json(generation_data)
-        self.notify_observers(True)
 
     def on_abort(self):
         self.node_graph_thread.abort = True

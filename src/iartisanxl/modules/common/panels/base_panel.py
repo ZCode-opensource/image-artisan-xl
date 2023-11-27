@@ -28,9 +28,6 @@ class BasePanel(QWidget):
         self.prompt_window = prompt_window
         self.show_error = show_error
 
-    def update_ui(self, image_generation_data: ImageGenerationData):
-        self.image_generation_data = image_generation_data
-
     def process_dialog(self, dialog: BaseDialog):
         pass
 

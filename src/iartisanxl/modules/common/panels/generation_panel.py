@@ -18,7 +18,6 @@ from iartisanxl.modules.common.panels.base_panel import BasePanel
 from iartisanxl.modules.common.image_dimensions import ImageDimensionsWidget
 from iartisanxl.modules.common.dialogs.model_dialog import ModelDialog
 from iartisanxl.generation.vae_data_object import VaeDataObject
-from iartisanxl.generation.image_generation_data import ImageGenerationData
 
 
 class GenerationPanel(BasePanel):
@@ -33,6 +32,7 @@ class GenerationPanel(BasePanel):
         self.schedulers = schedulers
         self.module_options = module_options
         self.event_bus = EventBus()
+        self.event_bus.subscribe("update_from_json", self.update_ui)
 
         self.vaes = []
         if self.directories.vaes and os.path.isdir(self.directories.vaes):
@@ -40,7 +40,7 @@ class GenerationPanel(BasePanel):
 
         self.model_dialog = None
         self.init_ui()
-        self.update_ui(self.image_generation_data)
+        self.update_ui()
 
     def init_ui(self):
         main_layout = QVBoxLayout()
@@ -181,9 +181,7 @@ class GenerationPanel(BasePanel):
         self.image_generation_data.clip_skip = value
         self.clip_skip_value_label.setText(f"{value}")
 
-    def update_ui(self, image_generation_data: ImageGenerationData):
-        super().update_ui(image_generation_data)
-
+    def update_ui(self, _data=None):
         if (
             self.image_generation_data.positive_prompt_clipl is not None
             and len(self.image_generation_data.positive_prompt_clipl) > 0
