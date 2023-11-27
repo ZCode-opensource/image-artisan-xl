@@ -29,6 +29,7 @@ class LoraNode(Node):
         scale: float = None,
         lora_name: str = None,
         version: str = None,
+        enabled: bool = True,
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -38,9 +39,11 @@ class LoraNode(Node):
         self.scale = scale
         self.lora_name = lora_name
         self.version = version
+        self.enabled = enabled
 
-    def update_scale(self, scale: float):
+    def update_lora(self, scale: float, enabled: bool):
         self.scale = scale
+        self.enabled = enabled
         self.set_updated()
 
     def to_dict(self):
@@ -50,6 +53,7 @@ class LoraNode(Node):
         node_dict["scale"] = self.scale
         node_dict["lora_name"] = self.lora_name
         node_dict["version"] = self.version
+        node_dict["enabled"] = self.enabled
         return node_dict
 
     @classmethod
@@ -60,6 +64,7 @@ class LoraNode(Node):
         node.scale = node_dict["scale"]
         node.lora_name = node_dict["lora_name"]
         node.version = node_dict["version"]
+        node.enabled = node_dict["enabled"]
         return node
 
     def update_inputs(self, node_dict):
@@ -68,6 +73,7 @@ class LoraNode(Node):
         self.scale = node_dict["scale"]
         self.lora_name = node_dict["lora_name"]
         self.version = node_dict["version"]
+        self.enabled = node_dict["enabled"]
 
     def __call__(self):
         super().__call__()
@@ -114,7 +120,11 @@ class LoraNode(Node):
                     adapter_name=self.adapter_name,
                 )
 
-        self.values["lora"] = (self.adapter_name, self.scale)
+        scale = self.scale
+        if not self.enabled:
+            scale = 0.0
+
+        self.values["lora"] = (self.adapter_name, scale)
 
         return self.values
 

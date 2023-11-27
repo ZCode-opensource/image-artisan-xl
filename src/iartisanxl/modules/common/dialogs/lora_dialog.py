@@ -109,7 +109,6 @@ class LoraDialog(BaseDialog):
         lora_info_widget = LoraInfoWidget(data)
         lora_info_widget.lora_selected.connect(self.on_lora_selected)
         lora_info_widget.lora_edit.connect(self.on_lora_edit_clicked)
-        lora_info_widget.generate_example.connect(self.auto_generate_function)
         lora_info_widget.trigger_clicked.connect(self.on_trigger_clicked)
         lora_info_widget.example_prompt_clicked.connect(self.on_example_prompt_clicked)
         self.lora_frame_layout.addWidget(lora_info_widget)

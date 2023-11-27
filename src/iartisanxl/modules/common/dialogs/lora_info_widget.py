@@ -15,6 +15,7 @@ from PyQt6.QtWidgets import (
     QSizePolicy,
 )
 
+from iartisanxl.app.event_bus import EventBus
 from iartisanxl.layouts.simple_flow_layout import SimpleFlowLayout
 from iartisanxl.modules.common.model_utils import get_metadata_from_safetensors
 from iartisanxl.modules.common.dialogs.example_prompt import ExamplePrompt
@@ -42,6 +43,8 @@ class LoraInfoWidget(QWidget):
         self.filepath = data["filepath"]
         self.generation_data = None
         self.default_image = True
+
+        self.event_bus = EventBus()
 
         self.init_ui()
         self.load_info()
@@ -211,7 +214,9 @@ class LoraInfoWidget(QWidget):
         self.lora_edit.emit(self.data)
 
     def on_generate_example(self):
-        self.generate_example.emit(self.generation_data)
+        self.event_bus.publish(
+            "auto_generate", {"generation_data": self.generation_data}
+        )
 
     def on_trigger_clicked(self):
         button = self.sender()

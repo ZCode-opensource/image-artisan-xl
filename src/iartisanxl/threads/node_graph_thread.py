@@ -77,14 +77,15 @@ class NodeGraphThread(QThread):
         elif self.node_graph.cpu_offload != self.model_offload:
             self.check_and_update("cpu_offload", "model_offload", self.model_offload)
 
+        sdxl_model = self.node_graph.get_node_by_name("model")
+        prompts_encoder = self.node_graph.get_node_by_name("prompts_encoder")
+        decoder = self.node_graph.get_node_by_name("decoder")
+        image_send = self.node_graph.get_node_by_name("image_send")
+
         # process loras
         if len(self.lora_list.loras) > 0:
-            sdxl_model = self.node_graph.get_node_by_name("model")
             image_generation = self.node_graph.get_node_by_name("image_generation")
             lora_scale = self.node_graph.get_node_by_name("lora_scale")
-            prompts_encoder = self.node_graph.get_node_by_name("prompts_encoder")
-            decoder = self.node_graph.get_node_by_name("decoder")
-            image_send = self.node_graph.get_node_by_name("image_send")
 
             # if there's a image dropped to generate, reset all the loras since its impossible
             # to keep track of the ids for the nodes
@@ -155,7 +156,7 @@ class NodeGraphThread(QThread):
                 if len(modified_loras) > 0:
                     for lora in modified_loras:
                         lora_node = self.node_graph.get_node(lora.id)
-                        lora_node.update_scale(lora.weight)
+                        lora_node.update_lora(lora.weight, lora.enabled)
 
                         # same as before
                         prompts_encoder.updated = True
