@@ -33,25 +33,18 @@ class ImageGenerationNode(Node):
     ]
     OUTPUTS = ["latents"]
 
-    def __init__(self, abort: callable = None, callback: callable = None, **kwargs):
+    def __init__(self, callback: callable = None, **kwargs):
         super().__init__(**kwargs)
-        self.abort = abort if abort is not None else lambda: False
         self.callback = callback
 
     def to_dict(self):
         node_dict = super().to_dict()
-        node_dict["abort"] = self.abort.__name__ if self.abort else None
         node_dict["callback"] = self.callback.__name__ if self.callback else None
         return node_dict
 
     @classmethod
     def from_dict(cls, node_dict, callbacks=None):
         node = super(ImageGenerationNode, cls).from_dict(node_dict)
-        node.abort = (
-            callbacks.get(node_dict["abort"], lambda: False)
-            if callbacks
-            else lambda: False
-        )
         node.callback = callbacks.get(node_dict["callback"]) if callbacks else None
         return node
 
@@ -163,8 +156,8 @@ class ImageGenerationNode(Node):
                 "time_ids": add_time_ids,
             }
 
-            if self.abort():
-                return latents
+            if self.abort:
+                return
 
             noise_pred = self.unet(
                 latent_model_input,
@@ -176,8 +169,8 @@ class ImageGenerationNode(Node):
                 return_dict=False,
             )[0]
 
-            if self.abort():
-                return latents
+            if self.abort:
+                return
 
             # perform guidance
             if do_classifier_free_guidance:
@@ -191,8 +184,8 @@ class ImageGenerationNode(Node):
                 noise_pred, t, latents, **scheduler_kwargs, return_dict=False
             )[0]
 
-            if self.abort():
-                return latents
+            if self.abort:
+                return
 
             # call the callback, if provided
             if i == len(timesteps) - 1 or (
@@ -202,8 +195,8 @@ class ImageGenerationNode(Node):
                     step_idx = i // getattr(self.scheduler, "order", 1)
                     self.callback(step_idx, t, latents)
 
-            if self.abort():
-                return latents
+            if self.abort:
+                return
 
         if self.cpu_offload:
             self.unet.to("cpu")
