@@ -146,10 +146,8 @@ class ModelEditWidget(QWidget):
 
     def save_model_info(self):
         if self.model_type == "diffusers":
-            model_directory = os.path.join(self.filepath, "vae")
-            model_path = os.path.join(
-                model_directory, "diffusion_pytorch_model.fp16.safetensors"
-            )
+            model_directory = os.path.join(self.filepath, "text_encoder")
+            model_path = os.path.join(model_directory, "model.fp16.safetensors")
 
             image = None
             example_generation = None

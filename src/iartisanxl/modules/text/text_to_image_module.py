@@ -124,6 +124,7 @@ class TextToImageModule(BaseModule):
         self.event_bus = EventBus()
         self.event_bus.subscribe("lora", self.on_lora)
         self.event_bus.subscribe("image_generation_data", self.on_image_generation_data)
+        self.event_bus.subscribe("auto_generate", self.on_auto_generate)
 
         self.init_ui()
 
@@ -174,7 +175,6 @@ class TextToImageModule(BaseModule):
             self.image_viewer,
             self.prompt_window,
             self.show_error,
-            self.auto_generate,
             self.open_dialog,
         )
         top_layout.addWidget(self.right_menu)
@@ -475,11 +475,15 @@ class TextToImageModule(BaseModule):
         torch.cuda.empty_cache()
         torch.cuda.ipc_collect()
 
-    def auto_generate(self, generation_data):
+    def on_auto_generate(self, data):
+        generation_data = data.get("generation_data")
         image = ImageProcessor()
         image.serialized_data = generation_data
-
         self.image_generation_data.update_from_json(generation_data)
+        self.event_bus.publish("update_from_json", {})
+        self.lora_list.dropped_image = True
+        self.prompt_window.unblock_seed()
+        self.generation_clicked()
 
     def on_abort(self):
         self.node_graph_thread.abort = True

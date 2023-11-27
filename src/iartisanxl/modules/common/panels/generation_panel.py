@@ -33,6 +33,7 @@ class GenerationPanel(BasePanel):
         self.module_options = module_options
         self.event_bus = EventBus()
         self.event_bus.subscribe("update_from_json", self.update_ui)
+        self.event_bus.subscribe("selected_model", self.on_model_selected)
 
         self.vaes = []
         if self.directories.vaes and os.path.isdir(self.directories.vaes):
@@ -243,6 +244,14 @@ class GenerationPanel(BasePanel):
 
         self.image_dimensions.image_generation_data = self.image_generation_data
         self.image_dimensions.update()
+
+    def on_model_selected(self, data):
+        model = data.get("model")
+
+        version_string = ""
+        if model.version is not None and len(model.version) > 0:
+            version_string = f"v{model.version}"
+        self.selected_base_model_label.setText(f"{model.name} {version_string}")
 
     def base_scheduler_selected(self, index):
         self.image_generation_data.base_scheduler = index

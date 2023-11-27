@@ -35,7 +35,6 @@ class BaseDialog(QDialog):
         image_generation_data: ImageGenerationData,
         image_viewer: ImageViewerSimple,
         prompt_window: PromptWindow,
-        auto_generate_function: callable,
         *args,
         **kwargs,
     ):
@@ -47,7 +46,6 @@ class BaseDialog(QDialog):
         self.image_generation_data = image_generation_data
         self.image_viewer = image_viewer
         self.prompt_window = prompt_window
-        self.auto_generate_function = auto_generate_function
 
         self.dialog_layout = QVBoxLayout()
         self.dialog_layout.setContentsMargins(0, 0, 0, 0)

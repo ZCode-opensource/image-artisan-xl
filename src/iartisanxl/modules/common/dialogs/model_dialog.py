@@ -12,6 +12,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import QSettings, pyqtSignal, Qt, QSize
 from PyQt6.QtGui import QPixmap
 
+from iartisanxl.app.event_bus import EventBus
 from iartisanxl.generation.model_data_object import ModelDataObject
 from iartisanxl.modules.common.dialogs.model_info_widget import ModelInfoWidget
 from iartisanxl.modules.common.dialogs.modeL_edit_widget import ModelEditWidget
@@ -51,6 +52,8 @@ class ModelDialog(BaseDialog):
             "type": "safetensors",
         }
         self.model_directories = (diffusers_directory, safetensors_directory)
+
+        self.event_bus = EventBus()
 
         self.init_ui()
 
@@ -117,7 +120,6 @@ class ModelDialog(BaseDialog):
         model_info_widget.model_selected.connect(self.on_model_selected)
         model_info_widget.model_edit.connect(self.on_model_edit_clicked)
         model_info_widget.model_converted.connect(self.on_model_converted)
-        model_info_widget.generate_example.connect(self.auto_generate_function)
 
     def on_model_edit_clicked(self, data):
         self.clear_selected_model()
@@ -212,7 +214,7 @@ class ModelDialog(BaseDialog):
 
     def on_model_selected(self):
         self.image_generation_data.model = self.selected_model
-        self.generation_updated.emit()
+        self.event_bus.publish("selected_model", {"model": self.selected_model})
 
     def on_model_imported(self, path: str):
         if path.endswith(".safetensors"):

@@ -24,7 +24,6 @@ class RightMenu(QFrame):
         image_viewer: ImageViewerSimple,
         prompt_window: PromptWindow,
         show_error: callable,
-        auto_generate_function: callable,
         open_dialog: callable,
         *args,
         **kwargs,
@@ -38,7 +37,6 @@ class RightMenu(QFrame):
         self.image_viewer = image_viewer
         self.prompt_window = prompt_window
         self.show_error = show_error
-        self.auto_generate_function = auto_generate_function
         self.module_open_dialog = open_dialog
 
         self.expanded = self.module_options.get("right_menu_expanded")
@@ -196,7 +194,6 @@ class RightMenu(QFrame):
             self.image_generation_data,
             self.image_viewer,
             self.prompt_window,
-            self.auto_generate_function,
         )
         dialog.dialog_updated.connect(lambda: self.process_dialog(dialog))
         self.module_open_dialog(dialog)
