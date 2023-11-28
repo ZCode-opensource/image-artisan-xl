@@ -11,7 +11,9 @@ class LoraList:
     _original_loras: list[LoraDataObject] = attr.Factory(list)
     dropped_image: bool = attr.ib(default=False)
 
-    def add(self, lora):
+    def add(self, lora: LoraDataObject):
+        lora.filename = lora.filename.replace(".", "_")
+
         if not any(
             existing_lora.filename == lora.filename for existing_lora in self.loras
         ):
