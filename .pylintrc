@@ -25,3 +25,6 @@ output-format=text
 # contextlib.contextmanager. Add to this list to register other decorators that
 # produce valid context managers.
 contextmanager-decorators=contextlib.contextmanager
+
+[FORMAT]
+max-line-length=155
