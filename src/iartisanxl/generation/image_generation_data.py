@@ -189,6 +189,7 @@ class ImageGenerationData:
         )
         image_generation.connect("unet", sdxl_model, "unet")
         image_generation.connect("generator", latents, "generator")
+        image_generation.connect("vae_scale_factor", vae_model, "vae_scale_factor")
         node_graph.add_node(image_generation, "image_generation")
 
         decoder = LatentsDecoderNode()

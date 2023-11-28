@@ -3,7 +3,10 @@ import gc
 
 import torch
 
+from diffusers.image_processor import VaeImageProcessor
+
 from iartisanxl.graph.nodes.node import Node
+from iartisanxl.graph.additional.controlnets_wrapper import ControlnetsWrapper
 
 
 class ImageGenerationNode(Node):
@@ -20,6 +23,7 @@ class ImageGenerationNode(Node):
         "generator",
         "guidance_scale",
         "num_inference_steps",
+        "vae_scale_factor",
     ]
     OPTIONAL_INPUTS = [
         "original_size",
@@ -30,12 +34,14 @@ class ImageGenerationNode(Node):
         "negative_crops_coords_top_left",
         "lora",
         "cross_attention_kwargs",
+        "controlnet",
     ]
     OUTPUTS = ["latents"]
 
     def __init__(self, callback: callable = None, **kwargs):
         super().__init__(**kwargs)
         self.callback = callback
+        self.control_image_processor = None
 
     def to_dict(self):
         node_dict = super().to_dict()
@@ -50,6 +56,7 @@ class ImageGenerationNode(Node):
 
     def __call__(self):
         super().__call__()
+
         crops_coords_top_left = (
             self.crops_coords_top_left
             if self.crops_coords_top_left is not None
@@ -70,6 +77,28 @@ class ImageGenerationNode(Node):
             else:
                 self.unet.set_adapters([self.lora[0]], [self.lora[1]])
 
+        controlnets_models = None
+        guess_mode = False
+
+        if self.controlnet:
+            self.control_image_processor = VaeImageProcessor(
+                vae_scale_factor=self.vae_scale_factor,
+                do_convert_rgb=True,
+                do_normalize=False,
+            )
+
+            if isinstance(self.controlnet, dict):
+                controlnets = [self.controlnet]
+            else:
+                controlnets = self.controlnet
+
+            models = [net["model"] for net in controlnets]
+            images = [net["image"] for net in controlnets]
+            controlnet_conditioning_scale = [
+                net["conditioning_scale"] for net in controlnets
+            ]
+            controlnets_models = ControlnetsWrapper(models)
+
         self.scheduler.set_timesteps(self.num_inference_steps, device=self.device)
         timesteps = self.scheduler.timesteps
 
@@ -77,16 +106,15 @@ class ImageGenerationNode(Node):
 
         add_text_embeds = self.pooled_prompt_embeds
 
+        height = self.height
+        width = self.width
+
         original_size = (
-            self.original_size
-            if self.original_size is not None
-            else (self.height, self.width)
+            self.original_size if self.original_size is not None else (height, width)
         )
 
         target_size = (
-            self.target_size
-            if self.target_size is not None
-            else (self.height, self.width)
+            self.target_size if self.target_size is not None else (height, width)
         )
 
         add_time_ids = list(original_size + crops_coords_top_left + target_size)
@@ -132,6 +160,38 @@ class ImageGenerationNode(Node):
             len(timesteps) - self.num_inference_steps * self.scheduler.order, 0
         )
 
+        if controlnets_models is not None:
+            control_images = []
+
+            for image_ in images:
+                image_ = self.prepare_image(
+                    image=image_,
+                    width=width,
+                    height=height,
+                    batch_size=1,
+                    num_images_per_prompt=1,
+                    device=self.device,
+                    dtype=self.torch_dtype,
+                    do_classifier_free_guidance=do_classifier_free_guidance,
+                    guess_mode=guess_mode,
+                )
+
+                control_images.append(image_)
+
+            height, width = control_images[0].shape[-2:]
+
+            controlnet_keep = []
+            for i in range(len(timesteps)):
+                keeps = [
+                    1.0
+                    - float(
+                        i / len(timesteps) < net_dict["guidance_start"]
+                        or (i + 1) / len(timesteps) > net_dict["guidance_end"]
+                    )
+                    for net_dict in controlnets
+                ]
+                controlnet_keep.append(keeps)
+
         # scheduler generator
         scheduler_kwargs = {}
         accepts_generator = "generator" in set(
@@ -143,12 +203,16 @@ class ImageGenerationNode(Node):
         if self.cpu_offload:
             self.unet.to("cuda:0")
 
+        down_block_res_samples = None
+        mid_block_res_sample = None
+
         for i, t in enumerate(timesteps):
             # expand the latents if doing classifier free guidance
-            if do_classifier_free_guidance:
+            if do_classifier_free_guidance or controlnets_models is not None:
                 latent_model_input = torch.cat([latents] * 2)
             else:
                 latent_model_input = latents
+
             latent_model_input = self.scheduler.scale_model_input(latent_model_input, t)
 
             added_cond_kwargs = {
@@ -159,12 +223,55 @@ class ImageGenerationNode(Node):
             if self.abort:
                 return
 
+            if controlnets_models is not None:
+                if guess_mode and do_classifier_free_guidance:
+                    control_model_input = latents
+                    control_model_input = self.scheduler.scale_model_input(
+                        control_model_input, t
+                    )
+                    controlnet_prompt_embeds = prompt_embeds.chunk(2)[1]
+                    controlnet_added_cond_kwargs = {
+                        "text_embeds": add_text_embeds.chunk(2)[1],
+                        "time_ids": add_time_ids.chunk(2)[1],
+                    }
+                else:
+                    control_model_input = latent_model_input
+                    controlnet_prompt_embeds = prompt_embeds
+                    controlnet_added_cond_kwargs = added_cond_kwargs
+
+                cond_scale = [
+                    c * k
+                    for c, k in zip(controlnet_conditioning_scale, controlnet_keep[i])
+                ]
+
+                down_block_res_samples, mid_block_res_sample = controlnets_models(
+                    control_model_input,
+                    t,
+                    encoder_hidden_states=controlnet_prompt_embeds,
+                    controlnet_cond=control_images,
+                    conditioning_scale=cond_scale,
+                    guess_mode=guess_mode,
+                    added_cond_kwargs=controlnet_added_cond_kwargs,
+                    return_dict=False,
+                )
+
+                if guess_mode and do_classifier_free_guidance:
+                    down_block_res_samples = [
+                        torch.cat([torch.zeros_like(d), d])
+                        for d in down_block_res_samples
+                    ]
+                    mid_block_res_sample = torch.cat(
+                        [torch.zeros_like(mid_block_res_sample), mid_block_res_sample]
+                    )
+
             noise_pred = self.unet(
                 latent_model_input,
                 t,
                 encoder_hidden_states=prompt_embeds,
                 timestep_cond=timestep_cond,
                 cross_attention_kwargs=self.cross_attention_kwargs,
+                down_block_additional_residuals=down_block_res_samples,
+                mid_block_additional_residual=mid_block_res_sample,
                 added_cond_kwargs=added_cond_kwargs,
                 return_dict=False,
             )[0]
@@ -221,3 +328,35 @@ class ImageGenerationNode(Node):
             emb = torch.nn.functional.pad(emb, (0, 1))  # pylint: disable=not-callable
         assert emb.shape == (w.shape[0], embedding_dim)
         return emb
+
+    def prepare_image(
+        self,
+        image,
+        width,
+        height,
+        batch_size,
+        num_images_per_prompt,
+        device,
+        dtype,
+        do_classifier_free_guidance=False,
+        guess_mode=False,
+    ):
+        image = self.control_image_processor.preprocess(
+            image, height=height, width=width
+        ).to(dtype=torch.float32)
+        image_batch_size = image.shape[0]
+
+        if image_batch_size == 1:
+            repeat_by = batch_size
+        else:
+            # image batch size is the same as prompt batch size
+            repeat_by = num_images_per_prompt
+
+        image = image.repeat_interleave(repeat_by, dim=0)
+
+        image = image.to(device=device, dtype=dtype)
+
+        if do_classifier_free_guidance and not guess_mode:
+            image = torch.cat([image] * 2)
+
+        return image
