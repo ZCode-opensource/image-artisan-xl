@@ -129,9 +129,7 @@ class ImageEditor(QGraphicsView):
                     factor = 0.8
                     self._zoom -= 1
                 if self._zoom > 0:
-                    self.setTransformationAnchor(
-                        QGraphicsView.ViewportAnchor.AnchorUnderMouse
-                    )
+                    self.setTransformationAnchor(QGraphicsView.ViewportAnchor.AnchorUnderMouse)
                     self.scale(factor, factor)
                 elif self._zoom == 0:
                     self.fit_in_view()
@@ -228,9 +226,7 @@ class ImageEditor(QGraphicsView):
         modifiers = event.modifiers()
         if key == Qt.Key.Key_Z and modifiers == Qt.KeyboardModifier.ControlModifier:
             self.undo()
-        elif key == Qt.Key.Key_Z and modifiers == (
-            Qt.KeyboardModifier.ControlModifier | Qt.KeyboardModifier.ShiftModifier
-        ):
+        elif key == Qt.Key.Key_Z and modifiers == (Qt.KeyboardModifier.ControlModifier | Qt.KeyboardModifier.ShiftModifier):
             self.redo()
         elif key == Qt.Key.Key_Space:
             self.moving = False
@@ -283,9 +279,7 @@ class ImageEditor(QGraphicsView):
 
         painter = QPainter(image)
         # Use the pixmap's rect as the source rectangle
-        self._scene.render(
-            painter, QRectF(image.rect()), QRectF(self._photo.pixmap().rect())
-        )
+        self._scene.render(painter, QRectF(image.rect()), QRectF(self._photo.pixmap().rect()))
         painter.end()
 
         return image
@@ -316,9 +310,7 @@ class ImageEditor(QGraphicsView):
 
         # Determine the color of the cursor
         bg_color = self.get_color_under_cursor()
-        brightness = (
-            bg_color.red() * 299 + bg_color.green() * 587 + bg_color.blue() * 114
-        ) / 1000
+        brightness = (bg_color.red() * 299 + bg_color.green() * 587 + bg_color.blue() * 114) / 1000
 
         # Determine the cursor type based on the brightness and whether we should use the crosshair
         if brightness < 128:

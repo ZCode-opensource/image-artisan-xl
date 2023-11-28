@@ -67,7 +67,7 @@ class LoraPanel(BasePanel):
         self.image_generation_data.lora_scale = self.lora_scale
 
     def open_lora_dialog(self):
-        self.dialog_opened.emit(LoraDialog, "LoRAs")
+        self.dialog_opened.emit(self, LoraDialog, "LoRAs")
 
     def clear_loras(self):
         self.loras = []
@@ -88,12 +88,8 @@ class LoraPanel(BasePanel):
         if len(loras) > 0:
             for lora in loras:
                 lora_widget = LoraAddedItem(lora)
-                lora_widget.remove_clicked.connect(
-                    lambda lw=lora_widget: self.on_remove_lora(lw)
-                )
-                lora_widget.enabled.connect(
-                    lambda lw=lora_widget: self.on_lora_enabled(lw)
-                )
+                lora_widget.remove_clicked.connect(lambda lw=lora_widget: self.on_remove_lora(lw))
+                lora_widget.enabled.connect(lambda lw=lora_widget: self.on_lora_enabled(lw))
                 self.loras_layout.addWidget(lora_widget)
                 self.loras.append(lora_widget)
 
@@ -114,9 +110,7 @@ class LoraPanel(BasePanel):
     def on_lora(self, data):
         if data["action"] == "add":
             lora_widget = LoraAddedItem(data["lora"])
-            lora_widget.remove_clicked.connect(
-                lambda lw=lora_widget: self.on_remove_lora(lw)
-            )
+            lora_widget.remove_clicked.connect(lambda lw=lora_widget: self.on_remove_lora(lw))
             lora_widget.enabled.connect(lambda lw=lora_widget: self.on_lora_enabled(lw))
             self.loras_layout.addWidget(lora_widget)
             self.loras.append(lora_widget)

@@ -83,6 +83,3 @@ class BaseDialog(QDialog):
 
     def dialog_raised(self):
         pass
-
-    def update_dialog(self, image_generation_data: ImageGenerationData):
-        self.image_generation_data = image_generation_data

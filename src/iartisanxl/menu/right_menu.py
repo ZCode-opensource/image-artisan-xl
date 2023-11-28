@@ -5,10 +5,10 @@ from iartisanxl.buttons.expand_right_button import ExpandRightButton
 from iartisanxl.buttons.vertical_button import VerticalButton
 from iartisanxl.generation.image_generation_data import ImageGenerationData
 from iartisanxl.generation.lora_list import LoraList
+from iartisanxl.generation.controlnet_list import ControlNetList
 from iartisanxl.app.directories import DirectoriesObject
 from iartisanxl.modules.common.image_viewer_simple import ImageViewerSimple
 from iartisanxl.modules.common.prompt_window import PromptWindow
-from iartisanxl.modules.common.dialogs.base_dialog import BaseDialog
 
 
 class RightMenu(QFrame):
@@ -21,6 +21,7 @@ class RightMenu(QFrame):
         directories: DirectoriesObject,
         image_generation_data: ImageGenerationData,
         lora_list: LoraList,
+        controlnet_list: ControlNetList,
         image_viewer: ImageViewerSimple,
         prompt_window: PromptWindow,
         show_error: callable,
@@ -34,6 +35,7 @@ class RightMenu(QFrame):
         self.directories = directories
         self.image_generation_data = image_generation_data
         self.lora_list = lora_list
+        self.controlnet_list = controlnet_list
         self.image_viewer = image_viewer
         self.prompt_window = prompt_window
         self.show_error = show_error
@@ -79,9 +81,7 @@ class RightMenu(QFrame):
         self.panel_layout.setSpacing(0)
         self.panel_container.setLayout(self.panel_layout)
         self.panel_container.setMinimumWidth(0)
-        self.panel_container.setSizePolicy(
-            QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Expanding
-        )
+        self.panel_container.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Expanding)
         self.main_layout.addWidget(self.panel_container)
 
         self.setLayout(self.main_layout)
@@ -100,6 +100,7 @@ class RightMenu(QFrame):
                 self.show_error,
                 self.image_generation_data,
                 self.lora_list,
+                self.controlnet_list,
             ),
             "kwargs": kwargs,
         }
@@ -167,11 +168,7 @@ class RightMenu(QFrame):
         args = panel_info["args"]
         kwargs = panel_info["kwargs"]
 
-        if (
-            hasattr(self, "current_panel")
-            and self.current_panel is not None
-            and self.current_panel != panel_class
-        ):
+        if hasattr(self, "current_panel") and self.current_panel is not None and self.current_panel != panel_class:
             self.current_panel.setParent(None)
             del self.current_panel
 
@@ -182,11 +179,7 @@ class RightMenu(QFrame):
         self.current_panel = panel
         self.current_panel_text = text
 
-    def process_dialog(self, dialog: BaseDialog):
-        if self.current_panel is not None:
-            self.current_panel.process_dialog(dialog)
-
-    def on_open_dialog(self, dialog_class, title):
+    def on_open_dialog(self, panel, dialog_class, title):
         dialog = dialog_class(
             self.directories,
             title,
@@ -195,5 +188,9 @@ class RightMenu(QFrame):
             self.image_viewer,
             self.prompt_window,
         )
-        dialog.dialog_updated.connect(lambda: self.process_dialog(dialog))
         self.module_open_dialog(dialog)
+
+        for _text, panel_info in self.panels.items():
+            if isinstance(panel, panel_info["class"]):
+                panel.current_dialog = dialog
+                break

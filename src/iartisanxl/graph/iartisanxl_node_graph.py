@@ -6,6 +6,9 @@ from collections import deque, defaultdict
 import torch
 
 from iartisanxl.graph.nodes.node import Node
+from iartisanxl.graph.nodes.image_load_node import ImageLoadNode
+from iartisanxl.graph.nodes.controlnet_model_node import ControlnetModelNode
+from iartisanxl.graph.nodes.controlnet_node import ControlnetNode
 
 
 class ImageArtisanNodeGraph:
@@ -13,9 +16,7 @@ class ImageArtisanNodeGraph:
         self.node_counter = 0
         self.nodes = []
         self.updated = False
-        self.abort_function = (
-            abort_function if abort_function is not None else lambda: None
-        )
+        self.abort_function = abort_function if abort_function is not None else lambda: None
         self.executing_node = None
 
         self.cpu_offload = False
@@ -28,9 +29,7 @@ class ImageArtisanNodeGraph:
         if name is not None:
             for existing_node in self.nodes:
                 if existing_node.name == name:
-                    raise ValueError(
-                        f"A node with the name {name} already exists in the graph."
-                    )
+                    raise ValueError(f"A node with the name {name} already exists in the graph.")
         node.name = name
         node.id = self.node_counter
         node.abort_callable = self.abort_function
@@ -88,9 +87,7 @@ class ImageArtisanNodeGraph:
 
         def dfs(node):
             visiting.add(node)
-            for dependency in sorted(
-                node.dependencies, key=lambda x: x.PRIORITY, reverse=True
-            ):
+            for dependency in sorted(node.dependencies, key=lambda x: x.PRIORITY, reverse=True):
                 if dependency in visiting:
                     raise ValueError("Graph contains a cycle")
                 if dependency not in visited:
@@ -128,8 +125,13 @@ class ImageArtisanNodeGraph:
                     break
 
     def to_json(self):
+        # skip controlnet related nodes for the moment until I define where to save the relevant data
         graph_dict = {
-            "nodes": [node.to_dict() for node in self.nodes],
+            "nodes": [
+                node.to_dict()
+                for node in self.nodes
+                if not isinstance(node, ImageLoadNode) and not isinstance(node, ControlnetModelNode) and not isinstance(node, ControlnetNode)
+            ],
             "connections": [],
         }
         for node in self.nodes:
@@ -196,9 +198,7 @@ class ImageArtisanNodeGraph:
         max_id = 0
         for node_dict in graph_dict["nodes"]:
             node_class = node_classes[node_dict["class"]]
-            if node_dict["id"] in current_id_to_node and isinstance(
-                current_id_to_node[node_dict["id"]], node_class
-            ):
+            if node_dict["id"] in current_id_to_node and isinstance(current_id_to_node[node_dict["id"]], node_class):
                 # If the node already exists and is of the same class, check if its inputs have changed
                 node = current_id_to_node[node_dict["id"]]
                 new_node = node_class.from_dict(node_dict, callbacks)
@@ -228,12 +228,8 @@ class ImageArtisanNodeGraph:
         for connection_dict in graph_dict["connections"]:
             from_node = new_id_to_node[connection_dict["from_node_id"]]
             to_node = new_id_to_node[connection_dict["to_node_id"]]
-            new_connections[to_node.id].append(
-                (from_node.id, connection_dict["from_output_name"])
-            )
-            input_names[
-                (to_node.id, from_node.id, connection_dict["from_output_name"])
-            ] = connection_dict["to_input_name"]
+            new_connections[to_node.id].append((from_node.id, connection_dict["from_output_name"]))
+            input_names[(to_node.id, from_node.id, connection_dict["from_output_name"])] = connection_dict["to_input_name"]
 
         # Update connections
         for node in self.nodes:

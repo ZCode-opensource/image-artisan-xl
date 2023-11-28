@@ -3,6 +3,7 @@ import io
 import os
 import logging
 
+from typing import Optional
 from datetime import datetime
 
 import numpy as np
@@ -89,3 +90,22 @@ class ImageProcessor:
         metadata.add_text("iartisan_data", self.serialized_data)
 
         image.save(output_filepath, pnginfo=metadata)
+
+    def get_pillow_thumbnail(self, target_height: Optional[int] = None, target_width: Optional[int] = None) -> Image:
+        image = self.get_pillow_image()
+
+        if target_height is not None and target_width is not None:
+            # If both target height and width are provided, resize to exact dimensions (may distort image)
+            image.thumbnail((target_width, target_height))
+        elif target_height is not None:
+            # If only target height is provided, calculate width while maintaining aspect ratio
+            ratio = target_height / image.height
+            target_width = int(image.width * ratio)
+            image.thumbnail((target_width, target_height))
+        elif target_width is not None:
+            # If only target width is provided, calculate height while maintaining aspect ratio
+            ratio = target_width / image.width
+            target_height = int(image.height * ratio)
+            image.thumbnail((target_width, target_height))
+
+        return image

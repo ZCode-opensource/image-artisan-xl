@@ -16,9 +16,12 @@ from PyQt6.QtGui import QImage, QPixmap
 from superqt import QDoubleRangeSlider, QDoubleSlider
 from transformers import DPTImageProcessor, DPTForDepthEstimation
 
+from iartisanxl.app.event_bus import EventBus
 from iartisanxl.buttons.color_button import ColorButton
 from iartisanxl.modules.common.dialogs.base_dialog import BaseDialog
 from iartisanxl.modules.common.dialogs.control_image_widget import ControlImageWidget
+from iartisanxl.generation.controlnet_data_object import ControlNetDataObject
+from iartisanxl.formats.image import ImageProcessor
 
 
 class ControlNetDialog(BaseDialog):
@@ -35,7 +38,9 @@ class ControlNetDialog(BaseDialog):
             self.restoreGeometry(geometry)
         self.settings.endGroup()
 
-        self.controlnet_id = None
+        self.event_bus = EventBus()
+
+        self.controlnet = None
         self.conditioning_scale = 0.50
         self.control_guidance_start = 0.0
         self.control_guidance_end = 1.0
@@ -64,32 +69,26 @@ class ControlNetDialog(BaseDialog):
 
         conditioning_scale_label = QLabel("Conditioning scale:")
         control_layout.addWidget(conditioning_scale_label)
-        conditioning_scale_slider = QDoubleSlider(Qt.Orientation.Horizontal)
-        conditioning_scale_slider.setRange(0.0, 2.0)
-        conditioning_scale_slider.setValue(self.conditioning_scale)
-        conditioning_scale_slider.valueChanged.connect(
-            self.on_conditional_scale_changed
-        )
-        control_layout.addWidget(conditioning_scale_slider)
+        self.conditioning_scale_slider = QDoubleSlider(Qt.Orientation.Horizontal)
+        self.conditioning_scale_slider.setRange(0.0, 2.0)
+        self.conditioning_scale_slider.setValue(self.conditioning_scale)
+        self.conditioning_scale_slider.valueChanged.connect(self.on_conditional_scale_changed)
+        control_layout.addWidget(self.conditioning_scale_slider)
         self.conditioning_scale_value_label = QLabel(f"{self.conditioning_scale}")
         control_layout.addWidget(self.conditioning_scale_value_label)
 
         guidance_start_label = QLabel("Guidance Start:")
         control_layout.addWidget(guidance_start_label)
-        self.guidance_start_value_label = QLabel(
-            f"{int(self.control_guidance_start * 100)}%"
-        )
+        self.guidance_start_value_label = QLabel(f"{int(self.control_guidance_start * 100)}%")
         control_layout.addWidget(self.guidance_start_value_label)
-        slider = QDoubleRangeSlider(Qt.Orientation.Horizontal)
-        slider.setRange(0, 1)
-        slider.setValue((self.control_guidance_start, self.control_guidance_end))
-        slider.valueChanged.connect(self.on_guidance_changed)
-        control_layout.addWidget(slider)
+        self.guidance_slider = QDoubleRangeSlider(Qt.Orientation.Horizontal)
+        self.guidance_slider.setRange(0, 1)
+        self.guidance_slider.setValue((self.control_guidance_start, self.control_guidance_end))
+        self.guidance_slider.valueChanged.connect(self.on_guidance_changed)
+        control_layout.addWidget(self.guidance_slider)
         guidance_end_label = QLabel("End:")
         control_layout.addWidget(guidance_end_label)
-        self.guidance_end_value_label = QLabel(
-            f"{int(self.control_guidance_end * 100)}%"
-        )
+        self.guidance_end_value_label = QLabel(f"{int(self.control_guidance_end * 100)}%")
         control_layout.addWidget(self.guidance_end_value_label)
         content_layout.addLayout(control_layout)
 
@@ -99,11 +98,11 @@ class ControlNetDialog(BaseDialog):
         canny_layout.addWidget(canny_label)
         self.canny_low_label = QLabel(f"{self.canny_low}")
         canny_layout.addWidget(self.canny_low_label)
-        canny_slider = QDoubleRangeSlider(Qt.Orientation.Horizontal)
-        canny_slider.setRange(0, 600)
-        canny_slider.setValue((self.canny_low, self.canny_high))
-        canny_slider.valueChanged.connect(self.on_canny_threshold_changed)
-        canny_layout.addWidget(canny_slider)
+        self.canny_slider = QDoubleRangeSlider(Qt.Orientation.Horizontal)
+        self.canny_slider.setRange(0, 600)
+        self.canny_slider.setValue((self.canny_low, self.canny_high))
+        self.canny_slider.valueChanged.connect(self.on_canny_threshold_changed)
+        canny_layout.addWidget(self.canny_slider)
         self.canny_high_label = QLabel(f"{self.canny_high}")
         canny_layout.addWidget(self.canny_high_label)
         content_layout.addWidget(self.canny_widget)
@@ -136,9 +135,7 @@ class ControlNetDialog(BaseDialog):
         images_layout.setSpacing(2)
 
         source_layout = QVBoxLayout()
-        self.source_widget = ControlImageWidget(
-            "Source image", self.image_viewer, self.image_generation_data
-        )
+        self.source_widget = ControlImageWidget("Source image", self.image_viewer, self.image_generation_data)
         source_layout.addWidget(self.source_widget)
         annotate_button = QPushButton("Annotate")
         annotate_button.clicked.connect(self.on_annotate)
@@ -146,13 +143,11 @@ class ControlNetDialog(BaseDialog):
         images_layout.addLayout(source_layout)
 
         annotator_layout = QVBoxLayout()
-        self.annotator_widget = ControlImageWidget(
-            "Annotator", self.image_viewer, self.image_generation_data
-        )
+        self.annotator_widget = ControlImageWidget("Annotator", self.image_viewer, self.image_generation_data)
         annotator_layout.addWidget(self.annotator_widget)
-        add_button = QPushButton("Add")
-        add_button.clicked.connect(self.on_controlnet_added)
-        annotator_layout.addWidget(add_button)
+        self.add_button = QPushButton("Add")
+        self.add_button.clicked.connect(self.on_controlnet_added)
+        annotator_layout.addWidget(self.add_button)
         images_layout.addLayout(annotator_layout)
 
         content_layout.addLayout(images_layout)
@@ -164,25 +159,13 @@ class ControlNetDialog(BaseDialog):
 
         self.main_layout.addLayout(content_layout)
 
-        color_button.color_changed.connect(
-            self.source_widget.image_editor.set_brush_color
-        )
-        brush_size_slider.valueChanged.connect(
-            self.source_widget.image_editor.set_brush_size
-        )
-        brush_hardness_slider.valueChanged.connect(
-            self.source_widget.image_editor.set_brush_hardness
-        )
+        color_button.color_changed.connect(self.source_widget.image_editor.set_brush_color)
+        brush_size_slider.valueChanged.connect(self.source_widget.image_editor.set_brush_size)
+        brush_hardness_slider.valueChanged.connect(self.source_widget.image_editor.set_brush_hardness)
 
-        color_button.color_changed.connect(
-            self.annotator_widget.image_editor.set_brush_color
-        )
-        brush_size_slider.valueChanged.connect(
-            self.annotator_widget.image_editor.set_brush_size
-        )
-        brush_hardness_slider.valueChanged.connect(
-            self.annotator_widget.image_editor.set_brush_hardness
-        )
+        color_button.color_changed.connect(self.annotator_widget.image_editor.set_brush_color)
+        brush_size_slider.valueChanged.connect(self.annotator_widget.image_editor.set_brush_size)
+        brush_hardness_slider.valueChanged.connect(self.annotator_widget.image_editor.set_brush_hardness)
 
     def closeEvent(self, event):
         self.settings.beginGroup("controlnet_dialog")
@@ -205,9 +188,7 @@ class ControlNetDialog(BaseDialog):
                 low_threshold = self.canny_low
                 high_threshold = self.canny_high
 
-                canny_image = cv2.Canny(  # pylint: disable=no-member
-                    numpy_image, low_threshold, high_threshold
-                )
+                canny_image = cv2.Canny(numpy_image, low_threshold, high_threshold)  # pylint: disable=no-member
 
                 canny_image = np.stack([canny_image] * 3, axis=-1)
                 qimage = QImage(
@@ -222,14 +203,10 @@ class ControlNetDialog(BaseDialog):
                 self.annotator_widget.image_editor.set_pixmap(pixmap)
             elif annotator_index == 1:
                 if self.depth_estimator is None:
-                    self.depth_estimator = DPTForDepthEstimation.from_pretrained(
-                        "./models/annotators/dpt-hybrid-midas"
-                    ).to("cuda")
+                    self.depth_estimator = DPTForDepthEstimation.from_pretrained("./models/annotators/dpt-hybrid-midas").to("cuda")
 
                 if self.image_processor is None:
-                    self.image_processor = DPTImageProcessor.from_pretrained(
-                        "./models/annotators/dpt-hybrid-midas"
-                    )
+                    self.image_processor = DPTImageProcessor.from_pretrained("./models/annotators/dpt-hybrid-midas")
 
                 depthmap = self.get_depth_map(numpy_image, width, height)
 
@@ -245,7 +222,40 @@ class ControlNetDialog(BaseDialog):
                 pass
 
     def on_controlnet_added(self):
-        self.dialog_updated.emit()
+        if self.controlnet is None:
+            self.controlnet = ControlNetDataObject(
+                controlnet_type=self.controlnet_combo.currentText(),
+                enabled=True,
+                guess_mode=False,
+                conditioning_scale=round(self.conditioning_scale, 2),
+                guidance_start=self.control_guidance_start,
+                guidance_end=self.control_guidance_end,
+                type_index=self.controlnet_combo.currentIndex(),
+                canny_low=self.canny_low,
+                canny_high=self.canny_high,
+            )
+        else:
+            self.controlnet.conditioning_scale = round(self.conditioning_scale, 2)
+            self.controlnet.guidance_start = self.control_guidance_start
+            self.controlnet.guidance_end = self.control_guidance_end
+
+        source_image = ImageProcessor()
+        source_qimage = self.source_widget.image_editor.get_painted_image()
+        source_image.set_qimage(source_qimage)
+        self.controlnet.source_image_thumb = source_image.get_pillow_thumbnail(target_height=80)
+        self.controlnet.source_image = source_image.get_pillow_image()
+
+        annotator_image = ImageProcessor()
+        annotator_qimage = self.annotator_widget.image_editor.get_painted_image()
+        annotator_image.set_qimage(annotator_qimage)
+        self.controlnet.annotator_image_thumb = annotator_image.get_pillow_thumbnail(target_height=80)
+        self.controlnet.annotator_image = annotator_image.get_pillow_image()
+
+        if self.controlnet.controlnet_id is None:
+            self.event_bus.publish("controlnet", {"action": "add", "controlnet": self.controlnet})
+            self.add_button.setText("Update")
+        else:
+            self.event_bus.publish("controlnet", {"action": "update", "controlnet": self.controlnet})
 
     def on_conditional_scale_changed(self, value):
         self.conditioning_scale = value
@@ -254,12 +264,8 @@ class ControlNetDialog(BaseDialog):
     def on_guidance_changed(self, values):
         self.control_guidance_start = round(values[0], 2)
         self.control_guidance_end = round(values[1], 2)
-        self.guidance_start_value_label.setText(
-            f"{int(self.control_guidance_start * 100)}%"
-        )
-        self.guidance_end_value_label.setText(
-            f"{int(self.control_guidance_end * 100)}%"
-        )
+        self.guidance_start_value_label.setText(f"{int(self.control_guidance_start * 100)}%")
+        self.guidance_end_value_label.setText(f"{int(self.control_guidance_end * 100)}%")
 
     def on_canny_threshold_changed(self, values):
         self.canny_low = int(values[0])
@@ -272,16 +278,23 @@ class ControlNetDialog(BaseDialog):
         self.canny_widget.setVisible(self.controlnet_combo.currentIndex() == 0)
         self.annotator_widget.image_editor.clear()
 
-    def set_ui_to_edit(self):
-        pass
+    def update_ui(self):
+        self.conditioning_scale_slider.setValue(self.controlnet.conditioning_scale)
+        self.conditioning_scale_value_label.setText(f"{self.controlnet.conditioning_scale:.2f}")
+        self.guidance_slider.setValue((self.controlnet.guidance_start, self.controlnet.guidance_end))
+        self.canny_slider.setValue((self.controlnet.canny_low, self.controlnet.canny_high))
+        self.controlnet_combo.setCurrentIndex(self.controlnet.type_index)
+        self.on_annotator_changed()
 
-    def set_ui_to_new(self):
-        pass
+        image_processor = ImageProcessor()
+        image_processor.set_pillow_image(self.controlnet.source_image)
+        self.source_widget.image_editor.set_pixmap(image_processor.get_qpixmap())
+        image_processor.set_pillow_image(self.controlnet.annotator_image)
+        self.annotator_widget.image_editor.set_pixmap(image_processor.get_qpixmap())
+        del image_processor
 
     def get_depth_map(self, image, image_width, image_height):
-        image = self.image_processor(images=image, return_tensors="pt").pixel_values.to(
-            "cuda"
-        )
+        image = self.image_processor(images=image, return_tensors="pt").pixel_values.to("cuda")
         with torch.no_grad(), torch.autocast("cuda"):
             depth_map = self.depth_estimator(image).predicted_depth
 

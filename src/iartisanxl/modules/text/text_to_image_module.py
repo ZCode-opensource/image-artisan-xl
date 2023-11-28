@@ -27,6 +27,7 @@ from iartisanxl.menu.right_menu import RightMenu
 from iartisanxl.generation.image_generation_data import ImageGenerationData
 from iartisanxl.generation.lora_list import LoraList
 from iartisanxl.generation.lora_data_object import LoraDataObject
+from iartisanxl.generation.controlnet_list import ControlNetList
 from iartisanxl.generation.model_data_object import ModelDataObject
 from iartisanxl.generation.vae_data_object import VaeDataObject
 from iartisanxl.generation.schedulers.schedulers import schedulers
@@ -47,15 +48,9 @@ class TextToImageModule(BaseModule):
 
         self.settings.beginGroup("text_to_image")
         self.module_options = {
-            "right_menu_expanded": self.settings.value(
-                "right_menu_expanded", True, type=bool
-            ),
-            "positive_prompt_split": self.settings.value(
-                "positive_prompt_split", False, type=bool
-            ),
-            "negative_prompt_split": self.settings.value(
-                "negative_prompt_split", False, type=bool
-            ),
+            "right_menu_expanded": self.settings.value("right_menu_expanded", True, type=bool),
+            "positive_prompt_split": self.settings.value("positive_prompt_split", False, type=bool),
+            "negative_prompt_split": self.settings.value("negative_prompt_split", False, type=bool),
         }
         model_name = self.settings.value("model_name", "no model selected", type=str)
         self.settings.endGroup()
@@ -65,9 +60,7 @@ class TextToImageModule(BaseModule):
         model_path = self.settings.value("model_path", "", type=str)
         model_type = self.settings.value("model_type", "", type=str)
         model_version = self.settings.value("model_version", "", type=str)
-        model = ModelDataObject(
-            name=model_name, path=model_path, type=model_type, version=model_version
-        )
+        model = ModelDataObject(name=model_name, path=model_path, type=model_type, version=model_version)
         vae_name = self.settings.value("vae_name", "Model default", type=str)
         vae_path = self.settings.value("vae_path", "", type=str)
         vae = VaeDataObject(name=vae_name, path=vae_path)
@@ -75,6 +68,7 @@ class TextToImageModule(BaseModule):
         self.setAcceptDrops(True)
 
         self.lora_list = LoraList()
+        self.controlnet_list = ControlNetList()
         self.image_generation_data = ImageGenerationData(
             module="texttoimage",
             seed=0,
@@ -94,8 +88,6 @@ class TextToImageModule(BaseModule):
         )
         self.image_generation_data.update_previous_state()
         self.settings.endGroup()
-
-        self.observers = []
 
         self.node_graph = None
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -141,9 +133,7 @@ class TextToImageModule(BaseModule):
         top_layout = QHBoxLayout()
         top_layout.setContentsMargins(0, 0, 0, 0)
         top_layout.setSpacing(0)
-        self.image_viewer = ImageViewerSimple(
-            self.directories.outputs_images, self.preferences
-        )
+        self.image_viewer = ImageViewerSimple(self.directories.outputs_images, self.preferences)
         top_layout.addWidget(self.image_viewer)
         main_layout.addLayout(top_layout)
 
@@ -161,9 +151,7 @@ class TextToImageModule(BaseModule):
         self.progress_bar.setValue(0)
         main_layout.addWidget(self.progress_bar)
 
-        self.prompt_window = PromptWindow(
-            self.image_generation_data, self.module_options
-        )
+        self.prompt_window = PromptWindow(self.image_generation_data, self.module_options)
         self.prompt_window.generate_signal.connect(self.generation_clicked)
         main_layout.addWidget(self.prompt_window)
 
@@ -172,6 +160,7 @@ class TextToImageModule(BaseModule):
             self.directories,
             self.image_generation_data,
             self.lora_list,
+            self.controlnet_list,
             self.image_viewer,
             self.prompt_window,
             self.show_error,
@@ -181,9 +170,7 @@ class TextToImageModule(BaseModule):
         top_layout.setStretch(0, 1)
 
         # Add the panels to the menu
-        self.right_menu.add_panel(
-            "Generation", GenerationPanel, schedulers, self.module_options
-        )
+        self.right_menu.add_panel("Generation", GenerationPanel, schedulers, self.module_options)
         self.right_menu.add_panel("LoRAs", LoraPanel)
         self.right_menu.add_panel("ControlNet", ControlNetPanel, self.preferences)
 
@@ -198,9 +185,7 @@ class TextToImageModule(BaseModule):
 
     def closeEvent(self, event):
         self.settings.beginGroup("text_to_image")
-        self.settings.setValue(
-            "right_menu_expanded", self.module_options.get("right_menu_expanded")
-        )
+        self.settings.setValue("right_menu_expanded", self.module_options.get("right_menu_expanded"))
         self.settings.setValue(
             "positive_prompt_split",
             self.module_options.get("positive_prompt_split"),
@@ -216,9 +201,7 @@ class TextToImageModule(BaseModule):
             self.settings.setValue("model_name", self.image_generation_data.model.name)
             self.settings.setValue("model_path", self.image_generation_data.model.path)
             self.settings.setValue("model_type", self.image_generation_data.model.type)
-            self.settings.setValue(
-                "model_version", self.image_generation_data.model.version
-            )
+            self.settings.setValue("model_version", self.image_generation_data.model.version)
         else:
             self.settings.setValue("model_name", "no model selected")
             self.settings.setValue("model_path", "")
@@ -227,9 +210,7 @@ class TextToImageModule(BaseModule):
 
         self.settings.setValue("vae_name", self.image_generation_data.vae.name)
         self.settings.setValue("vae_path", self.image_generation_data.vae.path)
-        self.settings.setValue(
-            "base_scheduler", self.image_generation_data.base_scheduler
-        )
+        self.settings.setValue("base_scheduler", self.image_generation_data.base_scheduler)
         self.settings.setValue("image_width", self.image_generation_data.image_width)
         self.settings.setValue("image_height", self.image_generation_data.image_height)
         self.settings.setValue("guidance", self.image_generation_data.guidance)
@@ -269,15 +250,9 @@ class TextToImageModule(BaseModule):
             if path.endswith(".png"):
                 self.image_processor_thread = ImageProcesorThread(path)
                 self.threads["image_processor_thread"] = self.image_processor_thread
-                self.image_processor_thread.serialized_data_obtained.connect(
-                    self.on_serialized_data_obtained
-                )
-                self.image_processor_thread.status_changed.connect(
-                    self.update_status_bar
-                )
-                self.image_processor_thread.image_loaded.connect(
-                    self.on_dropped_image_loaded
-                )
+                self.image_processor_thread.serialized_data_obtained.connect(self.on_serialized_data_obtained)
+                self.image_processor_thread.status_changed.connect(self.update_status_bar)
+                self.image_processor_thread.image_loaded.connect(self.on_dropped_image_loaded)
                 self.image_processor_thread.image_error.connect(self.show_error)
                 self.image_processor_thread.finished.connect(self.reset_thread)
                 self.image_processor_thread.start()
@@ -314,9 +289,7 @@ class TextToImageModule(BaseModule):
         self.image_viewer.set_pixmap(image)
         self.update_status_bar("Ready")
 
-    def generation_clicked(
-        self, auto_save: bool = False, continuous_generation: bool = False
-    ):
+    def generation_clicked(self, auto_save: bool = False, continuous_generation: bool = False):
         self.auto_save = auto_save
         self.continuous_generation = continuous_generation
 
@@ -339,10 +312,7 @@ class TextToImageModule(BaseModule):
         self.generating = True
         self.prompt_window.set_button_abort()
 
-        if (
-            self.image_generation_data.seed <= 0
-            or self.prompt_window.random_checkbox.isChecked()
-        ):
+        if self.image_generation_data.seed <= 0 or self.prompt_window.random_checkbox.isChecked():
             self.image_generation_data.seed = random.randint(0, 2**32 - 1)
             self.prompt_window.seed_text.setText(str(self.image_generation_data.seed))
 
@@ -380,8 +350,10 @@ class TextToImageModule(BaseModule):
         self.status_bar.showMessage("Setting up generation...")
         self.progress_bar.setMaximum(self.image_generation_data.steps)
 
+        self.node_graph_thread.directories = self.directories
         self.node_graph_thread.image_generation_data = self.image_generation_data
         self.node_graph_thread.lora_list = self.lora_list
+        self.node_graph_thread.controlnet_list = self.controlnet_list
         self.node_graph_thread.model_offload = self.preferences.model_offload
         self.node_graph_thread.sequential_offload = self.preferences.sequential_offload
 
@@ -392,9 +364,7 @@ class TextToImageModule(BaseModule):
 
         if self.preferences.intermediate_images and self.taesd_dec is not None:
             with torch.no_grad():
-                decoded = (
-                    self.taesd_dec(latents.float()).clamp(0, 1).mul_(255).round().byte()
-                )
+                decoded = self.taesd_dec(latents.float()).clamp(0, 1).mul_(255).round().byte()
             image = Image.fromarray(decoded[0].permute(1, 2, 0).cpu().numpy())
 
             # Convert the image to a QImage
@@ -421,9 +391,7 @@ class TextToImageModule(BaseModule):
         duration = image_generation_node.elapsed_time
 
         if duration is not None:
-            self.status_bar.showMessage(
-                f"Ready - {round(duration, 1)} s ({round(duration * 1000, 2)} ms)"
-            )
+            self.status_bar.showMessage(f"Ready - {round(duration, 1)} s ({round(duration * 1000, 2)} ms)")
         else:
             self.status_bar.showMessage("Ready")
 

@@ -4,7 +4,7 @@ from PyQt6.QtGui import QImageReader, QPixmap
 
 from iartisanxl.modules.common.image_editor import ImageEditor
 from iartisanxl.modules.common.image_viewer_simple import ImageViewerSimple
-from iartisanxl.generation.generation_data_object import ImageGenData
+from iartisanxl.generation.image_generation_data import ImageGenerationData
 
 
 class ControlImageWidget(QWidget):
@@ -12,7 +12,7 @@ class ControlImageWidget(QWidget):
         self,
         text: str,
         image_viewer: ImageViewerSimple,
-        image_generation_data: ImageGenData,
+        image_generation_data: ImageGenerationData,
         *args,
         **kwargs,
     ):
@@ -54,6 +54,7 @@ class ControlImageWidget(QWidget):
         main_layout.addLayout(top_layout)
 
         self.image_editor = ImageEditor()
+        self.image_editor.setFixedSize(self.image_generation_data.image_width, self.image_generation_data.image_height)
         main_layout.addWidget(self.image_editor)
 
         main_layout.setStretch(0, 0)

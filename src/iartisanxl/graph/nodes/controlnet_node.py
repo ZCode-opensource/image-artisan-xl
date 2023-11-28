@@ -10,19 +10,20 @@ class ControlnetNode(Node):
         conditioning_scale: float = None,
         guidance_start: float = None,
         guidance_end: float = None,
+        enabled: bool = True,
         **kwargs,
     ):
         super().__init__(**kwargs)
         self.conditioning_scale = conditioning_scale
         self.guidance_start = guidance_start
         self.guidance_end = guidance_end
+        self.enabled = enabled
 
-    def update_controlnet(
-        self, conditioning_scale: float, guidance_start: float, guidance_end: float
-    ):
+    def update_controlnet(self, conditioning_scale: float, guidance_start: float, guidance_end: float, enabled: bool):
         self.conditioning_scale = conditioning_scale
         self.guidance_start = guidance_start
         self.guidance_end = guidance_end
+        self.enabled = enabled
         self.set_updated()
 
     def to_dict(self):
@@ -30,6 +31,7 @@ class ControlnetNode(Node):
         node_dict["conditioning_scale"] = self.conditioning_scale
         node_dict["guidance_start"] = self.guidance_start
         node_dict["guidance_end"] = self.guidance_end
+        node_dict["enabled"] = self.enabled
         return node_dict
 
     @classmethod
@@ -38,12 +40,14 @@ class ControlnetNode(Node):
         node.conditioning_scale = node_dict["conditioning_scale"]
         node.guidance_start = node_dict["guidance_start"]
         node.guidance_end = node_dict["guidance_end"]
+        node.enabled = node_dict["enabled"]
         return node
 
     def update_inputs(self, node_dict):
         self.conditioning_scale = node_dict["conditioning_scale"]
         self.guidance_start = node_dict["guidance_start"]
         self.guidance_end = node_dict["guidance_end"]
+        self.enabled = node_dict["enabled"]
 
     def __call__(self):
         super().__call__()
