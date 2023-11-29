@@ -30,6 +30,7 @@ dependencies = [
     "scikit-image",
     "superqt>=0.6.1",
     "vcolorpicker>=1.4.3",
+    "einops>=0.7.0",
 ]
 
 [project.optional-dependencies]
