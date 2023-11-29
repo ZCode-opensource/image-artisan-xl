@@ -28,7 +28,6 @@ class ControlNetList:
                 break
 
     def update_with_controlnet_data_object(self, new_controlnet: ControlNetDataObject):
-        print(f"{new_controlnet=}")
         for i, controlnet in enumerate(self.controlnets):
             if controlnet.controlnet_id == new_controlnet.controlnet_id:
                 self.controlnets[i] = new_controlnet

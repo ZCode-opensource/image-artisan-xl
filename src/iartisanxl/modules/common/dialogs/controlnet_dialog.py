@@ -21,6 +21,7 @@ from iartisanxl.buttons.color_button import ColorButton
 from iartisanxl.modules.common.dialogs.base_dialog import BaseDialog
 from iartisanxl.modules.common.dialogs.control_image_widget import ControlImageWidget
 from iartisanxl.generation.controlnet_data_object import ControlNetDataObject
+from iartisanxl.annotators.openpose import OpenposeDetector
 from iartisanxl.formats.image import ImageProcessor
 
 
@@ -218,6 +219,22 @@ class ControlNetDialog(BaseDialog):
                 )
                 pixmap = QPixmap.fromImage(qimage)
                 self.annotator_widget.image_editor.set_pixmap(pixmap)
+            elif annotator_index == 2:
+                model_openpose = OpenposeDetector()
+                input_image = self.HWC3(numpy_image)
+                detected_map, _ = model_openpose(self.resize_image(input_image, 1024), True)
+                detected_map = self.HWC3(detected_map)
+                img = self.resize_image(input_image, 1024)
+                H, W, _ = img.shape
+                # pylint: disable=no-member
+                detected_map = cv2.resize(detected_map, (W, H), interpolation=cv2.INTER_NEAREST)
+
+                height, width, _channel = detected_map.shape
+                bytesPerLine = 3 * width
+                qimage = QImage(detected_map.data, width, height, bytesPerLine, QImage.Format.Format_RGB888).rgbSwapped()
+
+                pixmap = QPixmap.fromImage(qimage)
+                self.annotator_widget.image_editor.set_pixmap(pixmap)
             else:
                 pass
 
@@ -313,3 +330,38 @@ class ControlNetDialog(BaseDialog):
         image = image.permute(0, 2, 3, 1).cpu().numpy()[0]
 
         return image
+
+    def HWC3(self, x):
+        assert x.dtype == np.uint8
+        if x.ndim == 2:
+            x = x[:, :, None]
+        assert x.ndim == 3
+        _, _, C = x.shape
+        assert C == 1 or C == 3 or C == 4
+        if C == 3:
+            return x
+        if C == 1:
+            return np.concatenate([x, x, x], axis=2)
+        if C == 4:
+            color = x[:, :, 0:3].astype(np.float32)
+            alpha = x[:, :, 3:4].astype(np.float32) / 255.0
+            y = color * alpha + 255.0 * (1.0 - alpha)
+            y = y.clip(0, 255).astype(np.uint8)
+            return y
+
+    # pylint: disable=no-member
+    def resize_image(self, input_image, resolution):
+        H, W, _ = input_image.shape
+        H = float(H)
+        W = float(W)
+        k = float(resolution) / min(H, W)
+        H *= k
+        W *= k
+        H = int(np.round(H / 64.0)) * 64
+        W = int(np.round(W / 64.0)) * 64
+        img = cv2.resize(
+            input_image,
+            (W, H),
+            interpolation=cv2.INTER_LANCZOS4 if k > 1 else cv2.INTER_AREA,
+        )
+        return img

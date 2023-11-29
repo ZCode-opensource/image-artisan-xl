@@ -180,11 +180,6 @@ class NodeGraphThread(QThread):
         self.lora_list.dropped_image = False
 
         # process controlnets
-        print(f"{len(self.controlnet_list.controlnets)}")
-        print(f"{self.controlnet_list.get_added()}")
-        print(f"{self.controlnet_list.get_modified()}")
-        print(f"{self.controlnet_list.get_removed()}")
-
         controlnet_types = self.controlnet_list.get_used_types()
         controlnet_canny_model = None
 
@@ -195,6 +190,18 @@ class NodeGraphThread(QThread):
                 if controlnet_canny_model is None:
                     controlnet_canny_model = ControlnetModelNode(path=os.path.join(self.directories.models_controlnets, "controlnet-canny-sdxl-1.0-small"))
                     self.node_graph.add_node(controlnet_canny_model, "canny_control_model")
+            elif controlnet_type == "Depth":
+                controlnet_depth_model = self.node_graph.get_node_by_name("depth_control_model")
+
+                if controlnet_depth_model is None:
+                    controlnet_depth_model = ControlnetModelNode(path=os.path.join(self.directories.models_controlnets, "controlnet-depth-sdxl-1.0-small"))
+                    self.node_graph.add_node(controlnet_depth_model, "depth_control_model")
+            elif controlnet_type == "Pose":
+                controlnet_pose_model = self.node_graph.get_node_by_name("pose_control_model")
+
+                if controlnet_pose_model is None:
+                    controlnet_pose_model = ControlnetModelNode(path=os.path.join(self.directories.models_controlnets, "controlnet-openpose-sdxl-1.0"))
+                    self.node_graph.add_node(controlnet_pose_model, "pose_control_model")
 
         if len(self.controlnet_list.controlnets) > 0:
             added_controlnets = self.controlnet_list.get_added()
@@ -205,7 +212,14 @@ class NodeGraphThread(QThread):
                     controlnet_node = ControlnetNode(
                         conditioning_scale=controlnet.conditioning_scale, guidance_start=controlnet.guidance_start, guidance_end=controlnet.guidance_end
                     )
-                    controlnet_node.connect("controlnet_model", controlnet_canny_model, "controlnet_model")
+
+                    if controlnet.controlnet_type == "Canny":
+                        controlnet_node.connect("controlnet_model", controlnet_canny_model, "controlnet_model")
+                    elif controlnet.controlnet_type == "Depth":
+                        controlnet_node.connect("controlnet_model", controlnet_depth_model, "controlnet_model")
+                    elif controlnet.controlnet_type == "Pose":
+                        controlnet_node.connect("controlnet_model", controlnet_pose_model, "controlnet_model")
+
                     controlnet_node.connect("image", controlnet_image_node, "image")
                     image_generation.connect("controlnet", controlnet_node, "controlnet")
                     self.node_graph.add_node(controlnet_node)

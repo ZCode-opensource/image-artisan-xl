@@ -77,8 +77,6 @@ class ControlNetPanel(BasePanel):
         if not self.current_dialog.isVisible():
             self.dialog_opened.emit(self, ControlNetDialog, "ControlNet")
 
-        print(f"{self.current_dialog=}")
-
         self.current_dialog.controlnet = controlnet
         self.current_dialog.update_ui()
 
