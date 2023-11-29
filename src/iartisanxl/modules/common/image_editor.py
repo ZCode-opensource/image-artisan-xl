@@ -1,13 +1,8 @@
 from importlib.resources import files
 
-from PyQt6.QtWidgets import (
-    QGraphicsScene,
-    QGraphicsPixmapItem,
-    QGraphicsView,
-    QSizePolicy,
-    QGraphicsPathItem,
-)
-from PyQt6.QtCore import Qt, QRectF, QPoint, QTimer
+from PyQt6.QtWidgets import QGraphicsScene, QGraphicsPixmapItem, QGraphicsView, QGraphicsPathItem
+
+from PyQt6.QtCore import Qt, QRectF, QPoint, QTimer, QSize
 from PyQt6.QtGui import (
     QPixmap,
     QPainter,
@@ -34,9 +29,15 @@ class ImageEditor(QGraphicsView):
     def __init__(self, parent=None):
         super(ImageEditor, self).__init__(parent)
 
+        self.original_width = 300
+        self.original_height = 300
+        self.aspect_ratio = 1.0
+
+        self.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
+
         self._zoom = 0
         self._empty = True
-        self._scene = QGraphicsScene(self)
+        self._scene = QGraphicsScene(0, 0, 0, 0)
         self._photo = QGraphicsPixmapItem()
         self._scene.addItem(self._photo)
         self.setScene(self._scene)
@@ -44,7 +45,6 @@ class ImageEditor(QGraphicsView):
         self.setRenderHint(QPainter.RenderHint.Antialiasing)
         self.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform)
 
-        self.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Ignored)
         self.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
 
@@ -73,6 +73,15 @@ class ImageEditor(QGraphicsView):
         self.pressure_timer = QTimer()
         self.pressure_timer.timeout.connect(self.draw)
 
+    def set_original_size(self, width, height):
+        self.original_width = width
+        self.original_height = height
+        self.setSceneRect(0, 0, self.original_width, self.original_height)
+        self.aspect_ratio = float(width) / float(height)
+
+    def sizeHint(self):
+        return QSize(self.original_width, self.original_height)
+
     def set_pixmap(self, pixmap: QPixmap):
         self.original_pixmap = pixmap
         self._empty = False
@@ -93,6 +102,18 @@ class ImageEditor(QGraphicsView):
         self._photo.setPixmap(self.original_pixmap)
         self.update_cursor()
         self.fit_in_view()
+
+    def set_image_scale(self, scale_factor):
+        if self._photo is not None:
+            self._photo.setScale(scale_factor)
+
+    def set_image_x(self, x_position):
+        if self._photo is not None:
+            self._photo.setX(x_position)
+
+    def set_image_y(self, y_position):
+        if self._photo is not None:
+            self._photo.setY(y_position)
 
     def has_photo(self):
         return not self._empty
@@ -273,16 +294,12 @@ class ImageEditor(QGraphicsView):
         self._empty = True
 
     def get_painted_image(self):
-        # Create a QImage with the size of the pixmap
-        image = QImage(self._photo.pixmap().size(), QImage.Format.Format_ARGB32)
-        image.fill(Qt.GlobalColor.transparent)
-
-        painter = QPainter(image)
-        # Use the pixmap's rect as the source rectangle
-        self._scene.render(painter, QRectF(image.rect()), QRectF(self._photo.pixmap().rect()))
+        pixmap = QPixmap(self.original_width, self.original_height)
+        painter = QPainter(pixmap)
+        self.render(painter)
         painter.end()
 
-        return image
+        return pixmap.toImage()
 
     def create_cursor(self, svg_path, use_crosshair):
         # Check if we should use the crosshair cursor

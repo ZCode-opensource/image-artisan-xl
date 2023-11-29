@@ -4,7 +4,9 @@ from PyQt6.QtGui import QImageReader, QPixmap
 
 from iartisanxl.modules.common.image_editor import ImageEditor
 from iartisanxl.modules.common.image_viewer_simple import ImageViewerSimple
+from iartisanxl.modules.common.image_control import ImageControl
 from iartisanxl.generation.image_generation_data import ImageGenerationData
+from iartisanxl.layouts.aspect_ratio_layout import AspectRatioLayout
 
 
 class ControlImageWidget(QWidget):
@@ -25,6 +27,10 @@ class ControlImageWidget(QWidget):
         self.image_path = ""
 
         self.setAcceptDrops(True)
+
+        self.editor_width = self.image_generation_data.image_width
+        self.editor_height = self.image_generation_data.image_height
+        self.aspect_ratio = float(self.editor_width) / float(self.editor_height)
 
         self.init_ui()
 
@@ -54,11 +60,26 @@ class ControlImageWidget(QWidget):
         main_layout.addLayout(top_layout)
 
         self.image_editor = ImageEditor()
-        self.image_editor.setFixedSize(self.image_generation_data.image_width, self.image_generation_data.image_height)
-        main_layout.addWidget(self.image_editor)
+        self.image_editor.set_original_size(self.editor_width, self.editor_height)
+        editor_layout = AspectRatioLayout(self.aspect_ratio, self.image_editor)
+        editor_layout.addWidget(self.image_editor)
+        main_layout.addLayout(editor_layout)
+
+        image_controls_layout = QHBoxLayout()
+        image_scale_control = ImageControl("Scale: ", 1.0, 3)
+        image_scale_control.value_changed.connect(self.image_editor.set_image_scale)
+        image_controls_layout.addWidget(image_scale_control)
+        image_x_pos_control = ImageControl("X Pos: ", 0, 0)
+        image_x_pos_control.value_changed.connect(self.image_editor.set_image_x)
+        image_controls_layout.addWidget(image_x_pos_control)
+        image_y_pos_control = ImageControl("Y Pos: ", 0, 0)
+        image_y_pos_control.value_changed.connect(self.image_editor.set_image_y)
+        image_controls_layout.addWidget(image_y_pos_control)
+        main_layout.addLayout(image_controls_layout)
 
         main_layout.setStretch(0, 0)
         main_layout.setStretch(1, 1)
+        main_layout.setStretch(2, 0)
         self.setLayout(main_layout)
 
         reset_image_button.clicked.connect(self.image_editor.clear_and_restore)
