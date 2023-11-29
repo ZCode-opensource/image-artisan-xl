@@ -47,12 +47,8 @@ class ArtisanApplication(QApplication):
         sequential_offload = settings.value("sequential_offload", False, type=bool)
         model_offload = settings.value("model_offload", False, type=bool)
         save_image_metadata = settings.value("save_image_metadata", False, type=bool)
-        save_image_control_annotators = settings.value(
-            "save_image_control_annotators", False, type=bool
-        )
-        save_image_control_sources = settings.value(
-            "save_image_control_sources", False, type=bool
-        )
+        save_image_control_annotators = settings.value("save_image_control_annotators", False, type=bool)
+        save_image_control_sources = settings.value("save_image_control_sources", False, type=bool)
 
         self.preferences = PreferencesObject(
             intermediate_images=intermediate_images,
