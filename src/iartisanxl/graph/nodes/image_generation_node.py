@@ -57,17 +57,9 @@ class ImageGenerationNode(Node):
     def __call__(self):
         super().__call__()
 
-        crops_coords_top_left = (
-            self.crops_coords_top_left
-            if self.crops_coords_top_left is not None
-            else (0, 0)
-        )
+        crops_coords_top_left = self.crops_coords_top_left if self.crops_coords_top_left is not None else (0, 0)
 
-        negative_crops_coords_top_left = (
-            self.negative_crops_coords_top_left
-            if self.negative_crops_coords_top_left is not None
-            else (0, 0)
-        )
+        negative_crops_coords_top_left = self.negative_crops_coords_top_left if self.negative_crops_coords_top_left is not None else (0, 0)
 
         if self.lora:
             if isinstance(self.lora, list):
@@ -94,9 +86,7 @@ class ImageGenerationNode(Node):
 
             models = [net["model"] for net in controlnets]
             images = [net["image"] for net in controlnets]
-            controlnet_conditioning_scale = [
-                net["conditioning_scale"] for net in controlnets
-            ]
+            controlnet_conditioning_scale = [net["conditioning_scale"] for net in controlnets]
             controlnets_models = ControlnetsWrapper(models)
 
         self.scheduler.set_timesteps(self.num_inference_steps, device=self.device)
@@ -109,26 +99,21 @@ class ImageGenerationNode(Node):
         height = self.height
         width = self.width
 
-        original_size = (
-            self.original_size if self.original_size is not None else (height, width)
-        )
+        original_size = self.original_size if self.original_size is not None else (height, width)
 
-        target_size = (
-            self.target_size if self.target_size is not None else (height, width)
-        )
+        target_size = self.target_size if self.target_size is not None else (height, width)
+
+        prompt_embeds = self.prompt_embeds
 
         add_time_ids = list(original_size + crops_coords_top_left + target_size)
-        add_time_ids = torch.tensor([add_time_ids], dtype=self.prompt_embeds.dtype)
+        add_time_ids = torch.tensor([add_time_ids], dtype=prompt_embeds.dtype)
 
-        if (
-            self.negative_original_size is not None
-            and self.negative_target_size is not None
-        ):
+        if self.negative_original_size is not None and self.negative_target_size is not None:
             negative_add_time_ids = self._get_add_time_ids(
                 self.negative_original_size,
                 negative_crops_coords_top_left,
                 self.negative_target_size,
-                dtype=self.prompt_embeds.dtype,
+                dtype=prompt_embeds.dtype,
             )
         else:
             negative_add_time_ids = add_time_ids
@@ -137,12 +122,8 @@ class ImageGenerationNode(Node):
         if self.guidance_scale > 1:
             do_classifier_free_guidance = True
 
-            prompt_embeds = torch.cat(
-                [self.negative_prompt_embeds, self.prompt_embeds], dim=0
-            )
-            add_text_embeds = torch.cat(
-                [self.negative_pooled_prompt_embeds, add_text_embeds], dim=0
-            )
+            prompt_embeds = torch.cat([self.negative_prompt_embeds, prompt_embeds], dim=0)
+            add_text_embeds = torch.cat([self.negative_pooled_prompt_embeds, add_text_embeds], dim=0)
             add_time_ids = torch.cat([negative_add_time_ids, add_time_ids], dim=0)
 
         prompt_embeds = prompt_embeds.to(self.device)
@@ -152,13 +133,11 @@ class ImageGenerationNode(Node):
         timestep_cond = None
         if self.unet.config.time_cond_proj_dim is not None:
             guidance_scale_tensor = torch.tensor(self.guidance_scale - 1).repeat(1)
-            timestep_cond = self.get_guidance_scale_embedding(
-                guidance_scale_tensor, embedding_dim=self.unet.config.time_cond_proj_dim
-            ).to(device=self.device, dtype=latents.dtype)
+            timestep_cond = self.get_guidance_scale_embedding(guidance_scale_tensor, embedding_dim=self.unet.config.time_cond_proj_dim).to(
+                device=self.device, dtype=latents.dtype
+            )
 
-        num_warmup_steps = max(
-            len(timesteps) - self.num_inference_steps * self.scheduler.order, 0
-        )
+        num_warmup_steps = max(len(timesteps) - self.num_inference_steps * self.scheduler.order, 0)
 
         if controlnets_models is not None:
             control_images = []
@@ -183,20 +162,14 @@ class ImageGenerationNode(Node):
             controlnet_keep = []
             for i in range(len(timesteps)):
                 keeps = [
-                    1.0
-                    - float(
-                        i / len(timesteps) < net_dict["guidance_start"]
-                        or (i + 1) / len(timesteps) > net_dict["guidance_end"]
-                    )
+                    1.0 - float(i / len(timesteps) < net_dict["guidance_start"] or (i + 1) / len(timesteps) > net_dict["guidance_end"])
                     for net_dict in controlnets
                 ]
                 controlnet_keep.append(keeps)
 
         # scheduler generator
         scheduler_kwargs = {}
-        accepts_generator = "generator" in set(
-            inspect.signature(self.scheduler.step).parameters.keys()
-        )
+        accepts_generator = "generator" in set(inspect.signature(self.scheduler.step).parameters.keys())
         if accepts_generator:
             scheduler_kwargs["generator"] = self.generator
 
@@ -226,9 +199,7 @@ class ImageGenerationNode(Node):
             if controlnets_models is not None:
                 if guess_mode and do_classifier_free_guidance:
                     control_model_input = latents
-                    control_model_input = self.scheduler.scale_model_input(
-                        control_model_input, t
-                    )
+                    control_model_input = self.scheduler.scale_model_input(control_model_input, t)
                     controlnet_prompt_embeds = prompt_embeds.chunk(2)[1]
                     controlnet_added_cond_kwargs = {
                         "text_embeds": add_text_embeds.chunk(2)[1],
@@ -239,10 +210,7 @@ class ImageGenerationNode(Node):
                     controlnet_prompt_embeds = prompt_embeds
                     controlnet_added_cond_kwargs = added_cond_kwargs
 
-                cond_scale = [
-                    c * k
-                    for c, k in zip(controlnet_conditioning_scale, controlnet_keep[i])
-                ]
+                cond_scale = [c * k for c, k in zip(controlnet_conditioning_scale, controlnet_keep[i])]
 
                 down_block_res_samples, mid_block_res_sample = controlnets_models(
                     control_model_input,
@@ -256,13 +224,8 @@ class ImageGenerationNode(Node):
                 )
 
                 if guess_mode and do_classifier_free_guidance:
-                    down_block_res_samples = [
-                        torch.cat([torch.zeros_like(d), d])
-                        for d in down_block_res_samples
-                    ]
-                    mid_block_res_sample = torch.cat(
-                        [torch.zeros_like(mid_block_res_sample), mid_block_res_sample]
-                    )
+                    down_block_res_samples = [torch.cat([torch.zeros_like(d), d]) for d in down_block_res_samples]
+                    mid_block_res_sample = torch.cat([torch.zeros_like(mid_block_res_sample), mid_block_res_sample])
 
             noise_pred = self.unet(
                 latent_model_input,
@@ -282,22 +245,16 @@ class ImageGenerationNode(Node):
             # perform guidance
             if do_classifier_free_guidance:
                 noise_pred_uncond, noise_pred_text = noise_pred.chunk(2)
-                noise_pred = noise_pred_uncond + self.guidance_scale * (
-                    noise_pred_text - noise_pred_uncond
-                )
+                noise_pred = noise_pred_uncond + self.guidance_scale * (noise_pred_text - noise_pred_uncond)
 
             # compute the previous noisy sample x_t -> x_t-1
-            latents = self.scheduler.step(
-                noise_pred, t, latents, **scheduler_kwargs, return_dict=False
-            )[0]
+            latents = self.scheduler.step(noise_pred, t, latents, **scheduler_kwargs, return_dict=False)[0]
 
             if self.abort:
                 return
 
             # call the callback, if provided
-            if i == len(timesteps) - 1 or (
-                (i + 1) > num_warmup_steps and (i + 1) % self.scheduler.order == 0
-            ):
+            if i == len(timesteps) - 1 or ((i + 1) > num_warmup_steps and (i + 1) % self.scheduler.order == 0):
                 if self.callback is not None:
                     step_idx = i // getattr(self.scheduler, "order", 1)
                     self.callback(step_idx, t, latents)
@@ -341,9 +298,7 @@ class ImageGenerationNode(Node):
         do_classifier_free_guidance=False,
         guess_mode=False,
     ):
-        image = self.control_image_processor.preprocess(
-            image, height=height, width=width
-        ).to(dtype=torch.float32)
+        image = self.control_image_processor.preprocess(image, height=height, width=width).to(dtype=torch.float32)
         image_batch_size = image.shape[0]
 
         if image_batch_size == 1:
