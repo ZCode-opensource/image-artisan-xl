@@ -3,18 +3,7 @@ from importlib.resources import files
 from PyQt6.QtWidgets import QGraphicsScene, QGraphicsPixmapItem, QGraphicsView, QGraphicsPathItem
 
 from PyQt6.QtCore import Qt, QRectF, QPoint, QTimer, QSize
-from PyQt6.QtGui import (
-    QPixmap,
-    QPainter,
-    QPainterPath,
-    QColor,
-    QRadialGradient,
-    QBrush,
-    QPen,
-    QImage,
-    QCursor,
-    QGuiApplication,
-)
+from PyQt6.QtGui import QPixmap, QPainter, QPainterPath, QColor, QRadialGradient, QBrush, QPen, QCursor, QGuiApplication
 from PyQt6.QtSvg import QSvgRenderer
 
 from iartisanxl.modules.common.drop_lightbox import DropLightBox
