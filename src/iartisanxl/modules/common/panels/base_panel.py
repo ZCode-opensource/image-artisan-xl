@@ -31,5 +31,8 @@ class BasePanel(QWidget):
         self.show_error = show_error
         self.current_dialog = None
 
+    def clean_up(self):
+        pass
+
     def __del__(self):
-        self.image_generation_data = None
+        self.current_dialog = None

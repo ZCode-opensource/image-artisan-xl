@@ -114,3 +114,7 @@ class LoraPanel(BasePanel):
             lora_widget.enabled.connect(lambda lw=lora_widget: self.on_lora_enabled(lw))
             self.loras_layout.addWidget(lora_widget)
             self.loras.append(lora_widget)
+
+    def clean_up(self):
+        self.event_bus.unsubscribe("lora", self.on_lora)
+        self.event_bus.unsubscribe("update_from_json", self.update_ui)

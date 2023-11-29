@@ -49,6 +49,7 @@ class ControlNetPanel(BasePanel):
             for controlnet in self.controlnet_list.controlnets:
                 controlnet_widget = ControlNetAddedItem(controlnet)
                 controlnet_widget.remove_clicked.connect(self.on_remove_clicked)
+                controlnet_widget.edit_clicked.connect(self.on_edit_clicked)
                 self.controlnets_layout.addWidget(controlnet_widget)
 
     def on_controlnet(self, data):
@@ -74,7 +75,7 @@ class ControlNetPanel(BasePanel):
                     break
 
     def on_edit_clicked(self, controlnet: ControlNetDataObject):
-        if not self.current_dialog.isVisible():
+        if self.current_dialog is None or not self.current_dialog.isVisible():
             self.dialog_opened.emit(self, ControlNetDialog, "ControlNet")
 
         self.current_dialog.controlnet = controlnet
@@ -96,3 +97,6 @@ class ControlNetPanel(BasePanel):
 
     def on_controlnet_enabled(self, controlnet_widget: ControlNetAddedItem):
         self.image_generation_data.change_controlnet_enabled(controlnet_widget.controlnet, controlnet_widget.enabled_checkbox.isChecked())
+
+    def clean_up(self):
+        self.event_bus.unsubscribe("controlnet", self.on_controlnet)

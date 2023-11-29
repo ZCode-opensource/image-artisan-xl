@@ -14,7 +14,9 @@ class EventBus(metaclass=Singleton):
     def subscribe(self, event_type, callback):
         if event_type not in self.subscribers:
             self.subscribers[event_type] = []
-        self.subscribers[event_type].append(callback)
+        # Only append the callback if it's not already in the list
+        if callback not in self.subscribers[event_type]:
+            self.subscribers[event_type].append(callback)
 
     def unsubscribe(self, event_type, callback):
         if event_type in self.subscribers:
@@ -35,8 +37,4 @@ class EventBus(metaclass=Singleton):
         return self.subscribers.get(event_type, [])
 
     def get_events_for_subscriber(self, callback):
-        return [
-            event
-            for event, callbacks in self.subscribers.items()
-            if callback in callbacks
-        ]
+        return [event for event, callbacks in self.subscribers.items() if callback in callbacks]

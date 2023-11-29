@@ -170,6 +170,7 @@ class RightMenu(QFrame):
 
         if hasattr(self, "current_panel") and self.current_panel is not None and self.current_panel != panel_class:
             self.current_panel.setParent(None)
+            self.current_panel.clean_up()
             del self.current_panel
 
         panel = panel_class(*args, **kwargs)

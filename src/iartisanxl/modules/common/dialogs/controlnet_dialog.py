@@ -146,8 +146,10 @@ class ControlNetDialog(BaseDialog):
         annotator_layout = QVBoxLayout()
         self.annotator_widget = ControlImageWidget("Annotator", self.image_viewer, self.image_generation_data)
         annotator_layout.addWidget(self.annotator_widget)
+
         self.add_button = QPushButton("Add")
         self.add_button.clicked.connect(self.on_controlnet_added)
+
         annotator_layout.addWidget(self.add_button)
         images_layout.addLayout(annotator_layout)
 
@@ -309,6 +311,9 @@ class ControlNetDialog(BaseDialog):
         image_processor.set_pillow_image(self.controlnet.annotator_image)
         self.annotator_widget.image_editor.set_pixmap(image_processor.get_qpixmap())
         del image_processor
+
+        if self.controlnet.controlnet_id > 0:
+            self.add_button.setText("Update")
 
     def get_depth_map(self, image, image_width, image_height):
         image = self.image_processor(images=image, return_tensors="pt").pixel_values.to("cuda")

@@ -240,3 +240,7 @@ class GenerationPanel(BasePanel):
     def on_split_negative_prompt(self, value):
         self.module_options["negative_prompt_split"] = value
         self.prompt_window.split_negative_prompt(value)
+
+    def clean_up(self):
+        self.event_bus.unsubscribe("update_from_json", self.update_ui)
+        self.event_bus.unsubscribe("selected_model", self.on_model_selected)
