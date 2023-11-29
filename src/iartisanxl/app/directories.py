@@ -7,4 +7,5 @@ class DirectoriesObject:
     models_safetensors = attr.ib(type=str)
     vaes = attr.ib(type=str)
     models_loras = attr.ib(type=str)
+    models_controlnets = attr.ib(type=str)
     outputs_images = attr.ib(type=str)

@@ -5,7 +5,7 @@
 
 # Allow loading of arbitrary C extensions. Extensions are imported into the
 # active Python interpreter and may run arbitrary code.
-extension-pkg-allow-list=PyQt6.QtCore,PyQt6.QtWidgets,PyQt6.QtGui
+extension-pkg-allow-list=PyQt6.QtCore,PyQt6.QtWidgets,PyQt6.QtGui,PyQt6.QtSvg
 
 [MESSAGES CONTROL]
 # Enable the message, report, category or checker with the given id(s). You can
@@ -25,3 +25,6 @@ output-format=text
 # contextlib.contextmanager. Add to this list to register other decorators that
 # produce valid context managers.
 contextmanager-decorators=contextlib.contextmanager
+
+[FORMAT]
+max-line-length=155

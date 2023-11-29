@@ -6,13 +6,19 @@ from iartisanxl.app.directories import DirectoriesObject
 from iartisanxl.app.preferences import PreferencesObject
 from iartisanxl.configuration.welcome_panel import WelcomePanel
 from iartisanxl.configuration.directories_panel import DirectoriesPanel
+from iartisanxl.configuration.control_adapters_panel import ControlAdaptersPanel
 from iartisanxl.configuration.optimizations_panel import OptimizationsPanel
 
 
 class InitialSetupDialog(QDialog):
     border_color = QColor("#ff6b6b6b")
 
-    steps_panels = [WelcomePanel, DirectoriesPanel, OptimizationsPanel]
+    steps_panels = [
+        WelcomePanel,
+        DirectoriesPanel,
+        ControlAdaptersPanel,
+        OptimizationsPanel,
+    ]
 
     def __init__(
         self,

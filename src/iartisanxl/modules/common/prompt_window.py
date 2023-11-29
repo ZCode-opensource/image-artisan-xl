@@ -11,7 +11,8 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import pyqtSignal, Qt
 from transformers import CLIPTokenizer
 
-from iartisanxl.generation.generation_data_object import ImageGenData
+from iartisanxl.app.event_bus import EventBus
+from iartisanxl.generation.image_generation_data import ImageGenerationData
 from iartisanxl.modules.common.prompt_input import PromptInput
 from iartisanxl.modules.common.generate_button import GenerateButton
 
@@ -20,16 +21,24 @@ class PromptWindow(QFrame):
     generate_signal = pyqtSignal(bool, bool)
 
     def __init__(
-        self, image_generation_data: ImageGenData, module_options: dict, *args, **kwargs
+        self,
+        image_generation_data: ImageGenerationData,
+        module_options: dict,
+        *args,
+        **kwargs,
     ):
         super().__init__(*args, **kwargs)
-        self.image_generation_data = image_generation_data
         self.module_options = module_options
 
         self.tokenizer = CLIPTokenizer.from_pretrained(
             "./configs/clip-vit-large-patch14"
         )
         self.max_tokens = self.tokenizer.model_max_length - 2
+
+        self.image_generation_data = image_generation_data
+
+        self.event_bus = EventBus()
+        self.event_bus.subscribe("update_from_json", self.update_ui)
 
         self.init_ui()
         self.update_ui()
@@ -101,35 +110,34 @@ class PromptWindow(QFrame):
         except ValueError:
             seed = 0
 
-        values = {"seed": seed}
-
-        if (
-            self.positive_style_prompt.isVisible()
+        positive_prompt_clipg = self.positive_prompt.toPlainText()
+        positive_prompt_clipl = (
+            self.positive_style_prompt.toPlainText()
+            if self.positive_style_prompt.isVisible()
             and len(self.positive_style_prompt.toPlainText()) > 0
-        ):
-            values["positive_prompt_clipg"] = self.positive_prompt.toPlainText()
-            values["positive_prompt_clipl"] = self.positive_style_prompt.toPlainText()
-        else:
-            values["positive_prompt_clipg"] = self.positive_prompt.toPlainText()
-            values["positive_prompt_clipl"] = ""
-
-        if (
-            self.negative_style_prompt.isVisible()
+            else None
+        )
+        negative_prompt_clipg = self.negative_prompt.toPlainText()
+        negative_prompt_clipl = (
+            self.negative_style_prompt.toPlainText()
+            if self.negative_style_prompt.isVisible()
             and len(self.negative_style_prompt.toPlainText()) > 0
-        ):
-            values["negative_prompt_clipg"] = self.negative_prompt.toPlainText()
-            values["negative_prompt_clipl"] = self.negative_style_prompt.toPlainText()
-        else:
-            values["negative_prompt_clipg"] = self.negative_prompt.toPlainText()
-            values["negative_prompt_clipl"] = ""
+            else None
+        )
 
-        self.image_generation_data.update_attributes(values)
+        self.image_generation_data.seed = seed
+        self.image_generation_data.positive_prompt_clipg = positive_prompt_clipg
+        self.image_generation_data.positive_prompt_clipl = positive_prompt_clipl
+        self.image_generation_data.negative_prompt_clipg = negative_prompt_clipg
+        self.image_generation_data.negative_prompt_clipl = negative_prompt_clipl
+
         self.generate_signal.emit(
             self.generate_button.auto_save, self.generate_button.continuous_generation
         )
 
-    def update_ui(self):
+    def update_ui(self, _data=None):
         self.split_positive_prompt(self.module_options.get("positive_prompt_split"))
+
         self.positive_prompt.setPlainText(
             self.image_generation_data.positive_prompt_clipg
         )

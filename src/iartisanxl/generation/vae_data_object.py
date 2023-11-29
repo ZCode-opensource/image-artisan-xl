@@ -1,14 +1,7 @@
 import attr
 
 
-@attr.s
+@attr.s(slots=True)
 class VaeDataObject:
-    name = attr.ib(type=str)
-    path = attr.ib(type=str)
-
-    def copy(self):
-        new_obj = VaeDataObject(
-            name=self.name,
-            path=self.path,
-        )
-        return new_obj
+    name: str = attr.ib(default="")
+    path: str = attr.ib(default="")

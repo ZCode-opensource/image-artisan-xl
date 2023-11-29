@@ -6,7 +6,7 @@ from iartisanxl.app.directories import DirectoriesObject
 from iartisanxl.app.title_bar import TitleBar
 from iartisanxl.modules.common.image_viewer_simple import ImageViewerSimple
 from iartisanxl.modules.common.prompt_window import PromptWindow
-from iartisanxl.generation.generation_data_object import ImageGenData
+from iartisanxl.generation.image_generation_data import ImageGenerationData
 
 
 class CustomSizeGrip(QSizeGrip):
@@ -23,26 +23,29 @@ class CustomSizeGrip(QSizeGrip):
 
 class BaseDialog(QDialog):
     generation_updated = pyqtSignal()
+    dialog_updated = pyqtSignal()
+
     border_color = QColor("#ff6b6b6b")
 
     def __init__(
         self,
         directories: DirectoriesObject,
         title: str,
-        image_generation_data: ImageGenData,
+        show_error: callable,
+        image_generation_data: ImageGenerationData,
         image_viewer: ImageViewerSimple,
         prompt_window: PromptWindow,
-        auto_generate_function: callable,
         *args,
         **kwargs,
     ):
         super().__init__(*args, **kwargs)
+        self.setWindowTitle(title)
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint)
+        self.show_error = show_error
         self.directories = directories
         self.image_generation_data = image_generation_data
         self.image_viewer = image_viewer
         self.prompt_window = prompt_window
-        self.auto_generate_function = auto_generate_function
 
         self.dialog_layout = QVBoxLayout()
         self.dialog_layout.setContentsMargins(0, 0, 0, 0)

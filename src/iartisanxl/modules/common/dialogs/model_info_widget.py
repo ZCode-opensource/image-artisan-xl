@@ -17,6 +17,7 @@ from PyQt6.QtWidgets import (
     QProgressBar,
 )
 
+from iartisanxl.app.event_bus import EventBus
 from iartisanxl.modules.common.model_utils import get_metadata_from_safetensors
 from iartisanxl.threads.convert_safetensors_thread import ConvertSafetensorsThread
 
@@ -25,7 +26,6 @@ class ModelInfoWidget(QWidget):
     MODEL_IMG = files("iartisanxl.theme.images").joinpath("model.webp")
     model_selected = pyqtSignal()
     model_edit = pyqtSignal(dict)
-    generate_example = pyqtSignal(str)
     model_converted = pyqtSignal(str)
 
     def __init__(
@@ -46,6 +46,8 @@ class ModelInfoWidget(QWidget):
         self.default_image = True
         self.diffusers_directory = diffusers_directory
         self.convert_safetensors_thread = None
+
+        self.event_bus = EventBus()
 
         self.init_ui()
         self.load_info()
@@ -140,10 +142,8 @@ class ModelInfoWidget(QWidget):
 
     def load_info(self):
         if self.model_type == "diffusers":
-            model_directory = os.path.join(self.filepath, "vae")
-            model_path = os.path.join(
-                model_directory, "diffusion_pytorch_model.fp16.safetensors"
-            )
+            model_directory = os.path.join(self.filepath, "text_encoder")
+            model_path = os.path.join(model_directory, "model.fp16.safetensors")
         else:
             model_path = self.filepath
 
@@ -200,7 +200,9 @@ class ModelInfoWidget(QWidget):
         self.model_edit.emit(self.data)
 
     def on_generate_example(self):
-        self.generate_example.emit(self.generation_data)
+        self.event_bus.publish(
+            "auto_generate", {"generation_data": self.generation_data}
+        )
 
     def on_convert_model(self):
         self.progress_label.setVisible(True)

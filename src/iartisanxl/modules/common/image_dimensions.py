@@ -1,16 +1,19 @@
 from PyQt6 import QtWidgets
 from PyQt6.QtCore import Qt
 
-from iartisanxl.generation.generation_data_object import ImageGenData
+from iartisanxl.app.event_bus import EventBus
+from iartisanxl.generation.image_generation_data import ImageGenerationData
 
 
 class ImageDimensionsWidget(QtWidgets.QWidget):
-    ALLOWED_VALUES = [656, 768, 832, 896, 1024, 1152, 1216, 1344, 1536]
+    ALLOWED_VALUES = [512, 656, 768, 832, 896, 1024, 1152, 1216, 1344, 1536]
 
-    def __init__(self, image_generation_data: ImageGenData, *args, **kwargs):
+    def __init__(self, image_generation_data: ImageGenerationData, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
         self.image_generation_data = image_generation_data
+
+        self.event_bus = EventBus()
 
         self.init_ui()
 
@@ -23,7 +26,7 @@ class ImageDimensionsWidget(QtWidgets.QWidget):
         image_sliders_layout.addWidget(width_label, 0, 0)
 
         self.width_slider = QtWidgets.QSlider()
-        self.width_slider.setRange(656, 1536)
+        self.width_slider.setRange(512, 1536)
         self.width_slider.setSingleStep(1)
         self.width_slider.setPageStep(1)
         self.width_slider.setOrientation(Qt.Orientation.Horizontal)
@@ -36,7 +39,7 @@ class ImageDimensionsWidget(QtWidgets.QWidget):
         image_sliders_layout.addWidget(height_label, 1, 0)
 
         self.height_slider = QtWidgets.QSlider()
-        self.height_slider.setRange(656, 1536)
+        self.height_slider.setRange(512, 1536)
         self.height_slider.setSingleStep(1)
         self.height_slider.setPageStep(1)
         self.height_slider.setOrientation(Qt.Orientation.Horizontal)
@@ -60,17 +63,16 @@ class ImageDimensionsWidget(QtWidgets.QWidget):
 
         if slider == self.width_slider:
             self.image_width_value_label.setText(str(nearest_value))
-            self.image_generation_data.image_width = nearest_value
+            self.event_bus.publish("image_generation_data", {"attr": "image_width", "value": nearest_value})
         else:
             self.image_height_value_label.setText(str(nearest_value))
-            self.image_generation_data.image_height = nearest_value
+            self.event_bus.publish(
+                "image_generation_data",
+                {"attr": "image_height", "value": nearest_value},
+            )
 
     def update(self):
         self.width_slider.setValue(self.image_generation_data.image_width)
-        self.image_width_value_label.setText(
-            f"{self.image_generation_data.image_width}"
-        )
+        self.image_width_value_label.setText(f"{self.image_generation_data.image_width}")
         self.height_slider.setValue(self.image_generation_data.image_height)
-        self.image_height_value_label.setText(
-            f"{self.image_generation_data.image_height}"
-        )
+        self.image_height_value_label.setText(f"{self.image_generation_data.image_height}")

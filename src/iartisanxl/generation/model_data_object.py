@@ -1,18 +1,9 @@
 import attr
 
 
-@attr.s
+@attr.s(slots=True)
 class ModelDataObject:
-    name = attr.ib(type=str)
-    path = attr.ib(type=str)
-    version = attr.ib(type=str)
-    type = attr.ib(type=str)
-
-    def copy(self):
-        new_obj = ModelDataObject(
-            name=self.name,
-            path=self.path,
-            version=self.version,
-            type=self.type,
-        )
-        return new_obj
+    name: str = attr.ib(default="")
+    path: str = attr.ib(default="")
+    version: str = attr.ib(default="")
+    type: str = attr.ib(default="")

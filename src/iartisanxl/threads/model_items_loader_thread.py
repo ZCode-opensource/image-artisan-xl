@@ -40,10 +40,8 @@ class ModelItemsLoaderThread(QThread):
             model_version = ""
 
             if model["type"] == "diffusers":
-                model_directory = os.path.join(model["filepath"], "vae")
-                model_path = os.path.join(
-                    model_directory, "diffusion_pytorch_model.fp16.safetensors"
-                )
+                model_directory = os.path.join(model["filepath"], "text_encoder")
+                model_path = os.path.join(model_directory, "model.fp16.safetensors")
             else:
                 model_path = model["filepath"]
 

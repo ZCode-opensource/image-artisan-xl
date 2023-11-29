@@ -15,6 +15,7 @@ from PyQt6.QtWidgets import (
     QSizePolicy,
 )
 
+from iartisanxl.app.event_bus import EventBus
 from iartisanxl.layouts.simple_flow_layout import SimpleFlowLayout
 from iartisanxl.modules.common.model_utils import get_metadata_from_safetensors
 from iartisanxl.modules.common.dialogs.example_prompt import ExamplePrompt
@@ -42,6 +43,8 @@ class LoraInfoWidget(QWidget):
         self.filepath = data["filepath"]
         self.generation_data = None
         self.default_image = True
+
+        self.event_bus = EventBus()
 
         self.init_ui()
         self.load_info()
@@ -139,13 +142,13 @@ class LoraInfoWidget(QWidget):
     def load_info(self):
         metadata = get_metadata_from_safetensors(self.filepath)
 
-        image = metadata.get("iartisan_image")
-        version = metadata.get("iartisan_version")
-        description = metadata.get("iartisan_description")
-        tags = metadata.get("iartisan_tags")
-        triggers = metadata.get("iartisan_triggers")
-        example_prompt = metadata.get("iartisan_example_prompt")
-        example_generation = metadata.get("iartisan_example_generation")
+        image = metadata.get("iartisan_image", None)
+        version = metadata.get("iartisan_version", None)
+        description = metadata.get("iartisan_description", None)
+        tags = metadata.get("iartisan_tags", None)
+        triggers = metadata.get("iartisan_triggers", None)
+        example_prompt = metadata.get("iartisan_example_prompt", None)
+        example_generation = metadata.get("iartisan_example_generation", None)
 
         if image is not None:
             img_bytes = base64.b64decode(image)
@@ -211,7 +214,9 @@ class LoraInfoWidget(QWidget):
         self.lora_edit.emit(self.data)
 
     def on_generate_example(self):
-        self.generate_example.emit(self.generation_data)
+        self.event_bus.publish(
+            "auto_generate", {"generation_data": self.generation_data}
+        )
 
     def on_trigger_clicked(self):
         button = self.sender()

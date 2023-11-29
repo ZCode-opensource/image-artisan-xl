@@ -12,6 +12,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import QSettings, pyqtSignal, Qt, QSize
 from PyQt6.QtGui import QPixmap
 
+from iartisanxl.app.event_bus import EventBus
 from iartisanxl.generation.lora_data_object import LoraDataObject
 from iartisanxl.modules.common.dialogs.base_dialog import BaseDialog
 from iartisanxl.modules.common.dialogs.lora_info_widget import LoraInfoWidget
@@ -36,6 +37,7 @@ class LoraDialog(BaseDialog):
 
         self.loading_loras = False
         self.selected_lora = None
+        self.event_bus = EventBus()
 
         self.settings = QSettings("ZCode", "ImageArtisanXL")
         self.settings.beginGroup("lora_dialog")
@@ -97,6 +99,7 @@ class LoraDialog(BaseDialog):
         self.clear_selected_lora()
 
         self.selected_lora = LoraDataObject(
+            enabled=True,
             name=data["name"],
             filename=data["root_filename"],
             version=data["version"],
@@ -106,7 +109,6 @@ class LoraDialog(BaseDialog):
         lora_info_widget = LoraInfoWidget(data)
         lora_info_widget.lora_selected.connect(self.on_lora_selected)
         lora_info_widget.lora_edit.connect(self.on_lora_edit_clicked)
-        lora_info_widget.generate_example.connect(self.auto_generate_function)
         lora_info_widget.trigger_clicked.connect(self.on_trigger_clicked)
         lora_info_widget.example_prompt_clicked.connect(self.on_example_prompt_clicked)
         self.lora_frame_layout.addWidget(lora_info_widget)
@@ -185,8 +187,7 @@ class LoraDialog(BaseDialog):
         self.prompt_window.positive_prompt.insertTextAtCursor(prompt)
 
     def on_lora_selected(self):
-        self.image_generation_data.add_lora(self.selected_lora)
-        self.generation_updated.emit()
+        self.event_bus.publish("lora", {"action": "add", "lora": self.selected_lora})
 
     def on_lora_imported(self, path: str):
         if path.endswith(".safetensors"):

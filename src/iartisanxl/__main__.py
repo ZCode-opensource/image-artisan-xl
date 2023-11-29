@@ -2,8 +2,8 @@ import sys
 import os
 import logging.config
 
-from .app.artisan import ArtisanApplication
-from .app.logging_conf import logging_config
+from iartisanxl.app.artisan import ArtisanApplication
+from iartisanxl.app.logging_conf import logging_config
 
 
 def my_exception_hook(exctype, value, traceback):

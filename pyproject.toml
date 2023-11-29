@@ -12,7 +12,7 @@ description = "Dekstop application for generating images using Stable Diffusion.
 requires-python = ">=3.11"
 dependencies = [
     "accelerate>=0.24.1 ",
-    "diffusers>=0.23.0",
+    "diffusers>=0.24.0",
     "Pillow>=9.3.0",
     "PyQt6>=6.6.0",
     "pyqtgraph",
@@ -24,7 +24,13 @@ dependencies = [
     "tomesd",
     "attrs",
     "omegaconf",
-    "peft>=0.6.0",    
+    "peft>=0.6.3",
+    "opencv-python>=4.8.1.78",
+    "matplotlib",
+    "scikit-image",
+    "superqt>=0.6.1",
+    "vcolorpicker>=1.4.3",
+    "einops>=0.7.0",
 ]
 
 [project.optional-dependencies]
@@ -39,7 +45,10 @@ dev = [
 where = ["src"]
 
 [tool.setuptools.package-data]
-iartisanxl = ["theme/stylesheet.qss", "theme/icons/*.*", "theme/images/*.*"]
+iartisanxl = ["theme/stylesheet.qss", "theme/icons/*.*", "theme/images/*.*", "theme/cursors/*.svg"]
+
+[tool.black]
+line-length = 155
 
 [project.gui-scripts]
 iartisanxl = "iartisanxl.__main__:main"

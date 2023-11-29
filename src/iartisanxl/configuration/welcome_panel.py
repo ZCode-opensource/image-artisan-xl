@@ -69,6 +69,7 @@ class WelcomePanel(BaseSetupPanel):
             "models_safetensors": "./models/safetensors",
             "vaes": "./models/vae",
             "models_loras": "./models/loras",
+            "models_controlnets": "./models/controlnet",
             "outputs_images": "./outputs/images",
         }
 

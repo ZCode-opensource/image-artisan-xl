@@ -13,6 +13,7 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import Qt
 
+from iartisanxl.app.event_bus import EventBus
 from iartisanxl.modules.common.panels.base_panel import BasePanel
 from iartisanxl.modules.common.image_dimensions import ImageDimensionsWidget
 from iartisanxl.modules.common.dialogs.model_dialog import ModelDialog
@@ -30,6 +31,9 @@ class GenerationPanel(BasePanel):
         super().__init__(*args, **kwargs)
         self.schedulers = schedulers
         self.module_options = module_options
+        self.event_bus = EventBus()
+        self.event_bus.subscribe("update_from_json", self.update_ui)
+        self.event_bus.subscribe("selected_model", self.on_model_selected)
 
         self.vaes = []
         if self.directories.vaes and os.path.isdir(self.directories.vaes):
@@ -105,10 +109,7 @@ class GenerationPanel(BasePanel):
         base_model_layout.addWidget(base_model_label)
 
         model_name = "no model selected"
-        if (
-            self.image_generation_data.model is not None
-            and self.image_generation_data.model.name is not None
-        ):
+        if self.image_generation_data.model is not None and self.image_generation_data.model.name is not None:
             model_name = self.image_generation_data.model.name
         self.selected_base_model_label = QLabel(model_name)
         base_model_layout.addWidget(self.selected_base_model_label)
@@ -136,15 +137,9 @@ class GenerationPanel(BasePanel):
         main_layout.addWidget(base_scheduler_label)
 
         self.scheduler_combobox = QComboBox()
-        self.scheduler_combobox.addItems(
-            [scheduler.name for scheduler in self.schedulers]
-        )
-        self.scheduler_combobox.setCurrentIndex(
-            self.image_generation_data.base_scheduler
-        )
-        self.scheduler_combobox.currentIndexChanged.connect(
-            self.base_scheduler_selected
-        )
+        self.scheduler_combobox.addItems([scheduler.name for scheduler in self.schedulers])
+        self.scheduler_combobox.setCurrentIndex(self.image_generation_data.base_scheduler)
+        self.scheduler_combobox.currentIndexChanged.connect(self.base_scheduler_selected)
         main_layout.addWidget(self.scheduler_combobox)
 
         main_layout.addSpacerItem(QSpacerItem(0, 8))
@@ -156,9 +151,7 @@ class GenerationPanel(BasePanel):
 
         self.split_negative_prompt = QCheckBox("Split negative prompt")
         self.split_negative_prompt.clicked.connect(self.on_split_negative_prompt)
-        split_prompts_layout.addWidget(
-            self.split_negative_prompt, alignment=Qt.AlignmentFlag.AlignRight
-        )
+        split_prompts_layout.addWidget(self.split_negative_prompt, alignment=Qt.AlignmentFlag.AlignRight)
         main_layout.addLayout(split_prompts_layout)
 
         main_layout.addStretch()
@@ -169,31 +162,27 @@ class GenerationPanel(BasePanel):
         self.label_steps_value.setText(f"{value}")
 
     def on_dial_value_changed(self, value):
-        self.image_generation_data.guidance = value / 10.0
+        self.event_bus.publish("image_generation_data", {"attr": "guidance", "value": value / 10.0})
         self.guidance_value_label.setText(f"{self.image_generation_data.guidance}")
 
     def on_clip_skip_value_changed(self, value):
         self.image_generation_data.clip_skip = value
         self.clip_skip_value_label.setText(f"{value}")
 
-    def update_ui(self):
-        if len(self.image_generation_data.positive_prompt_clipl) > 0:
+    def update_ui(self, _data=None):
+        if self.image_generation_data.positive_prompt_clipl is not None and len(self.image_generation_data.positive_prompt_clipl) > 0:
             self.split_positive_prompt.setChecked(True)
             self.module_options["positive_prompt_split"] = True
             self.prompt_window.split_positive_prompt(True)
         else:
-            self.split_positive_prompt.setChecked(
-                self.module_options.get("positive_prompt_split")
-            )
+            self.split_positive_prompt.setChecked(self.module_options.get("positive_prompt_split"))
 
-        if len(self.image_generation_data.negative_prompt_clipl) > 0:
+        if self.image_generation_data.negative_prompt_clipl is not None and len(self.image_generation_data.negative_prompt_clipl) > 0:
             self.split_negative_prompt.setChecked(True)
             self.module_options["negative_prompt_split"] = True
             self.prompt_window.split_negative_prompt(True)
         else:
-            self.split_negative_prompt.setChecked(
-                self.module_options.get("negative_prompt_split")
-            )
+            self.split_negative_prompt.setChecked(self.module_options.get("negative_prompt_split"))
 
         try:
             self.steps_slider.valueChanged.disconnect(self.on_steps_value_changed)
@@ -210,38 +199,38 @@ class GenerationPanel(BasePanel):
         self.steps_slider.valueChanged.connect(self.on_steps_value_changed)
         self.guidance_dial.valueChanged.connect(self.on_dial_value_changed)
 
-        self.scheduler_combobox.setCurrentIndex(
-            self.image_generation_data.base_scheduler
-        )
+        self.scheduler_combobox.setCurrentIndex(self.image_generation_data.base_scheduler)
 
         if self.image_generation_data.model is not None:
             version_string = ""
-            if (
-                self.image_generation_data.model.version is not None
-                and len(self.image_generation_data.model.version) > 0
-            ):
+            if self.image_generation_data.model.version is not None and len(self.image_generation_data.model.version) > 0:
                 version_string = f"v{self.image_generation_data.model.version}"
-            self.selected_base_model_label.setText(
-                f"{self.image_generation_data.model.name} {version_string}"
-            )
+            self.selected_base_model_label.setText(f"{self.image_generation_data.model.name} {version_string}")
 
         if self.image_generation_data.vae is not None:
             self.vae_combobox.setCurrentText(self.image_generation_data.vae.name)
 
         self.clip_slip_slider.setValue(self.image_generation_data.clip_skip)
 
+        self.image_dimensions.image_generation_data = self.image_generation_data
         self.image_dimensions.update()
+
+    def on_model_selected(self, data):
+        model = data.get("model")
+
+        version_string = ""
+        if model.version is not None and len(model.version) > 0:
+            version_string = f"v{model.version}"
+        self.selected_base_model_label.setText(f"{model.name} {version_string}")
 
     def base_scheduler_selected(self, index):
         self.image_generation_data.base_scheduler = index
 
     def open_model_dialog(self):
-        self.dialog_opened.emit(ModelDialog, "Models")
+        self.dialog_opened.emit(self, ModelDialog, "Models")
 
     def on_vae_selected(self):
-        vae = VaeDataObject(
-            name=self.vae_combobox.currentText(), path=self.vae_combobox.currentData()
-        )
+        vae = VaeDataObject(name=self.vae_combobox.currentText(), path=self.vae_combobox.currentData())
         self.image_generation_data.vae = vae
 
     def on_split_positive_prompt(self, value):
@@ -251,3 +240,7 @@ class GenerationPanel(BasePanel):
     def on_split_negative_prompt(self, value):
         self.module_options["negative_prompt_split"] = value
         self.prompt_window.split_negative_prompt(value)
+
+    def clean_up(self):
+        self.event_bus.unsubscribe("update_from_json", self.update_ui)
+        self.event_bus.unsubscribe("selected_model", self.on_model_selected)

@@ -8,6 +8,7 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import Qt
 
+from iartisanxl.app.event_bus import EventBus
 from iartisanxl.modules.common.panels.base_panel import BasePanel
 from iartisanxl.modules.common.dialogs.lora_dialog import LoraDialog
 from iartisanxl.modules.common.lora_added_item import LoraAddedItem
@@ -23,8 +24,12 @@ class LoraPanel(BasePanel):
 
         self.loras = []
         self.lora_scale = 1.0
-        self.lora_dialog = None
         self.init_ui()
+
+        self.event_bus = EventBus()
+        self.event_bus.subscribe("lora", self.on_lora)
+        self.event_bus.subscribe("update_from_json", self.update_ui)
+
         self.update_ui()
 
     def init_ui(self):
@@ -62,15 +67,7 @@ class LoraPanel(BasePanel):
         self.image_generation_data.lora_scale = self.lora_scale
 
     def open_lora_dialog(self):
-        self.dialog_opened.emit(LoraDialog, "LoRAs")
-
-    def on_remove_lora(self, lora_widget: LoraAddedItem):
-        index = self.loras_layout.indexOf(lora_widget)
-        if index != -1:
-            self.loras_layout.takeAt(index)
-            lora_widget.deleteLater()
-            self.image_generation_data.remove_lora(self.loras[index].lora)
-            del self.loras[index]
+        self.dialog_opened.emit(self, LoraDialog, "LoRAs")
 
     def clear_loras(self):
         self.loras = []
@@ -81,18 +78,43 @@ class LoraPanel(BasePanel):
             if widget is not None:
                 widget.deleteLater()
 
-    def update_ui(self):
+    def update_ui(self, _data=None):
         self.lora_scale = self.image_generation_data.lora_scale
         self.lora_slider.setValue(int(self.lora_scale * 10))
         self.lbl_lora_scale.setText(f"{self.lora_scale:.1f}")
-        loras = self.image_generation_data.loras
+        loras = self.lora_list.loras
         self.clear_loras()
 
         if len(loras) > 0:
             for lora in loras:
                 lora_widget = LoraAddedItem(lora)
-                lora_widget.remove_clicked.connect(
-                    lambda lw=lora_widget: self.on_remove_lora(lw)
-                )
+                lora_widget.remove_clicked.connect(lambda lw=lora_widget: self.on_remove_lora(lw))
+                lora_widget.enabled.connect(lambda lw=lora_widget: self.on_lora_enabled(lw))
                 self.loras_layout.addWidget(lora_widget)
                 self.loras.append(lora_widget)
+
+    def on_remove_lora(self, lora_widget: LoraAddedItem):
+        index = self.loras_layout.indexOf(lora_widget)
+        if index != -1:
+            self.loras_layout.takeAt(index)
+            lora_widget.deleteLater()
+            self.lora_list.remove(self.loras[index].lora)
+            del self.loras[index]
+
+    def on_lora_enabled(self, lora_widget: LoraAddedItem):
+        self.lora_list.update_lora(
+            lora_widget.lora.filename,
+            {"enabled": lora_widget.enabled_checkbox.isChecked()},
+        )
+
+    def on_lora(self, data):
+        if data["action"] == "add":
+            lora_widget = LoraAddedItem(data["lora"])
+            lora_widget.remove_clicked.connect(lambda lw=lora_widget: self.on_remove_lora(lw))
+            lora_widget.enabled.connect(lambda lw=lora_widget: self.on_lora_enabled(lw))
+            self.loras_layout.addWidget(lora_widget)
+            self.loras.append(lora_widget)
+
+    def clean_up(self):
+        self.event_bus.unsubscribe("lora", self.on_lora)
+        self.event_bus.unsubscribe("update_from_json", self.update_ui)

@@ -133,7 +133,7 @@ class DirectoriesPanel(BaseSetupPanel):
         finish_button = QPushButton("Back")
         finish_button.clicked.connect(self.on_back_step)
         button_layout.addWidget(finish_button)
-        next_step_button = QPushButton("Optimizations")
+        next_step_button = QPushButton("Control adapters")
         next_step_button.clicked.connect(self.on_next_step)
         button_layout.addWidget(next_step_button)
 
