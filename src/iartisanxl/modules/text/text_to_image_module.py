@@ -23,6 +23,8 @@ from iartisanxl.modules.common.prompt_window import PromptWindow
 from iartisanxl.modules.common.panels.generation_panel import GenerationPanel
 from iartisanxl.modules.common.panels.lora_panel import LoraPanel
 from iartisanxl.modules.common.panels.controlnet_panel import ControlNetPanel
+from iartisanxl.modules.common.panels.t2i_panel import T2IPanel
+from iartisanxl.modules.common.panels.ip_adapter_panel import IPAdapterPanel
 from iartisanxl.menu.right_menu import RightMenu
 from iartisanxl.generation.image_generation_data import ImageGenerationData
 from iartisanxl.generation.lora_list import LoraList
@@ -173,6 +175,8 @@ class TextToImageModule(BaseModule):
         self.right_menu.add_panel("Generation", GenerationPanel, schedulers, self.module_options)
         self.right_menu.add_panel("LoRAs", LoraPanel)
         self.right_menu.add_panel("ControlNet", ControlNetPanel, self.preferences)
+        self.right_menu.add_panel("T2I Adapters", T2IPanel, self.preferences)
+        self.right_menu.add_panel("IP Adapters", IPAdapterPanel, self.preferences)
 
         main_layout.setStretch(0, 16)
         main_layout.setStretch(1, 0)
