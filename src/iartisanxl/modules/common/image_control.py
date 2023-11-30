@@ -44,6 +44,7 @@ class ImageControl(QWidget):
         self.last_mouse_position = None
 
         self.text = text
+        self.initial_value = initial_value
         self.value = initial_value
         self.precision = precision
         self.multiplier = 10**-precision
@@ -81,3 +82,7 @@ class ImageControl(QWidget):
 
     def on_value_changed(self):
         self.value_changed.emit(self.value)
+
+    def reset(self):
+        self.value = self.initial_value
+        self.mouse_line_edit.setText("{: .{precision}f}".format(self.value, precision=self.precision))
