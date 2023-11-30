@@ -1,4 +1,4 @@
-from PyQt6.QtWidgets import QVBoxLayout, QHBoxLayout, QLabel, QWidget, QPushButton
+from PyQt6.QtWidgets import QVBoxLayout, QHBoxLayout, QLabel, QWidget, QPushButton, QSpacerItem, QSizePolicy
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QImageReader, QPixmap
 
@@ -66,27 +66,41 @@ class ControlImageWidget(QWidget):
         main_layout.addLayout(editor_layout)
 
         image_controls_layout = QHBoxLayout()
-        image_scale_control = ImageControl("Scale: ", 1.0, 3)
-        image_scale_control.value_changed.connect(self.image_editor.set_image_scale)
-        image_controls_layout.addWidget(image_scale_control)
-        image_x_pos_control = ImageControl("X Pos: ", 0, 0)
-        image_x_pos_control.value_changed.connect(self.image_editor.set_image_x)
-        image_controls_layout.addWidget(image_x_pos_control)
-        image_y_pos_control = ImageControl("Y Pos: ", 0, 0)
-        image_y_pos_control.value_changed.connect(self.image_editor.set_image_y)
-        image_controls_layout.addWidget(image_y_pos_control)
+        self.image_scale_control = ImageControl("Scale: ", 1.0, 3)
+        self.image_scale_control.value_changed.connect(self.image_editor.set_image_scale)
+        image_controls_layout.addWidget(self.image_scale_control)
+        self.image_x_pos_control = ImageControl("X Pos: ", 0, 0)
+        self.image_x_pos_control.value_changed.connect(self.image_editor.set_image_x)
+        image_controls_layout.addWidget(self.image_x_pos_control)
+        self.image_y_pos_control = ImageControl("Y Pos: ", 0, 0)
+        self.image_y_pos_control.value_changed.connect(self.image_editor.set_image_y)
+        image_controls_layout.addWidget(self.image_y_pos_control)
+        self.image_rotation_control = ImageControl("Rotation: ", 0, 0)
+        self.image_rotation_control.value_changed.connect(self.image_editor.rotate_image)
+        image_controls_layout.addWidget(self.image_rotation_control)
         main_layout.addLayout(image_controls_layout)
+
+        main_layout.addSpacerItem(QSpacerItem(0, 0, QSizePolicy.Policy.Expanding))
 
         main_layout.setStretch(0, 0)
         main_layout.setStretch(1, 1)
         main_layout.setStretch(2, 0)
+        main_layout.setStretch(3, 1)
+
         self.setLayout(main_layout)
 
-        reset_image_button.clicked.connect(self.image_editor.clear_and_restore)
+        reset_image_button.clicked.connect(self.on_reset_image)
         undo_button.clicked.connect(self.image_editor.undo)
         redo_button.clicked.connect(self.image_editor.redo)
         current_image_button.clicked.connect(self.set_current_image)
         blank_image_button.clicked.connect(self.set_blank_image)
+
+    def on_reset_image(self):
+        self.image_scale_control.reset()
+        self.image_x_pos_control.reset()
+        self.image_y_pos_control.reset()
+        self.image_rotation_control.reset()
+        self.image_editor.clear_and_restore()
 
     def dragEnterEvent(self, event):
         if event.mimeData().hasUrls():

@@ -1,6 +1,5 @@
 import cv2
 import numpy as np
-import torch
 
 from PyQt6.QtWidgets import (
     QVBoxLayout,
@@ -23,7 +22,7 @@ from iartisanxl.modules.common.dialogs.control_image_widget import ControlImageW
 from iartisanxl.generation.controlnet_data_object import ControlNetDataObject
 from iartisanxl.annotators.openpose import OpenposeDetector
 from iartisanxl.formats.image import ImageProcessor
-from iartisanxl.annotators.utils import HWC3, resize_image
+from iartisanxl.annotators.utils import HWC3, resize_image, get_depth_map
 
 
 class ControlNetDialog(BaseDialog):
@@ -31,7 +30,7 @@ class ControlNetDialog(BaseDialog):
         super().__init__(*args, **kwargs)
 
         self.setWindowTitle("ControlNet")
-        self.setMinimumSize(1160, 800)
+        self.setMinimumSize(800, 800)
 
         self.settings = QSettings("ZCode", "ImageArtisanXL")
         self.settings.beginGroup("controlnet_dialog")
@@ -212,7 +211,7 @@ class ControlNetDialog(BaseDialog):
                 if self.image_processor is None:
                     self.image_processor = DPTImageProcessor.from_pretrained("./models/annotators/dpt-hybrid-midas")
 
-                depthmap = self.get_depth_map(numpy_image, width, height)
+                depthmap = get_depth_map(numpy_image, width, height, self.image_processor, self.depth_estimator)
 
                 qimage = QImage(
                     depthmap.tobytes(),
@@ -255,6 +254,7 @@ class ControlNetDialog(BaseDialog):
                 canny_high=self.canny_high,
             )
         else:
+            self.controlnet.controlnet_type = self.controlnet_combo.currentText()
             self.controlnet.conditioning_scale = round(self.conditioning_scale, 2)
             self.controlnet.guidance_start = self.control_guidance_start
             self.controlnet.guidance_end = self.control_guidance_end
@@ -313,26 +313,5 @@ class ControlNetDialog(BaseDialog):
         self.annotator_widget.image_editor.set_pixmap(image_processor.get_qpixmap())
         del image_processor
 
-        if self.controlnet.controlnet_id > 0:
+        if self.controlnet.controlnet_id is not None:
             self.add_button.setText("Update")
-
-    def get_depth_map(self, image, image_width, image_height):
-        image = self.image_processor(images=image, return_tensors="pt").pixel_values.to("cuda")
-        with torch.no_grad(), torch.autocast("cuda"):
-            depth_map = self.depth_estimator(image).predicted_depth
-
-        depth_map = torch.nn.functional.interpolate(
-            depth_map.unsqueeze(1),
-            size=(image_height, image_width),
-            mode="bicubic",
-            align_corners=False,
-        )
-        depth_min = torch.amin(depth_map, dim=[1, 2, 3], keepdim=True)
-        depth_max = torch.amax(depth_map, dim=[1, 2, 3], keepdim=True)
-        depth_map = (depth_map - depth_min) / (depth_max - depth_min)
-        depth_map = (depth_map * 255.0).clip(0, 255).to(torch.uint8)
-        image = torch.cat([depth_map] * 3, dim=1)
-
-        image = image.permute(0, 2, 3, 1).cpu().numpy()[0]
-
-        return image

@@ -66,6 +66,7 @@ class ControlNetPanel(BasePanel):
             for i in range(self.controlnets_layout.count()):
                 widget = self.controlnets_layout.itemAt(i).widget()
                 if widget.controlnet.controlnet_id == controlnet.controlnet_id:
+                    widget.enabled_checkbox.setText(controlnet.controlnet_type)
                     image_processor = ImageProcessor()
                     image_processor.set_pillow_image(controlnet.source_image_thumb)
                     widget.source_thumb.setPixmap(image_processor.get_qpixmap())
@@ -79,6 +80,7 @@ class ControlNetPanel(BasePanel):
             self.dialog_opened.emit(self, ControlNetDialog, "ControlNet")
 
         self.current_dialog.controlnet = controlnet
+        print(f"{controlnet=}")
         self.current_dialog.update_ui()
 
     def clear_controlnets(self):
