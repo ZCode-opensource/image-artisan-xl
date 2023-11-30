@@ -154,19 +154,11 @@ class ImageGenerationNode(Node):
             add_time_ids = torch.cat([negative_add_time_ids, add_time_ids], dim=0)
 
         if t2i_adapter_models is not None:
-            adapter_state = t2i_adapter_models(t2i_adapter_images, t2i_conditioning_scale)
-            for k, v in enumerate(adapter_state):
-                adapter_state[k] = v
+            adapter_states = t2i_adapter_models(t2i_adapter_images, t2i_conditioning_scale)
 
             if do_classifier_free_guidance:
-                for k, v in enumerate(adapter_state):
-                    adapter_state[k] = torch.cat([v] * 2, dim=0)
-
-            # adapter_states = t2i_adapter_models(t2i_adapter_images, t2i_conditioning_scale)
-
-            # if do_classifier_free_guidance:
-            #     for k, state in enumerate(adapter_states):
-            #         adapter_states[k] = [torch.cat([v] * 2, dim=0) for v in state]
+                for k, state in enumerate(adapter_states):
+                    adapter_states[k] = [torch.cat([v] * 2, dim=0) for v in state]
 
         prompt_embeds = prompt_embeds.to(self.device)
         add_text_embeds = add_text_embeds.to(self.device)
@@ -267,17 +259,14 @@ class ImageGenerationNode(Node):
                     mid_block_res_sample = torch.cat([torch.zeros_like(mid_block_res_sample), mid_block_res_sample])
 
             if t2i_adapter_models is not None:
-                down_intrablock_additional_residuals = [state.clone() for state in adapter_state]
-
-            # if t2i_adapter_models is not None:
-            #     down_intrablock_additional_residuals = []
-            #     for j, (states, factor) in enumerate(zip(adapter_states, t2i_conditioning_factor)):
-            #         if i < int(num_inference_steps * factor):
-            #             cloned_states = [state.clone() for state in states]
-            #             down_intrablock_additional_residuals.extend(cloned_states)
-            #         else:
-            #             zero_states = [torch.zeros_like(state) for state in states]
-            #             down_intrablock_additional_residuals.extend(zero_states)
+                down_intrablock_additional_residuals = []
+                for _j, (states, factor) in enumerate(zip(adapter_states, t2i_conditioning_factor)):
+                    if i < int(num_inference_steps * factor):
+                        cloned_states = [state.clone() for state in states]
+                        down_intrablock_additional_residuals.extend(cloned_states)
+                    else:
+                        zero_states = [torch.zeros_like(state) for state in states]
+                        down_intrablock_additional_residuals.extend(zero_states)
 
             noise_pred = self.unet(
                 latent_model_input,

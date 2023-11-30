@@ -23,7 +23,7 @@ class T2IAdaptersWrapper(torch.nn.Module):
         self.total_downscale_factor = first_adapter_total_downscale_factor
         self.downscale_factor = first_adapter_downscale_factor
 
-    def forward(self, xs: torch.Tensor, adapter_weights: Optional[List[float]] = None) -> List[torch.Tensor]:
+    def forward(self, xs: torch.Tensor, adapter_weights: Optional[List[float]] = None) -> List[List[torch.Tensor]]:
         assert len(self.adapters) == len(xs), "Number of inputs must match number of adapters"
         assert len(self.adapters) == len(adapter_weights), "Number of weights must match number of adapters"
 
@@ -32,14 +32,10 @@ class T2IAdaptersWrapper(torch.nn.Module):
         else:
             adapter_weights = torch.tensor(adapter_weights)
 
-        accume_state = None
+        accume_states = [[torch.zeros_like(feature) for feature in adapter(xs[0])] for adapter in self.adapters]
         for x, w, adapter in zip(xs, adapter_weights, self.adapters):
             features = adapter(x)
-            if accume_state is None:
-                accume_state = features
-                for i, state in enumerate(accume_state):
-                    accume_state[i] = w * state
-            else:
-                for i, feature in enumerate(features):
-                    accume_state[i] += w * feature
-        return accume_state
+            for i, feature in enumerate(features):
+                for _j, state in enumerate(accume_states):
+                    state[i] += w * feature
+        return accume_states
