@@ -1,12 +1,17 @@
 import inspect
 import gc
+from typing import Optional, Union, List
 
 import torch
+import numpy as np
+from PIL import Image
 
 from diffusers.image_processor import VaeImageProcessor
+from diffusers.utils import PIL_INTERPOLATION
 
 from iartisanxl.graph.nodes.node import Node
 from iartisanxl.graph.additional.controlnets_wrapper import ControlnetsWrapper
+from iartisanxl.graph.additional.t2i_adapters_wrapper import T2IAdaptersWrapper
 
 
 class ImageGenerationNode(Node):
@@ -35,6 +40,7 @@ class ImageGenerationNode(Node):
         "lora",
         "cross_attention_kwargs",
         "controlnet",
+        "t2i_adapter",
     ]
     OUTPUTS = ["latents"]
 
@@ -70,6 +76,8 @@ class ImageGenerationNode(Node):
                 self.unet.set_adapters([self.lora[0]], [self.lora[1]])
 
         controlnets_models = None
+        controlnet_images = None
+        controlnet_conditioning_scale = None
         guess_mode = False
 
         if self.controlnet:
@@ -85,12 +93,12 @@ class ImageGenerationNode(Node):
                 controlnets = self.controlnet
 
             models = [net["model"] for net in controlnets]
-            images = [net["image"] for net in controlnets]
+            controlnet_images = [net["image"] for net in controlnets]
             controlnet_conditioning_scale = [net["conditioning_scale"] for net in controlnets]
             controlnets_models = ControlnetsWrapper(models)
 
         self.scheduler.set_timesteps(self.num_inference_steps, device=self.device)
-        timesteps = self.scheduler.timesteps
+        timesteps, num_inference_steps = retrieve_timesteps(self.scheduler, self.num_inference_steps, self.device)
 
         latents = self.latents * self.scheduler.init_noise_sigma
 
@@ -98,10 +106,29 @@ class ImageGenerationNode(Node):
 
         height = self.height
         width = self.width
-
         original_size = self.original_size if self.original_size is not None else (height, width)
-
         target_size = self.target_size if self.target_size is not None else (height, width)
+
+        t2i_adapter_models = None
+        t2i_adapter_images = []
+        t2i_conditioning_factor = None
+        t2i_conditioning_scale = None
+
+        if self.t2i_adapter:
+            if isinstance(self.t2i_adapter, dict):
+                t2i_adapters = [self.t2i_adapter]
+            else:
+                t2i_adapters = self.t2i_adapter
+
+            models = [net["model"] for net in t2i_adapters]
+            t2i_conditioning_scale = [net["conditioning_scale"] for net in t2i_adapters]
+            t2i_conditioning_factor = [net["conditioning_factor"] for net in t2i_adapters]
+            t2i_adapter_models = T2IAdaptersWrapper(models)
+
+            for adapter_image in [net["image"] for net in t2i_adapters]:
+                adapter_image = _preprocess_adapter_image(adapter_image, height, width)
+                adapter_image = adapter_image.to(device=self.device, dtype=self.torch_dtype)
+                t2i_adapter_images.append(adapter_image)
 
         prompt_embeds = self.prompt_embeds
 
@@ -126,6 +153,21 @@ class ImageGenerationNode(Node):
             add_text_embeds = torch.cat([self.negative_pooled_prompt_embeds, add_text_embeds], dim=0)
             add_time_ids = torch.cat([negative_add_time_ids, add_time_ids], dim=0)
 
+        if t2i_adapter_models is not None:
+            adapter_state = t2i_adapter_models(t2i_adapter_images, t2i_conditioning_scale)
+            for k, v in enumerate(adapter_state):
+                adapter_state[k] = v
+
+            if do_classifier_free_guidance:
+                for k, v in enumerate(adapter_state):
+                    adapter_state[k] = torch.cat([v] * 2, dim=0)
+
+            # adapter_states = t2i_adapter_models(t2i_adapter_images, t2i_conditioning_scale)
+
+            # if do_classifier_free_guidance:
+            #     for k, state in enumerate(adapter_states):
+            #         adapter_states[k] = [torch.cat([v] * 2, dim=0) for v in state]
+
         prompt_embeds = prompt_embeds.to(self.device)
         add_text_embeds = add_text_embeds.to(self.device)
         add_time_ids = add_time_ids.to(self.device)
@@ -142,7 +184,7 @@ class ImageGenerationNode(Node):
         if controlnets_models is not None:
             control_images = []
 
-            for image_ in images:
+            for image_ in controlnet_images:
                 image_ = self.prepare_image(
                     image=image_,
                     width=width,
@@ -178,14 +220,11 @@ class ImageGenerationNode(Node):
 
         down_block_res_samples = None
         mid_block_res_sample = None
+        down_intrablock_additional_residuals = None
 
         for i, t in enumerate(timesteps):
             # expand the latents if doing classifier free guidance
-            if do_classifier_free_guidance or controlnets_models is not None:
-                latent_model_input = torch.cat([latents] * 2)
-            else:
-                latent_model_input = latents
-
+            latent_model_input = torch.cat([latents] * 2) if do_classifier_free_guidance else latents
             latent_model_input = self.scheduler.scale_model_input(latent_model_input, t)
 
             added_cond_kwargs = {
@@ -227,6 +266,19 @@ class ImageGenerationNode(Node):
                     down_block_res_samples = [torch.cat([torch.zeros_like(d), d]) for d in down_block_res_samples]
                     mid_block_res_sample = torch.cat([torch.zeros_like(mid_block_res_sample), mid_block_res_sample])
 
+            if t2i_adapter_models is not None:
+                down_intrablock_additional_residuals = [state.clone() for state in adapter_state]
+
+            # if t2i_adapter_models is not None:
+            #     down_intrablock_additional_residuals = []
+            #     for j, (states, factor) in enumerate(zip(adapter_states, t2i_conditioning_factor)):
+            #         if i < int(num_inference_steps * factor):
+            #             cloned_states = [state.clone() for state in states]
+            #             down_intrablock_additional_residuals.extend(cloned_states)
+            #         else:
+            #             zero_states = [torch.zeros_like(state) for state in states]
+            #             down_intrablock_additional_residuals.extend(zero_states)
+
             noise_pred = self.unet(
                 latent_model_input,
                 t,
@@ -235,6 +287,7 @@ class ImageGenerationNode(Node):
                 cross_attention_kwargs=self.cross_attention_kwargs,
                 down_block_additional_residuals=down_block_res_samples,
                 mid_block_additional_residual=mid_block_res_sample,
+                down_intrablock_additional_residuals=down_intrablock_additional_residuals,
                 added_cond_kwargs=added_cond_kwargs,
                 return_dict=False,
             )[0]
@@ -315,3 +368,49 @@ class ImageGenerationNode(Node):
             image = torch.cat([image] * 2)
 
         return image
+
+
+def _preprocess_adapter_image(image, height, width):
+    if isinstance(image, torch.Tensor):
+        return image
+    elif isinstance(image, Image.Image):
+        image = [image]
+
+    if isinstance(image[0], Image.Image):
+        image = [np.array(i.resize((width, height), resample=PIL_INTERPOLATION["lanczos"])) for i in image]
+        image = [i[None, ..., None] if i.ndim == 2 else i[None, ...] for i in image]  # expand [h, w] or [h, w, c] to [b, h, w, c]
+        image = np.concatenate(image, axis=0)
+        image = np.array(image).astype(np.float32) / 255.0
+        image = image.transpose(0, 3, 1, 2)
+        image = torch.from_numpy(image)
+    elif isinstance(image[0], torch.Tensor):
+        if image[0].ndim == 3:
+            image = torch.stack(image, dim=0)
+        elif image[0].ndim == 4:
+            image = torch.cat(image, dim=0)
+        else:
+            raise ValueError(f"Invalid image tensor! Expecting image tensor with 3 or 4 dimension, but recive: {image[0].ndim}")
+    return image
+
+
+def retrieve_timesteps(
+    scheduler,
+    num_inference_steps: Optional[int] = None,
+    device: Optional[Union[str, torch.device]] = None,
+    timesteps: Optional[List[int]] = None,
+    **kwargs,
+):
+    if timesteps is not None:
+        accepts_timesteps = "timesteps" in set(inspect.signature(scheduler.set_timesteps).parameters.keys())
+        if not accepts_timesteps:
+            raise ValueError(
+                f"The current scheduler class {scheduler.__class__}'s `set_timesteps` does not support custom"
+                f" timestep schedules. Please check whether you are using the correct scheduler."
+            )
+        scheduler.set_timesteps(timesteps=timesteps, device=device, **kwargs)
+        timesteps = scheduler.timesteps
+        num_inference_steps = len(timesteps)
+    else:
+        scheduler.set_timesteps(num_inference_steps, device=device, **kwargs)
+        timesteps = scheduler.timesteps
+    return timesteps, num_inference_steps
