@@ -80,7 +80,6 @@ class ControlNetPanel(BasePanel):
             self.dialog_opened.emit(self, ControlNetDialog, "ControlNet")
 
         self.current_dialog.controlnet = controlnet
-        print(f"{controlnet=}")
         self.current_dialog.update_ui()
 
     def clear_controlnets(self):
