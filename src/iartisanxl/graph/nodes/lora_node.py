@@ -110,8 +110,8 @@ class LoraNode(Node):
                 )
 
         scale = self.scale
-        # if not self.enabled:
-        #     scale = 0.0
+        if not self.enabled:
+            scale = 0.0
 
         self.values["lora"] = (self.adapter_name, scale)
 

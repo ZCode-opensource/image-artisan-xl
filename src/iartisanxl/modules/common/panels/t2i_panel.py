@@ -41,6 +41,7 @@ class T2IPanel(BasePanel):
                 adapter_widget = AdapterAddedItem(adapter)
                 adapter_widget.remove_clicked.connect(self.on_remove_clicked)
                 adapter_widget.edit_clicked.connect(self.on_edit_clicked)
+                adapter_widget.enabled.connect(self.on_enabled)
                 self.adapters_layout.addWidget(adapter_widget)
 
     def open_t2i_dialog(self):
@@ -53,6 +54,7 @@ class T2IPanel(BasePanel):
             adapter_widget = AdapterAddedItem(data["t2i_adapter"])
             adapter_widget.remove_clicked.connect(self.on_remove_clicked)
             adapter_widget.edit_clicked.connect(self.on_edit_clicked)
+            adapter_widget.enabled.connect(self.on_enabled)
             self.adapters_layout.addWidget(adapter_widget)
         elif data["action"] == "update":
             adapter = data["t2i_adapter"]
@@ -83,3 +85,6 @@ class T2IPanel(BasePanel):
 
     def clean_up(self):
         self.event_bus.unsubscribe("t2i_adapters", self.on_t2i_adapters)
+
+    def on_enabled(self, adapter_id, enabled):
+        self.t2i_adapter_list.update_adapter(adapter_id, {"enabled": enabled})

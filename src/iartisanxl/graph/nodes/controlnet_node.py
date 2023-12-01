@@ -47,6 +47,9 @@ class ControlnetNode(Node):
     def __call__(self):
         super().__call__()
 
+        if not self.enabled:
+            self.conditioning_scale = 0
+
         self.values["controlnet"] = {
             "model": self.controlnet_model,
             "image": self.image,

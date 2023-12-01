@@ -50,6 +50,7 @@ class ControlNetPanel(BasePanel):
                 controlnet_widget = ControlNetAddedItem(controlnet)
                 controlnet_widget.remove_clicked.connect(self.on_remove_clicked)
                 controlnet_widget.edit_clicked.connect(self.on_edit_clicked)
+                controlnet_widget.enabled.connect(self.on_controlnet_enabled)
                 self.controlnets_layout.addWidget(controlnet_widget)
 
     def on_controlnet(self, data):
@@ -59,6 +60,7 @@ class ControlNetPanel(BasePanel):
             controlnet_widget = ControlNetAddedItem(data["controlnet"])
             controlnet_widget.remove_clicked.connect(self.on_remove_clicked)
             controlnet_widget.edit_clicked.connect(self.on_edit_clicked)
+            controlnet_widget.enabled.connect(self.on_controlnet_enabled)
             self.controlnets_layout.addWidget(controlnet_widget)
         elif data["action"] == "update":
             controlnet = data["controlnet"]
@@ -96,8 +98,8 @@ class ControlNetPanel(BasePanel):
         self.controlnets_layout.removeWidget(controlnet_widget)
         controlnet_widget.deleteLater()
 
-    def on_controlnet_enabled(self, controlnet_widget: ControlNetAddedItem):
-        self.image_generation_data.change_controlnet_enabled(controlnet_widget.controlnet, controlnet_widget.enabled_checkbox.isChecked())
+    def on_controlnet_enabled(self, controlet_id, enabled):
+        self.controlnet_list.update_controlnet(controlet_id, {"enabled": enabled})
 
     def clean_up(self):
         self.event_bus.unsubscribe("controlnet", self.on_controlnet)

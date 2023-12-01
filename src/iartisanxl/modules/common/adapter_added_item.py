@@ -9,7 +9,7 @@ from iartisanxl.formats.image import ImageProcessor
 class AdapterAddedItem(QWidget):
     remove_clicked = pyqtSignal(object)
     edit_clicked = pyqtSignal(object)
-    enabled = pyqtSignal()
+    enabled = pyqtSignal(int, bool)
 
     def __init__(self, adapter: T2IAdapterDataObject, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -57,4 +57,4 @@ class AdapterAddedItem(QWidget):
         self.setLayout(main_layout)
 
     def on_check_enabled(self):
-        self.enabled.emit()
+        self.enabled.emit(self.adapter.adapter_id, self.enabled_checkbox.isChecked())

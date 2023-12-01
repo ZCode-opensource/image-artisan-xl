@@ -9,7 +9,7 @@ from iartisanxl.formats.image import ImageProcessor
 class ControlNetAddedItem(QWidget):
     remove_clicked = pyqtSignal(object)
     edit_clicked = pyqtSignal(object)
-    enabled = pyqtSignal()
+    enabled = pyqtSignal(int, bool)
 
     def __init__(self, controlnet: ControlNetDataObject, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -57,4 +57,4 @@ class ControlNetAddedItem(QWidget):
         self.setLayout(main_layout)
 
     def on_check_enabled(self):
-        self.enabled.emit()
+        self.enabled.emit(self.controlnet.controlnet_id, self.enabled_checkbox.isChecked())

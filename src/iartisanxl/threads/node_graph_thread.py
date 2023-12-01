@@ -241,7 +241,10 @@ class NodeGraphThread(QThread):
                     image_generation.connect("controlnet", controlnet_node, "controlnet")
                     self.node_graph.add_node(controlnet_node)
                     controlnet.id = controlnet_node.id
+                    controlnet_node.name = f"controlnet_{controlnet.controlnet_type}_{controlnet_node.id}"
                     self.node_graph.add_node(controlnet_image_node, f"control_image_{controlnet_node.id}")
+
+                image_send.updated = True
 
             modified_controlnets = self.controlnet_list.get_modified()
 
@@ -253,6 +256,7 @@ class NodeGraphThread(QThread):
                     controlnet_node.update_controlnet(
                         controlnet.conditioning_scale, controlnet.guidance_start, controlnet.guidance_end, controlnet.enabled
                     )
+                image_send.updated = True
 
         removed_controlnets = self.controlnet_list.get_removed()
         if len(removed_controlnets) > 0:
@@ -338,6 +342,8 @@ class NodeGraphThread(QThread):
                     t2i_adapter.id = t2i_adapter_node.id
                     self.node_graph.add_node(t2i_adapter_image_node, f"adapter_image_{t2i_adapter_node.id}")
 
+                image_send.updated = True
+
             modified_t2i_adapters = self.t2i_adapter_list.get_modified()
 
             if len(modified_t2i_adapters) > 0:
@@ -346,6 +352,8 @@ class NodeGraphThread(QThread):
                     t2i_adapter_image_node.update_image(t2i_adapter.annotator_image)
                     t2i_adapter_node = self.node_graph.get_node(t2i_adapter.id)
                     t2i_adapter_node.update_adaptert(t2i_adapter.conditioning_scale, t2i_adapter.conditioning_factor, t2i_adapter.enabled)
+
+                image_send.updated = True
 
         removed_t2i_adapters = self.t2i_adapter_list.get_removed()
         if len(removed_t2i_adapters) > 0:

@@ -41,6 +41,9 @@ class T2IAdapterNode(Node):
     def __call__(self):
         super().__call__()
 
+        if not self.enabled:
+            self.conditioning_scale = 0
+
         self.values["t2i_adapter"] = {
             "model": self.t2i_adapter_model,
             "image": self.image,
