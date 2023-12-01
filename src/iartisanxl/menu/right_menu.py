@@ -6,6 +6,7 @@ from iartisanxl.buttons.vertical_button import VerticalButton
 from iartisanxl.generation.image_generation_data import ImageGenerationData
 from iartisanxl.generation.lora_list import LoraList
 from iartisanxl.generation.controlnet_list import ControlNetList
+from iartisanxl.generation.t2i_adapter_list import T2IAdapterList
 from iartisanxl.app.directories import DirectoriesObject
 from iartisanxl.modules.common.image_viewer_simple import ImageViewerSimple
 from iartisanxl.modules.common.prompt_window import PromptWindow
@@ -22,6 +23,7 @@ class RightMenu(QFrame):
         image_generation_data: ImageGenerationData,
         lora_list: LoraList,
         controlnet_list: ControlNetList,
+        t2i_adapter_list: T2IAdapterList,
         image_viewer: ImageViewerSimple,
         prompt_window: PromptWindow,
         show_error: callable,
@@ -36,6 +38,7 @@ class RightMenu(QFrame):
         self.image_generation_data = image_generation_data
         self.lora_list = lora_list
         self.controlnet_list = controlnet_list
+        self.t2i_adapter_list = t2i_adapter_list
         self.image_viewer = image_viewer
         self.prompt_window = prompt_window
         self.show_error = show_error
@@ -101,6 +104,7 @@ class RightMenu(QFrame):
                 self.image_generation_data,
                 self.lora_list,
                 self.controlnet_list,
+                self.t2i_adapter_list,
             ),
             "kwargs": kwargs,
         }

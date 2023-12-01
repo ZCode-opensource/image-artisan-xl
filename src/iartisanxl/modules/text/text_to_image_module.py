@@ -30,6 +30,7 @@ from iartisanxl.generation.image_generation_data import ImageGenerationData
 from iartisanxl.generation.lora_list import LoraList
 from iartisanxl.generation.lora_data_object import LoraDataObject
 from iartisanxl.generation.controlnet_list import ControlNetList
+from iartisanxl.generation.t2i_adapter_list import T2IAdapterList
 from iartisanxl.generation.model_data_object import ModelDataObject
 from iartisanxl.generation.vae_data_object import VaeDataObject
 from iartisanxl.generation.schedulers.schedulers import schedulers
@@ -71,6 +72,7 @@ class TextToImageModule(BaseModule):
 
         self.lora_list = LoraList()
         self.controlnet_list = ControlNetList()
+        self.t2i_adapter_list = T2IAdapterList()
         self.image_generation_data = ImageGenerationData(
             module="texttoimage",
             seed=0,
@@ -163,6 +165,7 @@ class TextToImageModule(BaseModule):
             self.image_generation_data,
             self.lora_list,
             self.controlnet_list,
+            self.t2i_adapter_list,
             self.image_viewer,
             self.prompt_window,
             self.show_error,
@@ -358,6 +361,7 @@ class TextToImageModule(BaseModule):
         self.node_graph_thread.image_generation_data = self.image_generation_data
         self.node_graph_thread.lora_list = self.lora_list
         self.node_graph_thread.controlnet_list = self.controlnet_list
+        self.node_graph_thread.t2i_adapter_list = self.t2i_adapter_list
         self.node_graph_thread.model_offload = self.preferences.model_offload
         self.node_graph_thread.sequential_offload = self.preferences.sequential_offload
 

@@ -15,9 +15,10 @@ class T2IAdapterNode(Node):
         self.conditioning_scale = conditioning_scale
         self.conditioning_factor = conditioning_factor
 
-    def update_controlnet(self, conditioning_scale: float, conditioning_factor: float):
+    def update_adaptert(self, conditioning_scale: float, conditioning_factor: float, enabled: bool):
         self.conditioning_scale = conditioning_scale
         self.conditioning_factor = conditioning_factor
+        self.enabled = enabled
         self.set_updated()
 
     def to_dict(self):

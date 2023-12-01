@@ -224,9 +224,9 @@ class ControlNetDialog(BaseDialog):
             elif annotator_index == 2:
                 model_openpose = OpenposeDetector()
                 input_image = HWC3(numpy_image)
-                detected_map, _ = model_openpose(resize_image(input_image, 1024), True)
+                detected_map, _ = model_openpose(resize_image(input_image, self.image_generation_data.image_height), True)
                 detected_map = HWC3(detected_map)
-                img = resize_image(input_image, 1024)
+                img = resize_image(input_image, self.image_generation_data.image_height)
                 H, W, _ = img.shape
                 # pylint: disable=no-member
                 detected_map = cv2.resize(detected_map, (W, H), interpolation=cv2.INTER_NEAREST)

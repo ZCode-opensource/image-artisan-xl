@@ -43,12 +43,8 @@ class SelectDirectoryWidget(QWidget):
         explanation_label.setWordWrap(True)
         directory_layout.addWidget(explanation_label)
 
-        select_directory_button = QPushButton(
-            f"Select {self.directory_text.lower()} directory"
-        )
-        select_directory_button.clicked.connect(
-            lambda: self.select_function(self.directory_type)
-        )
+        select_directory_button = QPushButton(f"Select {self.directory_text.lower()} directory")
+        select_directory_button.clicked.connect(lambda: self.select_function(self.directory_type))
         select_directory_button.parent_widget = self
         directory_layout.addWidget(select_directory_button)
 
@@ -57,9 +53,7 @@ class SelectDirectoryWidget(QWidget):
         path_label.setFixedWidth(90)
         path_layout.addWidget(path_label)
         self.directory_label = QLabel("")
-        path_layout.addWidget(
-            self.directory_label, alignment=Qt.AlignmentFlag.AlignLeft
-        )
+        path_layout.addWidget(self.directory_label, alignment=Qt.AlignmentFlag.AlignLeft)
         directory_layout.addLayout(path_layout)
 
         main_layout.addWidget(directory_widget)
@@ -74,14 +68,28 @@ class ControlAdaptersPanel(BaseSetupPanel):
 
     def init_ui(self):
         controlnets_widget = SelectDirectoryWidget(
-            "<html><body>"
-            "Directory for the Control Net adapters, they're used to have precise control over the generations."
-            "</body></html>",
+            "<html><body>Directory for the Control Net adapters, they're used to have precise control over the generations.</body></html>",
             "ControlNet",
             1,
             self.select_directory,
         )
         self.main_layout.addWidget(controlnets_widget)
+
+        t2i_adapters_widget = SelectDirectoryWidget(
+            "<html><body>Directory for the T2i adapters, they're used to have precise control over the generations but are smaller.</body></html>",
+            "T2I Adapters",
+            2,
+            self.select_directory,
+        )
+        self.main_layout.addWidget(t2i_adapters_widget)
+
+        ip2_adapters_widget = SelectDirectoryWidget(
+            "<html><body>Directory for the IP2 adapters, they're used to control the style of the generations.</body></html>",
+            "IP Adapters",
+            3,
+            self.select_directory,
+        )
+        self.main_layout.addWidget(ip2_adapters_widget)
 
         self.main_layout.addStretch()
 
@@ -113,6 +121,12 @@ class ControlAdaptersPanel(BaseSetupPanel):
         if dir_type == 1:
             self.directories.models_controlnets = selected_path
             settings.setValue("models_controlnets", selected_path)
+        elif dir_type == 2:
+            self.directories.models_t2i_adapters = selected_path
+            settings.setValue("models_t2i_adapters", selected_path)
+        elif dir_type == 3:
+            self.directories.models_ip2_adapters = selected_path
+            settings.setValue("models_ip2_adapters", selected_path)
 
         sender_button = self.sender()
         sender_button.parent_widget.directory_label.setText(selected_path)

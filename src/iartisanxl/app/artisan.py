@@ -65,6 +65,8 @@ class ArtisanApplication(QApplication):
         vaes = settings.value("vaes", None, type=str)
         models_loras = settings.value("models_loras", None, type=str)
         models_controlnets = settings.value("models_controlnets", None, type=str)
+        models_t2i_adapters = settings.value("models_t2i_adapters", None, type=str)
+        models_ip2_adapters = settings.value("models_ip2_adapters", None, type=str)
         outputs_images = settings.value("outputs_images", None, type=str)
 
         self.directories = DirectoriesObject(
@@ -73,6 +75,8 @@ class ArtisanApplication(QApplication):
             vaes=vaes,
             models_loras=models_loras,
             models_controlnets=models_controlnets,
+            models_t2i_adapters=models_t2i_adapters,
+            models_ip2_adapters=models_ip2_adapters,
             outputs_images=outputs_images,
         )
 
@@ -84,6 +88,8 @@ class ArtisanApplication(QApplication):
                 vaes,
                 models_loras,
                 models_controlnets,
+                models_t2i_adapters,
+                models_ip2_adapters,
                 outputs_images,
             ]
         ):

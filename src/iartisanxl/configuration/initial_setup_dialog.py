@@ -55,18 +55,12 @@ class InitialSetupDialog(QDialog):
         panel.setParent(self)
 
         if self.current_panel_index != 0:
-            panel.setGeometry(
-                self.dialog_width, 0, self.dialog_width, self.dialog_height
-            )
+            panel.setGeometry(self.dialog_width, 0, self.dialog_width, self.dialog_height)
             panel.show()
             self.enter_animation = QPropertyAnimation(panel, b"geometry")
             self.enter_animation.setDuration(350)
-            self.enter_animation.setStartValue(
-                QRect(self.dialog_width, 0, self.dialog_width, self.dialog_height)
-            )
-            self.enter_animation.setEndValue(
-                QRect(0, 0, self.dialog_width, self.dialog_height)
-            )
+            self.enter_animation.setStartValue(QRect(self.dialog_width, 0, self.dialog_width, self.dialog_height))
+            self.enter_animation.setEndValue(QRect(0, 0, self.dialog_width, self.dialog_height))
             self.enter_animation.start()
 
     def next_step(self):
@@ -77,12 +71,8 @@ class InitialSetupDialog(QDialog):
 
         self.leave_animation = QPropertyAnimation(current_panel, b"geometry")
         self.leave_animation.setDuration(350)
-        self.leave_animation.setStartValue(
-            QRect(0, 0, self.dialog_width, self.dialog_height)
-        )
-        self.leave_animation.setEndValue(
-            QRect(-self.dialog_width, 0, self.dialog_width, self.dialog_height)
-        )
+        self.leave_animation.setStartValue(QRect(0, 0, self.dialog_width, self.dialog_height))
+        self.leave_animation.setEndValue(QRect(-self.dialog_width, 0, self.dialog_width, self.dialog_height))
         self.leave_animation.finished.connect(current_panel.deleteLater)
         self.leave_animation.start()
 
@@ -97,12 +87,8 @@ class InitialSetupDialog(QDialog):
 
         self.leave_animation = QPropertyAnimation(current_panel, b"geometry")
         self.leave_animation.setDuration(350)
-        self.leave_animation.setStartValue(
-            QRect(0, 0, self.dialog_width, self.dialog_height)
-        )
-        self.leave_animation.setEndValue(
-            QRect(self.dialog_width, 0, self.dialog_width, self.dialog_height)
-        )
+        self.leave_animation.setStartValue(QRect(0, 0, self.dialog_width, self.dialog_height))
+        self.leave_animation.setEndValue(QRect(self.dialog_width, 0, self.dialog_width, self.dialog_height))
         self.leave_animation.finished.connect(current_panel.deleteLater)
         self.leave_animation.start()
 
@@ -121,12 +107,8 @@ class InitialSetupDialog(QDialog):
         panel.show()
         self.enter_animation = QPropertyAnimation(panel, b"geometry")
         self.enter_animation.setDuration(350)
-        self.enter_animation.setStartValue(
-            QRect(-self.dialog_width, 0, self.dialog_width, self.dialog_height)
-        )
-        self.enter_animation.setEndValue(
-            QRect(0, 0, self.dialog_width, self.dialog_height)
-        )
+        self.enter_animation.setStartValue(QRect(-self.dialog_width, 0, self.dialog_width, self.dialog_height))
+        self.enter_animation.setEndValue(QRect(0, 0, self.dialog_width, self.dialog_height))
         self.enter_animation.start()
 
     def finish_setup(self):

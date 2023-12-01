@@ -29,7 +29,6 @@ class LoraNode(Node):
         scale: float = None,
         lora_name: str = None,
         version: str = None,
-        enabled: bool = True,
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -39,7 +38,6 @@ class LoraNode(Node):
         self.scale = scale
         self.lora_name = lora_name
         self.version = version
-        self.enabled = enabled
 
     def update_lora(self, scale: float, enabled: bool):
         self.scale = scale
@@ -53,7 +51,6 @@ class LoraNode(Node):
         node_dict["scale"] = self.scale
         node_dict["lora_name"] = self.lora_name
         node_dict["version"] = self.version
-        node_dict["enabled"] = self.enabled
         return node_dict
 
     @classmethod
@@ -64,7 +61,6 @@ class LoraNode(Node):
         node.scale = node_dict["scale"]
         node.lora_name = node_dict["lora_name"]
         node.version = node_dict["version"]
-        node.enabled = node_dict["enabled"]
         return node
 
     def update_inputs(self, node_dict):
@@ -73,15 +69,12 @@ class LoraNode(Node):
         self.scale = node_dict["scale"]
         self.lora_name = node_dict["lora_name"]
         self.version = node_dict["version"]
-        self.enabled = node_dict["enabled"]
 
     def __call__(self):
         super().__call__()
 
         if not self.adapter_name in getattr(self.unet, "peft_config", {}):
-            state_dict, network_alphas = self.lora_state_dict(
-                self.path, unet_config=self.unet.config
-            )
+            state_dict, network_alphas = self.lora_state_dict(self.path, unet_config=self.unet.config)
 
             is_correct_format = all("lora" in key for key in state_dict.keys())
             if not is_correct_format:
@@ -94,9 +87,7 @@ class LoraNode(Node):
                 adapter_name=self.adapter_name,
             )
 
-            text_encoder_state_dict = {
-                k: v for k, v in state_dict.items() if "text_encoder." in k
-            }
+            text_encoder_state_dict = {k: v for k, v in state_dict.items() if "text_encoder." in k}
             if len(text_encoder_state_dict) > 0:
                 self.load_lora_into_text_encoder(
                     text_encoder_state_dict,
@@ -107,9 +98,7 @@ class LoraNode(Node):
                     adapter_name=self.adapter_name,
                 )
 
-            text_encoder_2_state_dict = {
-                k: v for k, v in state_dict.items() if "text_encoder_2." in k
-            }
+            text_encoder_2_state_dict = {k: v for k, v in state_dict.items() if "text_encoder_2." in k}
             if len(text_encoder_2_state_dict) > 0:
                 self.load_lora_into_text_encoder(
                     text_encoder_2_state_dict,
@@ -121,8 +110,8 @@ class LoraNode(Node):
                 )
 
         scale = self.scale
-        if not self.enabled:
-            scale = 0.0
+        # if not self.enabled:
+        #     scale = 0.0
 
         self.values["lora"] = (self.adapter_name, scale)
 
@@ -136,20 +125,12 @@ class LoraNode(Node):
         network_alphas = None
 
         if all(
-            (
-                k.startswith("lora_te_")
-                or k.startswith("lora_unet_")
-                or k.startswith("lora_te1_")
-                or k.startswith("lora_te2_")
-            )
-            for k in state_dict.keys()
+            (k.startswith("lora_te_") or k.startswith("lora_unet_") or k.startswith("lora_te1_") or k.startswith("lora_te2_")) for k in state_dict.keys()
         ):
             # Map SDXL blocks correctly.
             if unet_config is not None:
                 # use unet config to remap block numbers
-                state_dict = self._maybe_map_sgm_blocks_to_diffusers(
-                    state_dict, unet_config
-                )
+                state_dict = self._maybe_map_sgm_blocks_to_diffusers(state_dict, unet_config)
             (
                 state_dict,
                 network_alphas,
@@ -166,29 +147,17 @@ class LoraNode(Node):
     ):
         keys = list(state_dict.keys())
 
-        if all(
-            key.startswith("unet") or key.startswith("text_encoder") for key in keys
-        ):
+        if all(key.startswith("unet") or key.startswith("text_encoder") for key in keys):
             unet_keys = [k for k in keys if k.startswith("unet")]
-            state_dict = {
-                k.replace("unet.", ""): v
-                for k, v in state_dict.items()
-                if k in unet_keys
-            }
+            state_dict = {k.replace("unet.", ""): v for k, v in state_dict.items() if k in unet_keys}
 
             if network_alphas is not None:
                 alpha_keys = [k for k in network_alphas.keys() if k.startswith("unet")]
-                network_alphas = {
-                    k.replace("unet.", ""): v
-                    for k, v in network_alphas.items()
-                    if k in alpha_keys
-                }
+                network_alphas = {k.replace("unet.", ""): v for k, v in network_alphas.items() if k in alpha_keys}
 
         if len(state_dict.keys()) > 0:
             if adapter_name in getattr(unet, "peft_config", {}):
-                raise ValueError(
-                    f"Adapter name {adapter_name} already in use in the Unet - please select a new adapter name."
-                )
+                raise ValueError(f"Adapter name {adapter_name} already in use in the Unet - please select a new adapter name.")
 
             state_dict = convert_unet_state_dict_to_peft(state_dict)
 
@@ -202,9 +171,7 @@ class LoraNode(Node):
                 if "lora_B" in key:
                     rank[key] = val.shape[1]
 
-            lora_config_kwargs = get_peft_kwargs(
-                rank, network_alphas, state_dict, is_unet=True
-            )
+            lora_config_kwargs = get_peft_kwargs(rank, network_alphas, state_dict, is_unet=True)
             lora_config = LoraConfig(**lora_config_kwargs)
 
             # adapter_name
@@ -237,56 +204,32 @@ class LoraNode(Node):
         # Safe prefix to check with.
         if any("text_encoder" in key for key in keys):
             # Load the layers corresponding to text encoder and make necessary adjustments.
-            text_encoder_keys = [
-                k for k in keys if k.startswith(prefix) and k.split(".")[0] == prefix
-            ]
-            text_encoder_lora_state_dict = {
-                k.replace(f"{prefix}.", ""): v
-                for k, v in state_dict.items()
-                if k in text_encoder_keys
-            }
+            text_encoder_keys = [k for k in keys if k.startswith(prefix) and k.split(".")[0] == prefix]
+            text_encoder_lora_state_dict = {k.replace(f"{prefix}.", ""): v for k, v in state_dict.items() if k in text_encoder_keys}
 
             if len(text_encoder_lora_state_dict) > 0:
                 rank = {}
-                text_encoder_lora_state_dict = convert_state_dict_to_diffusers(
-                    text_encoder_lora_state_dict
-                )
+                text_encoder_lora_state_dict = convert_state_dict_to_diffusers(text_encoder_lora_state_dict)
 
                 # convert state dict
-                text_encoder_lora_state_dict = convert_state_dict_to_peft(
-                    text_encoder_lora_state_dict
-                )
+                text_encoder_lora_state_dict = convert_state_dict_to_peft(text_encoder_lora_state_dict)
 
                 for name, _ in text_encoder_attn_modules(text_encoder):
                     rank_key = f"{name}.out_proj.lora_B.weight"
                     rank[rank_key] = text_encoder_lora_state_dict[rank_key].shape[1]
 
-                patch_mlp = any(
-                    ".mlp." in key for key in text_encoder_lora_state_dict.keys()
-                )
+                patch_mlp = any(".mlp." in key for key in text_encoder_lora_state_dict.keys())
                 if patch_mlp:
                     for name, _ in text_encoder_mlp_modules(text_encoder):
                         rank_key_fc1 = f"{name}.fc1.lora_B.weight"
                         rank_key_fc2 = f"{name}.fc2.lora_B.weight"
 
-                        rank[rank_key_fc1] = text_encoder_lora_state_dict[
-                            rank_key_fc1
-                        ].shape[1]
-                        rank[rank_key_fc2] = text_encoder_lora_state_dict[
-                            rank_key_fc2
-                        ].shape[1]
+                        rank[rank_key_fc1] = text_encoder_lora_state_dict[rank_key_fc1].shape[1]
+                        rank[rank_key_fc2] = text_encoder_lora_state_dict[rank_key_fc2].shape[1]
 
                 if network_alphas is not None:
-                    alpha_keys = [
-                        k
-                        for k in network_alphas.keys()
-                        if k.startswith(prefix) and k.split(".")[0] == prefix
-                    ]
-                    network_alphas = {
-                        k.replace(f"{prefix}.", ""): v
-                        for k, v in network_alphas.items()
-                        if k in alpha_keys
-                    }
+                    alpha_keys = [k for k in network_alphas.keys() if k.startswith(prefix) and k.split(".")[0] == prefix]
+                    network_alphas = {k.replace(f"{prefix}.", ""): v for k, v in network_alphas.items() if k in alpha_keys}
 
                 lora_config_kwargs = get_peft_kwargs(
                     rank,
@@ -314,9 +257,7 @@ class LoraNode(Node):
 
                 text_encoder.to(device=text_encoder.device, dtype=text_encoder.dtype)
 
-    def _maybe_map_sgm_blocks_to_diffusers(
-        self, state_dict, unet_config, delimiter="_", block_slice_pos=5
-    ):
+    def _maybe_map_sgm_blocks_to_diffusers(self, state_dict, unet_config, delimiter="_", block_slice_pos=5):
         # 1. get all state_dict_keys
         all_keys = list(state_dict.keys())
         sgm_patterns = ["input_blocks", "middle_block", "output_blocks"]
@@ -350,30 +291,11 @@ class LoraNode(Node):
                 elif sgm_patterns[2] in layer:
                     output_block_ids.add(layer_id)
                 else:
-                    raise ValueError(
-                        f"Checkpoint not supported because layer {layer} not supported."
-                    )
+                    raise ValueError(f"Checkpoint not supported because layer {layer} not supported.")
 
-        input_blocks = {
-            layer_id: [
-                key for key in state_dict if f"input_blocks{delimiter}{layer_id}" in key
-            ]
-            for layer_id in input_block_ids
-        }
-        middle_blocks = {
-            layer_id: [
-                key for key in state_dict if f"middle_block{delimiter}{layer_id}" in key
-            ]
-            for layer_id in middle_block_ids
-        }
-        output_blocks = {
-            layer_id: [
-                key
-                for key in state_dict
-                if f"output_blocks{delimiter}{layer_id}" in key
-            ]
-            for layer_id in output_block_ids
-        }
+        input_blocks = {layer_id: [key for key in state_dict if f"input_blocks{delimiter}{layer_id}" in key] for layer_id in input_block_ids}
+        middle_blocks = {layer_id: [key for key in state_dict if f"middle_block{delimiter}{layer_id}" in key] for layer_id in middle_block_ids}
+        output_blocks = {layer_id: [key for key in state_dict if f"output_blocks{delimiter}{layer_id}" in key] for layer_id in output_block_ids}
 
         # Rename keys accordingly
         for i in input_block_ids:
@@ -382,14 +304,8 @@ class LoraNode(Node):
 
             for key in input_blocks[i]:
                 inner_block_id = int(key.split(delimiter)[block_slice_pos])
-                inner_block_key = (
-                    inner_block_map[inner_block_id]
-                    if "op" not in key
-                    else "downsamplers"
-                )
-                inner_layers_in_block = (
-                    str(layer_in_block_id) if "op" not in key else "0"
-                )
+                inner_block_key = inner_block_map[inner_block_id] if "op" not in key else "downsamplers"
+                inner_layers_in_block = str(layer_in_block_id) if "op" not in key else "0"
                 new_key = delimiter.join(
                     key.split(delimiter)[: block_slice_pos - 1]
                     + [str(block_id), inner_block_key, inner_layers_in_block]
@@ -409,11 +325,7 @@ class LoraNode(Node):
                 raise ValueError(f"Invalid middle block id {i}.")
 
             for key in middle_blocks[i]:
-                new_key = delimiter.join(
-                    key.split(delimiter)[: block_slice_pos - 1]
-                    + key_part
-                    + key.split(delimiter)[block_slice_pos:]
-                )
+                new_key = delimiter.join(key.split(delimiter)[: block_slice_pos - 1] + key_part + key.split(delimiter)[block_slice_pos:])
                 new_state_dict[new_key] = state_dict.pop(key)
 
         for i in output_block_ids:
@@ -423,9 +335,7 @@ class LoraNode(Node):
             for key in output_blocks[i]:
                 inner_block_id = int(key.split(delimiter)[block_slice_pos])
                 inner_block_key = inner_block_map[inner_block_id]
-                inner_layers_in_block = (
-                    str(layer_in_block_id) if inner_block_id < 2 else "0"
-                )
+                inner_layers_in_block = str(layer_in_block_id) if inner_block_id < 2 else "0"
                 new_key = delimiter.join(
                     key.split(delimiter)[: block_slice_pos - 1]
                     + [str(block_id), inner_block_key, inner_layers_in_block]
@@ -434,9 +344,7 @@ class LoraNode(Node):
                 new_state_dict[new_key] = state_dict.pop(key)
 
         if len(state_dict) > 0:
-            raise ValueError(
-                "At this point all state dict entries have to be converted."
-            )
+            raise ValueError("At this point all state dict entries have to be converted.")
 
         return new_state_dict
 
@@ -457,28 +365,20 @@ class LoraNode(Node):
                 diffusers_name = key.replace("lora_unet_", "").replace("_", ".")
 
                 if "input.blocks" in diffusers_name:
-                    diffusers_name = diffusers_name.replace(
-                        "input.blocks", "down_blocks"
-                    )
+                    diffusers_name = diffusers_name.replace("input.blocks", "down_blocks")
                 else:
-                    diffusers_name = diffusers_name.replace(
-                        "down.blocks", "down_blocks"
-                    )
+                    diffusers_name = diffusers_name.replace("down.blocks", "down_blocks")
 
                 if "middle.block" in diffusers_name:
                     diffusers_name = diffusers_name.replace("middle.block", "mid_block")
                 else:
                     diffusers_name = diffusers_name.replace("mid.block", "mid_block")
                 if "output.blocks" in diffusers_name:
-                    diffusers_name = diffusers_name.replace(
-                        "output.blocks", "up_blocks"
-                    )
+                    diffusers_name = diffusers_name.replace("output.blocks", "up_blocks")
                 else:
                     diffusers_name = diffusers_name.replace("up.blocks", "up_blocks")
 
-                diffusers_name = diffusers_name.replace(
-                    "transformer.blocks", "transformer_blocks"
-                )
+                diffusers_name = diffusers_name.replace("transformer.blocks", "transformer_blocks")
                 diffusers_name = diffusers_name.replace("to.q.lora", "to_q_lora")
                 diffusers_name = diffusers_name.replace("to.k.lora", "to_k_lora")
                 diffusers_name = diffusers_name.replace("to.v.lora", "to_v_lora")
@@ -498,48 +398,30 @@ class LoraNode(Node):
                 if "downsamplers" in diffusers_name or "upsamplers" in diffusers_name:
                     diffusers_name = diffusers_name.replace("op", "conv")
                 if "skip" in diffusers_name:
-                    diffusers_name = diffusers_name.replace(
-                        "skip.connection", "conv_shortcut"
-                    )
+                    diffusers_name = diffusers_name.replace("skip.connection", "conv_shortcut")
 
                 # LyCORIS specificity.
                 if "time.emb.proj" in diffusers_name:
-                    diffusers_name = diffusers_name.replace(
-                        "time.emb.proj", "time_emb_proj"
-                    )
+                    diffusers_name = diffusers_name.replace("time.emb.proj", "time_emb_proj")
                 if "conv.shortcut" in diffusers_name:
-                    diffusers_name = diffusers_name.replace(
-                        "conv.shortcut", "conv_shortcut"
-                    )
+                    diffusers_name = diffusers_name.replace("conv.shortcut", "conv_shortcut")
 
                 # General coverage.
                 if "transformer_blocks" in diffusers_name:
                     if "attn1" in diffusers_name or "attn2" in diffusers_name:
-                        diffusers_name = diffusers_name.replace(
-                            "attn1", "attn1.processor"
-                        )
-                        diffusers_name = diffusers_name.replace(
-                            "attn2", "attn2.processor"
-                        )
+                        diffusers_name = diffusers_name.replace("attn1", "attn1.processor")
+                        diffusers_name = diffusers_name.replace("attn2", "attn2.processor")
                         unet_state_dict[diffusers_name] = state_dict.pop(key)
-                        unet_state_dict[
-                            diffusers_name.replace(".down.", ".up.")
-                        ] = state_dict.pop(lora_name_up)
+                        unet_state_dict[diffusers_name.replace(".down.", ".up.")] = state_dict.pop(lora_name_up)
                     elif "ff" in diffusers_name:
                         unet_state_dict[diffusers_name] = state_dict.pop(key)
-                        unet_state_dict[
-                            diffusers_name.replace(".down.", ".up.")
-                        ] = state_dict.pop(lora_name_up)
+                        unet_state_dict[diffusers_name.replace(".down.", ".up.")] = state_dict.pop(lora_name_up)
                 elif any(key in diffusers_name for key in ("proj_in", "proj_out")):
                     unet_state_dict[diffusers_name] = state_dict.pop(key)
-                    unet_state_dict[
-                        diffusers_name.replace(".down.", ".up.")
-                    ] = state_dict.pop(lora_name_up)
+                    unet_state_dict[diffusers_name.replace(".down.", ".up.")] = state_dict.pop(lora_name_up)
                 else:
                     unet_state_dict[diffusers_name] = state_dict.pop(key)
-                    unet_state_dict[
-                        diffusers_name.replace(".down.", ".up.")
-                    ] = state_dict.pop(lora_name_up)
+                    unet_state_dict[diffusers_name.replace(".down.", ".up.")] = state_dict.pop(lora_name_up)
 
             elif lora_name.startswith("lora_te_"):
                 diffusers_name = key.replace("lora_te_", "").replace("_", ".")
@@ -551,19 +433,13 @@ class LoraNode(Node):
                 diffusers_name = diffusers_name.replace("out.proj.lora", "to_out_lora")
                 if "self_attn" in diffusers_name:
                     te_state_dict[diffusers_name] = state_dict.pop(key)
-                    te_state_dict[
-                        diffusers_name.replace(".down.", ".up.")
-                    ] = state_dict.pop(lora_name_up)
+                    te_state_dict[diffusers_name.replace(".down.", ".up.")] = state_dict.pop(lora_name_up)
                 elif "mlp" in diffusers_name:
                     # Be aware that this is the new diffusers convention and the rest of the code might
                     # not utilize it yet.
-                    diffusers_name = diffusers_name.replace(
-                        ".lora.", ".lora_linear_layer."
-                    )
+                    diffusers_name = diffusers_name.replace(".lora.", ".lora_linear_layer.")
                     te_state_dict[diffusers_name] = state_dict.pop(key)
-                    te_state_dict[
-                        diffusers_name.replace(".down.", ".up.")
-                    ] = state_dict.pop(lora_name_up)
+                    te_state_dict[diffusers_name.replace(".down.", ".up.")] = state_dict.pop(lora_name_up)
 
             # (sayakpaul): Duplicate code. Needs to be cleaned.
             elif lora_name.startswith("lora_te1_"):
@@ -576,19 +452,13 @@ class LoraNode(Node):
                 diffusers_name = diffusers_name.replace("out.proj.lora", "to_out_lora")
                 if "self_attn" in diffusers_name:
                     te_state_dict[diffusers_name] = state_dict.pop(key)
-                    te_state_dict[
-                        diffusers_name.replace(".down.", ".up.")
-                    ] = state_dict.pop(lora_name_up)
+                    te_state_dict[diffusers_name.replace(".down.", ".up.")] = state_dict.pop(lora_name_up)
                 elif "mlp" in diffusers_name:
                     # Be aware that this is the new diffusers convention and the rest of the code might
                     # not utilize it yet.
-                    diffusers_name = diffusers_name.replace(
-                        ".lora.", ".lora_linear_layer."
-                    )
+                    diffusers_name = diffusers_name.replace(".lora.", ".lora_linear_layer.")
                     te_state_dict[diffusers_name] = state_dict.pop(key)
-                    te_state_dict[
-                        diffusers_name.replace(".down.", ".up.")
-                    ] = state_dict.pop(lora_name_up)
+                    te_state_dict[diffusers_name.replace(".down.", ".up.")] = state_dict.pop(lora_name_up)
 
             # (sayakpaul): Duplicate code. Needs to be cleaned.
             elif lora_name.startswith("lora_te2_"):
@@ -601,19 +471,13 @@ class LoraNode(Node):
                 diffusers_name = diffusers_name.replace("out.proj.lora", "to_out_lora")
                 if "self_attn" in diffusers_name:
                     te2_state_dict[diffusers_name] = state_dict.pop(key)
-                    te2_state_dict[
-                        diffusers_name.replace(".down.", ".up.")
-                    ] = state_dict.pop(lora_name_up)
+                    te2_state_dict[diffusers_name.replace(".down.", ".up.")] = state_dict.pop(lora_name_up)
                 elif "mlp" in diffusers_name:
                     # Be aware that this is the new diffusers convention and the rest of the code might
                     # not utilize it yet.
-                    diffusers_name = diffusers_name.replace(
-                        ".lora.", ".lora_linear_layer."
-                    )
+                    diffusers_name = diffusers_name.replace(".lora.", ".lora_linear_layer.")
                     te2_state_dict[diffusers_name] = state_dict.pop(key)
-                    te2_state_dict[
-                        diffusers_name.replace(".down.", ".up.")
-                    ] = state_dict.pop(lora_name_up)
+                    te2_state_dict[diffusers_name.replace(".down.", ".up.")] = state_dict.pop(lora_name_up)
 
             # Rename the alphas so that they can be mapped appropriately.
             if lora_name_alpha in state_dict:
@@ -628,26 +492,11 @@ class LoraNode(Node):
                 network_alphas.update({new_name: alpha})
 
         if len(state_dict) > 0:
-            raise ValueError(
-                f"The following keys have not been correctly be renamed: \n\n {', '.join(state_dict.keys())}"
-            )
+            raise ValueError(f"The following keys have not been correctly be renamed: \n\n {', '.join(state_dict.keys())}")
 
-        unet_state_dict = {
-            f"unet.{module_name}": params
-            for module_name, params in unet_state_dict.items()
-        }
-        te_state_dict = {
-            f"text_encoder.{module_name}": params
-            for module_name, params in te_state_dict.items()
-        }
-        te2_state_dict = (
-            {
-                f"text_encoder_2.{module_name}": params
-                for module_name, params in te2_state_dict.items()
-            }
-            if len(te2_state_dict) > 0
-            else None
-        )
+        unet_state_dict = {f"unet.{module_name}": params for module_name, params in unet_state_dict.items()}
+        te_state_dict = {f"text_encoder.{module_name}": params for module_name, params in te_state_dict.items()}
+        te2_state_dict = {f"text_encoder_2.{module_name}": params for module_name, params in te2_state_dict.items()} if len(te2_state_dict) > 0 else None
         if te2_state_dict is not None:
             te_state_dict.update(te2_state_dict)
 
