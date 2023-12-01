@@ -63,7 +63,7 @@ class ControlNetDialog(BaseDialog):
 
         self.controlnet_combo = QComboBox()
         self.controlnet_combo.addItem("Canny", "canny")
-        self.controlnet_combo.addItem("Depth", "depth")
+        self.controlnet_combo.addItem("Depth Midas", "depth")
         self.controlnet_combo.addItem("Pose", "pose")
         self.controlnet_combo.currentIndexChanged.connect(self.on_annotator_changed)
         control_layout.addWidget(self.controlnet_combo)
