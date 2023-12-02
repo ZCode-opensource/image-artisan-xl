@@ -214,9 +214,7 @@ class LoraInfoWidget(QWidget):
         self.lora_edit.emit(self.data)
 
     def on_generate_example(self):
-        self.event_bus.publish(
-            "auto_generate", {"generation_data": self.generation_data}
-        )
+        self.event_bus.publish("auto_generate", {"generation_data": self.generation_data})
 
     def on_trigger_clicked(self):
         button = self.sender()

@@ -455,7 +455,21 @@ class TextToImageModule(BaseModule):
         generation_data = data.get("generation_data")
         image = ImageProcessor()
         image.serialized_data = generation_data
-        self.image_generation_data.update_from_json(generation_data)
+        loras = self.image_generation_data.update_from_json(generation_data)
+
+        if len(loras) > 0:
+            self.lora_list.clear_loras()
+
+            for lora in loras:
+                lora_object = LoraDataObject(
+                    name=lora["lora_name"],
+                    filename=lora["name"],
+                    version=lora["version"],
+                    path=lora["path"],
+                    weight=lora["scale"],
+                )
+                self.lora_list.add(lora_object)
+
         self.event_bus.publish("update_from_json", {})
         self.lora_list.dropped_image = True
         self.prompt_window.unblock_seed()
