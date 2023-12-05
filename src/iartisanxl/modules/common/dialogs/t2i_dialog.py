@@ -1,15 +1,8 @@
 import numpy as np
 import torch
 
-from PyQt6.QtWidgets import (
-    QVBoxLayout,
-    QHBoxLayout,
-    QLabel,
-    QPushButton,
-    QSlider,
-    QComboBox,
-    QWidget,
-)
+
+from PyQt6.QtWidgets import QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QSlider, QComboBox, QWidget
 from PyQt6.QtCore import QSettings, Qt
 from PyQt6.QtGui import QImage, QPixmap
 from superqt import QDoubleRangeSlider, QDoubleSlider
@@ -18,22 +11,24 @@ from iartisanxl.app.event_bus import EventBus
 from iartisanxl.buttons.color_button import ColorButton
 from iartisanxl.modules.common.dialogs.base_dialog import BaseDialog
 from iartisanxl.modules.common.dialogs.control_image_widget import ControlImageWidget
-from iartisanxl.generation.controlnet_data_object import ControlNetDataObject
-from iartisanxl.formats.image import ImageProcessor
 from iartisanxl.annotators.openpose.open_pose_detector import OpenPoseDetector
+from iartisanxl.annotators.lineart.lineart_generator import LineArtGenerator
+from iartisanxl.annotators.pidinet.pidinet_generator import PidinetGenerator
 from iartisanxl.annotators.depth.depth_estimator import DepthEstimator
 from iartisanxl.annotators.canny.canny_edges_detector import CannyEdgesDetector
+from iartisanxl.generation.t2i_adapter_data_object import T2IAdapterDataObject
+from iartisanxl.formats.image import ImageProcessor
 
 
-class ControlNetDialog(BaseDialog):
+class T2IDialog(BaseDialog):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self.setWindowTitle("ControlNet")
+        self.setWindowTitle("T2I Adapters")
         self.setMinimumSize(500, 500)
 
         self.settings = QSettings("ZCode", "ImageArtisanXL")
-        self.settings.beginGroup("controlnet_dialog")
+        self.settings.beginGroup("t2i_adapters_dialog")
         geometry = self.settings.value("geometry")
         if geometry:
             self.restoreGeometry(geometry)
@@ -41,10 +36,9 @@ class ControlNetDialog(BaseDialog):
 
         self.event_bus = EventBus()
 
-        self.controlnet = None
+        self.adapter = None
         self.conditioning_scale = 0.50
-        self.control_guidance_start = 0.0
-        self.control_guidance_end = 1.0
+        self.conditioning_factor = 1.0
         self.annotator_resolution = 0.5
         self.canny_low = 100
         self.canny_high = 300
@@ -52,6 +46,8 @@ class ControlNetDialog(BaseDialog):
         self.canny_detector = None
         self.depth_estimator = None
         self.openpose_detector = None
+        self.lineart_generator = None
+        self.pidinet_generator = None
 
         self.init_ui()
 
@@ -64,8 +60,10 @@ class ControlNetDialog(BaseDialog):
 
         self.annotator_combo = QComboBox()
         self.annotator_combo.addItem("Canny", "canny")
-        self.annotator_combo.addItem("Depth Midas", "depth")
+        self.annotator_combo.addItem("Depth", "depth")
         self.annotator_combo.addItem("Pose", "pose")
+        self.annotator_combo.addItem("Line Art", "lineart")
+        self.annotator_combo.addItem("Sketch", "sketch")
         self.annotator_combo.currentIndexChanged.connect(self.on_annotator_changed)
         control_layout.addWidget(self.annotator_combo)
 
@@ -79,19 +77,15 @@ class ControlNetDialog(BaseDialog):
         self.conditioning_scale_value_label = QLabel(f"{self.conditioning_scale}")
         control_layout.addWidget(self.conditioning_scale_value_label)
 
-        guidance_start_label = QLabel("Guidance Start:")
-        control_layout.addWidget(guidance_start_label)
-        self.guidance_start_value_label = QLabel(f"{int(self.control_guidance_start * 100)}%")
-        control_layout.addWidget(self.guidance_start_value_label)
-        self.guidance_slider = QDoubleRangeSlider(Qt.Orientation.Horizontal)
-        self.guidance_slider.setRange(0, 1)
-        self.guidance_slider.setValue((self.control_guidance_start, self.control_guidance_end))
-        self.guidance_slider.valueChanged.connect(self.on_guidance_changed)
-        control_layout.addWidget(self.guidance_slider)
-        guidance_end_label = QLabel("End:")
-        control_layout.addWidget(guidance_end_label)
-        self.guidance_end_value_label = QLabel(f"{int(self.control_guidance_end * 100)}%")
-        control_layout.addWidget(self.guidance_end_value_label)
+        conditioning_factor_label = QLabel("Conditioning Factor:")
+        control_layout.addWidget(conditioning_factor_label)
+        self.conditioning_factor_slider = QDoubleSlider(Qt.Orientation.Horizontal)
+        self.conditioning_factor_slider.setRange(0.0, 1.0)
+        self.conditioning_factor_slider.setValue(self.conditioning_factor)
+        self.conditioning_factor_slider.valueChanged.connect(self.on_conditioning_factor_changed)
+        control_layout.addWidget(self.conditioning_factor_slider)
+        self.conditioning_factor_value_label = QLabel(f"{int(self.conditioning_factor * 100)}%")
+        control_layout.addWidget(self.conditioning_factor_value_label)
         content_layout.addLayout(control_layout)
 
         second_control_layout = QHBoxLayout()
@@ -125,6 +119,29 @@ class ControlNetDialog(BaseDialog):
         depth_layout.addWidget(self.depth_type_combo)
         self.depth_widget.setVisible(False)
         second_control_layout.addWidget(self.depth_widget)
+
+        self.lineart_widget = QWidget()
+        lineart_layout = QHBoxLayout(self.lineart_widget)
+        lineart_layout.setSpacing(10)
+        lineart_layout.setContentsMargins(0, 0, 0, 0)
+        self.lineart_type_combo = QComboBox()
+        self.lineart_type_combo.addItem("Anime", "anime_style")
+        self.lineart_type_combo.addItem("Open Sketch", "opensketch_style")
+        self.lineart_type_combo.addItem("Countour", "contour_style")
+        lineart_layout.addWidget(self.lineart_type_combo)
+        self.lineart_widget.setVisible(False)
+        second_control_layout.addWidget(self.lineart_widget)
+
+        self.sketch_widget = QWidget()
+        sketch_layout = QHBoxLayout(self.sketch_widget)
+        sketch_layout.setSpacing(10)
+        sketch_layout.setContentsMargins(0, 0, 0, 0)
+        self.sketch_type_combo = QComboBox()
+        self.sketch_type_combo.addItem("Pidinet Table 5", "table5")
+        self.sketch_type_combo.addItem("Pidinet Table 7", "table7")
+        sketch_layout.addWidget(self.sketch_type_combo)
+        self.sketch_widget.setVisible(False)
+        second_control_layout.addWidget(self.sketch_widget)
 
         annotator_resolution_label = QLabel("Annotator resolution:")
         second_control_layout.addWidget(annotator_resolution_label)
@@ -178,7 +195,7 @@ class ControlNetDialog(BaseDialog):
         annotator_layout.addWidget(self.annotator_widget)
 
         self.add_button = QPushButton("Add")
-        self.add_button.clicked.connect(self.on_controlnet_added)
+        self.add_button.clicked.connect(self.on_t2i_adapter_added)
 
         annotator_layout.addWidget(self.add_button)
         images_layout.addLayout(annotator_layout)
@@ -201,13 +218,15 @@ class ControlNetDialog(BaseDialog):
         brush_hardness_slider.valueChanged.connect(self.annotator_widget.image_editor.set_brush_hardness)
 
     def closeEvent(self, event):
-        self.settings.beginGroup("controlnet_dialog")
+        self.settings.beginGroup("t2i_adapters_dialog")
         self.settings.setValue("geometry", self.saveGeometry())
         self.settings.endGroup()
 
         self.canny_detector = None
         self.depth_estimator = None
         self.openpose_detector = None
+        self.lineart_generator = None
+        self.pidinet_generator = None
 
         torch.cuda.empty_cache()
         torch.cuda.ipc_collect()
@@ -264,6 +283,32 @@ class ControlNetDialog(BaseDialog):
                         int(self.image_generation_data.image_height * self.annotator_resolution),
                     ),
                 )
+            elif annotator_index == 3:
+                if self.lineart_generator is None:
+                    self.lineart_generator = LineArtGenerator(model_type=self.lineart_type_combo.currentData())
+
+                self.lineart_generator.change_model(self.lineart_type_combo.currentData())
+
+                annotator_image = self.lineart_generator.get_lines(
+                    numpy_image,
+                    (
+                        int(self.image_generation_data.image_width * self.annotator_resolution),
+                        int(self.image_generation_data.image_height * self.annotator_resolution),
+                    ),
+                )
+            elif annotator_index == 4:
+                if self.pidinet_generator is None:
+                    self.pidinet_generator = PidinetGenerator(self.sketch_type_combo.currentData())
+
+                self.pidinet_generator.change_model(self.sketch_type_combo.currentData())
+
+                annotator_image = self.pidinet_generator.get_edges(
+                    numpy_image,
+                    (
+                        int(self.image_generation_data.image_width * self.annotator_resolution),
+                        int(self.image_generation_data.image_height * self.annotator_resolution),
+                    ),
+                )
 
             if annotator_image is not None:
                 qimage = QImage(
@@ -275,52 +320,47 @@ class ControlNetDialog(BaseDialog):
                 pixmap = QPixmap.fromImage(qimage)
                 self.annotator_widget.image_editor.set_pixmap(pixmap)
 
-    def on_controlnet_added(self):
-        if self.controlnet is None:
-            self.controlnet = ControlNetDataObject(
-                controlnet_type=self.annotator_combo.currentText(),
+    def on_t2i_adapter_added(self):
+        if self.adapter is None:
+            self.adapter = T2IAdapterDataObject(
+                adapter_type=self.annotator_combo.currentData(),
                 enabled=True,
-                guess_mode=False,
                 conditioning_scale=round(self.conditioning_scale, 2),
-                guidance_start=self.control_guidance_start,
-                guidance_end=self.control_guidance_end,
+                conditioning_factor=self.conditioning_factor,
                 type_index=self.annotator_combo.currentIndex(),
                 canny_low=self.canny_low,
                 canny_high=self.canny_high,
             )
         else:
-            self.controlnet.controlnet_type = self.annotator_combo.currentText()
-            self.controlnet.conditioning_scale = round(self.conditioning_scale, 2)
-            self.controlnet.guidance_start = self.control_guidance_start
-            self.controlnet.guidance_end = self.control_guidance_end
+            self.adapter.adapter_type = self.annotator_combo.currentData()
+            self.adapter.conditioning_scale = round(self.conditioning_scale, 2)
+            self.adapter.conditioning_factor = self.conditioning_factor
 
         source_image = ImageProcessor()
         source_qimage = self.source_widget.image_editor.get_painted_image()
         source_image.set_qimage(source_qimage)
-        self.controlnet.source_image_thumb = source_image.get_pillow_thumbnail(target_height=80)
-        self.controlnet.source_image = source_image.get_pillow_image()
+        self.adapter.source_image_thumb = source_image.get_pillow_thumbnail(target_height=80)
+        self.adapter.source_image = source_image.get_pillow_image()
 
         annotator_image = ImageProcessor()
         annotator_qimage = self.annotator_widget.image_editor.get_painted_image()
         annotator_image.set_qimage(annotator_qimage)
-        self.controlnet.annotator_image_thumb = annotator_image.get_pillow_thumbnail(target_height=80)
-        self.controlnet.annotator_image = annotator_image.get_pillow_image()
+        self.adapter.annotator_image_thumb = annotator_image.get_pillow_thumbnail(target_height=80)
+        self.adapter.annotator_image = annotator_image.get_pillow_image()
 
-        if self.controlnet.controlnet_id is None:
-            self.event_bus.publish("controlnet", {"action": "add", "controlnet": self.controlnet})
+        if self.adapter.adapter_id is None:
+            self.event_bus.publish("t2i_adapters", {"action": "add", "t2i_adapter": self.adapter})
             self.add_button.setText("Update")
         else:
-            self.event_bus.publish("controlnet", {"action": "update", "controlnet": self.controlnet})
+            self.event_bus.publish("t2i_adapters", {"action": "update", "t2i_adapter": self.adapter})
 
     def on_conditional_scale_changed(self, value):
         self.conditioning_scale = value
         self.conditioning_scale_value_label.setText(f"{value:.2f}")
 
-    def on_guidance_changed(self, values):
-        self.control_guidance_start = round(values[0], 2)
-        self.control_guidance_end = round(values[1], 2)
-        self.guidance_start_value_label.setText(f"{int(self.control_guidance_start * 100)}%")
-        self.guidance_end_value_label.setText(f"{int(self.control_guidance_end * 100)}%")
+    def on_conditioning_factor_changed(self, value):
+        self.conditioning_factor = value
+        self.conditioning_factor_value_label.setText(f"{int(value * 100)}%")
 
     def on_canny_threshold_changed(self, values):
         self.canny_low = int(values[0])
@@ -333,39 +373,57 @@ class ControlNetDialog(BaseDialog):
         if self.annotator_combo.currentIndex() == 0:
             self.canny_widget.setVisible(True)
             self.depth_widget.setVisible(False)
+            self.lineart_widget.setVisible(False)
+            self.sketch_widget.setVisible(False)
         elif self.annotator_combo.currentIndex() == 1:
             self.canny_widget.setVisible(False)
             self.depth_widget.setVisible(True)
+            self.lineart_widget.setVisible(False)
+            self.sketch_widget.setVisible(False)
+        elif self.annotator_combo.currentIndex() == 3:
+            self.canny_widget.setVisible(False)
+            self.depth_widget.setVisible(False)
+            self.lineart_widget.setVisible(True)
+            self.sketch_widget.setVisible(False)
+        elif self.annotator_combo.currentIndex() == 4:
+            self.canny_widget.setVisible(False)
+            self.depth_widget.setVisible(False)
+            self.lineart_widget.setVisible(False)
+            self.sketch_widget.setVisible(True)
         else:
             self.canny_widget.setVisible(False)
             self.depth_widget.setVisible(False)
+            self.lineart_widget.setVisible(False)
+            self.sketch_widget.setVisible(False)
+
+        self.annotator_widget.image_editor.clear()
 
     def on_annotator_resolution_changed(self, value):
         self.annotator_resolution = value
         self.annotator_resolution_value_label.setText(f"{int(value * 100)}%")
 
     def update_ui(self):
-        self.conditioning_scale_slider.setValue(self.controlnet.conditioning_scale)
-        self.conditioning_scale_value_label.setText(f"{self.controlnet.conditioning_scale:.2f}")
-        self.guidance_slider.setValue((self.controlnet.guidance_start, self.controlnet.guidance_end))
-        self.canny_slider.setValue((self.controlnet.canny_low, self.controlnet.canny_high))
-        self.annotator_combo.setCurrentIndex(self.controlnet.type_index)
+        self.conditioning_scale_slider.setValue(self.adapter.conditioning_scale)
+        self.conditioning_scale_value_label.setText(f"{self.adapter.conditioning_scale:.2f}")
+        self.conditioning_factor_slider.setValue(self.adapter.conditioning_factor)
+        self.canny_slider.setValue((self.adapter.canny_low, self.adapter.canny_high))
+        self.annotator_combo.setCurrentIndex(self.adapter.type_index)
         self.on_annotator_changed()
 
         image_processor = ImageProcessor()
-        image_processor.set_pillow_image(self.controlnet.source_image)
+        image_processor.set_pillow_image(self.adapter.source_image)
         self.source_widget.image_editor.set_pixmap(image_processor.get_qpixmap())
-        image_processor.set_pillow_image(self.controlnet.annotator_image)
+        image_processor.set_pillow_image(self.adapter.annotator_image)
         self.annotator_widget.image_editor.set_pixmap(image_processor.get_qpixmap())
         del image_processor
 
-        if self.controlnet.controlnet_id is not None:
+        if self.adapter.adapter_id is not None:
             self.add_button.setText("Update")
 
     def reset_ui(self):
         self.conditioning_scale_slider.setValue(0.50)
         self.conditioning_scale_value_label.setText(f"{0.50:.2f}")
-        self.guidance_slider.setValue((0, 1))
+        self.conditioning_factor_slider.setValue(1.0)
         self.canny_slider.setValue((100, 300))
         self.annotator_combo.setCurrentIndex(0)
         self.on_annotator_changed()

@@ -10,10 +10,13 @@ from iartisanxl.app.directories import DirectoriesObject
 from iartisanxl.generation.image_generation_data import ImageGenerationData
 from iartisanxl.generation.lora_list import LoraList
 from iartisanxl.generation.controlnet_list import ControlNetList
+from iartisanxl.generation.t2i_adapter_list import T2IAdapterList
 from iartisanxl.graph.iartisanxl_node_graph import ImageArtisanNodeGraph
 from iartisanxl.graph.nodes.lora_node import LoraNode
 from iartisanxl.graph.nodes.controlnet_model_node import ControlnetModelNode
 from iartisanxl.graph.nodes.controlnet_node import ControlnetNode
+from iartisanxl.graph.nodes.t2i_adapter_model_node import T2IAdapterModelNode
+from iartisanxl.graph.nodes.t2i_adapter_node import T2IAdapterNode
 from iartisanxl.graph.nodes.image_load_node import ImageLoadNode
 
 
@@ -31,6 +34,7 @@ class NodeGraphThread(QThread):
         image_generation_data: ImageGenerationData = None,
         lora_list: LoraList = None,
         controlnet_list: ControlNetList = None,
+        t2i_adapter_list: T2IAdapterList = None,
         model_offload: bool = False,
         sequential_offload: bool = False,
         torch_dtype: torch.dtype = torch.float16,
@@ -42,6 +46,7 @@ class NodeGraphThread(QThread):
         self.image_generation_data = image_generation_data
         self.lora_list = lora_list
         self.controlnet_list = controlnet_list
+        self.t2i_adapter_list = t2i_adapter_list
         self.model_offload = model_offload
         self.sequential_offload = sequential_offload
         self.torch_dtype = torch_dtype
@@ -182,26 +187,36 @@ class NodeGraphThread(QThread):
         # process controlnets
         controlnet_types = self.controlnet_list.get_used_types()
         controlnet_canny_model = None
+        controlnet_depth_model = None
+        controlnet_pose_model = None
 
         for controlnet_type in controlnet_types:
             if controlnet_type == "Canny":
-                controlnet_canny_model = self.node_graph.get_node_by_name("canny_control_model")
+                controlnet_canny_model = self.node_graph.get_node_by_name("controlnet_canny_model")
 
                 if controlnet_canny_model is None:
                     controlnet_canny_model = ControlnetModelNode(path=os.path.join(self.directories.models_controlnets, "controlnet-canny-sdxl-1.0-small"))
-                    self.node_graph.add_node(controlnet_canny_model, "canny_control_model")
-            elif controlnet_type == "Depth":
-                controlnet_depth_model = self.node_graph.get_node_by_name("depth_control_model")
+                    self.node_graph.add_node(controlnet_canny_model, "controlnet_canny_model")
+            elif controlnet_type == "Depth Midas":
+                controlnet_depth_model = self.node_graph.get_node_by_name("controlnet_depth_model")
 
                 if controlnet_depth_model is None:
                     controlnet_depth_model = ControlnetModelNode(path=os.path.join(self.directories.models_controlnets, "controlnet-depth-sdxl-1.0-small"))
-                    self.node_graph.add_node(controlnet_depth_model, "depth_control_model")
+                    self.node_graph.add_node(controlnet_depth_model, "controlnet_depth_model")
+            elif controlnet_type == "Depth Zoe":
+                controlnet_depth_zoe_model = self.node_graph.get_node_by_name("controlnet_depth_zoe_model")
+
+                if controlnet_depth_zoe_model is None:
+                    controlnet_depth_zoe_model = ControlnetModelNode(
+                        path=os.path.join(self.directories.models_controlnets, "controlnet-zoe-depth-sdxl-1.0")
+                    )
+                    self.node_graph.add_node(controlnet_depth_zoe_model, "controlnet_depth_zoe_model")
             elif controlnet_type == "Pose":
-                controlnet_pose_model = self.node_graph.get_node_by_name("pose_control_model")
+                controlnet_pose_model = self.node_graph.get_node_by_name("controlnet_pose_model")
 
                 if controlnet_pose_model is None:
                     controlnet_pose_model = ControlnetModelNode(path=os.path.join(self.directories.models_controlnets, "controlnet-openpose-sdxl-1.0"))
-                    self.node_graph.add_node(controlnet_pose_model, "pose_control_model")
+                    self.node_graph.add_node(controlnet_pose_model, "controlnet_pose_model")
 
         if len(self.controlnet_list.controlnets) > 0:
             added_controlnets = self.controlnet_list.get_added()
@@ -215,8 +230,10 @@ class NodeGraphThread(QThread):
 
                     if controlnet.controlnet_type == "Canny":
                         controlnet_node.connect("controlnet_model", controlnet_canny_model, "controlnet_model")
-                    elif controlnet.controlnet_type == "Depth":
+                    elif controlnet.controlnet_type == "Depth Midas":
                         controlnet_node.connect("controlnet_model", controlnet_depth_model, "controlnet_model")
+                    elif controlnet.controlnet_type == "Depth Zoe":
+                        controlnet_node.connect("controlnet_model", controlnet_depth_zoe_model, "controlnet_model")
                     elif controlnet.controlnet_type == "Pose":
                         controlnet_node.connect("controlnet_model", controlnet_pose_model, "controlnet_model")
 
@@ -224,7 +241,10 @@ class NodeGraphThread(QThread):
                     image_generation.connect("controlnet", controlnet_node, "controlnet")
                     self.node_graph.add_node(controlnet_node)
                     controlnet.id = controlnet_node.id
+                    controlnet_node.name = f"controlnet_{controlnet.controlnet_type}_{controlnet_node.id}"
                     self.node_graph.add_node(controlnet_image_node, f"control_image_{controlnet_node.id}")
+
+                image_send.updated = True
 
             modified_controlnets = self.controlnet_list.get_modified()
 
@@ -236,14 +256,107 @@ class NodeGraphThread(QThread):
                     controlnet_node.update_controlnet(
                         controlnet.conditioning_scale, controlnet.guidance_start, controlnet.guidance_end, controlnet.enabled
                     )
+                image_send.updated = True
 
         removed_controlnets = self.controlnet_list.get_removed()
         if len(removed_controlnets) > 0:
             for controlnet in removed_controlnets:
+                control_image_node = self.node_graph.get_node_by_name(f"control_image_{controlnet.id}")
+                self.node_graph.delete_node_by_id(control_image_node.id)
                 self.node_graph.delete_node_by_id(controlnet.id)
 
         self.controlnet_list.save_state()
         self.controlnet_list.dropped_image = False
+
+        # process t2i_adapters
+        t2i_adapter_types = self.t2i_adapter_list.get_used_types()
+
+        for t2i_adapter_type in t2i_adapter_types:
+            print(f"{t2i_adapter_type=}")
+            if t2i_adapter_type == "canny":
+                t2i_adapter_canny_model = self.node_graph.get_node_by_name("t2i_adapter_canny_model")
+
+                if t2i_adapter_canny_model is None:
+                    t2i_adapter_canny_model = T2IAdapterModelNode(path=os.path.join(self.directories.models_t2i_adapters, "t2i-adapter-canny-sdxl-1.0"))
+                    self.node_graph.add_node(t2i_adapter_canny_model, "t2i_adapter_canny_model")
+            elif t2i_adapter_type == "depth":
+                t2i_adapter_depth_model = self.node_graph.get_node_by_name("t2i_adapter_depth_model")
+
+                if t2i_adapter_depth_model is None:
+                    t2i_adapter_depth_model = T2IAdapterModelNode(
+                        path=os.path.join(self.directories.models_t2i_adapters, "t2i-adapter-depth-midas-sdxl-1.0")
+                    )
+                    self.node_graph.add_node(t2i_adapter_depth_model, "t2i_adapter_depth_model")
+            elif t2i_adapter_type == "pose":
+                t2i_adapter_pose_model = self.node_graph.get_node_by_name("t2i_adapter_pose_model")
+
+                if t2i_adapter_pose_model is None:
+                    t2i_adapter_pose_model = T2IAdapterModelNode(path=os.path.join(self.directories.models_t2i_adapters, "t2i-adapter-openpose-sdxl-1.0"))
+                    self.node_graph.add_node(t2i_adapter_pose_model, "t2i_adapter_pose_model")
+            elif t2i_adapter_type == "lineart":
+                t2i_adapter_lineart_model = self.node_graph.get_node_by_name("t2i_adapter_lineart_model")
+
+                if t2i_adapter_lineart_model is None:
+                    t2i_adapter_lineart_model = T2IAdapterModelNode(
+                        path=os.path.join(self.directories.models_t2i_adapters, "t2i-adapter-lineart-sdxl-1.0")
+                    )
+                    self.node_graph.add_node(t2i_adapter_lineart_model, "t2i_adapter_lineart_model")
+            elif t2i_adapter_type == "sketch":
+                t2i_adapter_sketch_model = self.node_graph.get_node_by_name("t2i_adapter_sketch_model")
+
+                if t2i_adapter_sketch_model is None:
+                    t2i_adapter_sketch_model = T2IAdapterModelNode(path=os.path.join(self.directories.models_t2i_adapters, "t2i-adapter-sketch-sdxl-1.0"))
+                    self.node_graph.add_node(t2i_adapter_sketch_model, "t2i_adapter_sketch_model")
+
+        if len(self.t2i_adapter_list.adapters) > 0:
+            added_t2i_adapters = self.t2i_adapter_list.get_added()
+
+            if len(added_t2i_adapters) > 0:
+                for t2i_adapter in added_t2i_adapters:
+                    t2i_adapter_image_node = ImageLoadNode(image=t2i_adapter.annotator_image)
+                    t2i_adapter_node = T2IAdapterNode(
+                        conditioning_scale=t2i_adapter.conditioning_scale, conditioning_factor=t2i_adapter.conditioning_factor
+                    )
+
+                    if t2i_adapter.adapter_type == "canny":
+                        t2i_adapter_node.connect("t2i_adapter_model", t2i_adapter_canny_model, "t2i_adapter_model")
+                    elif t2i_adapter.adapter_type == "depth":
+                        t2i_adapter_node.connect("t2i_adapter_model", t2i_adapter_depth_model, "t2i_adapter_model")
+                    elif t2i_adapter.adapter_type == "pose":
+                        t2i_adapter_node.connect("t2i_adapter_model", t2i_adapter_pose_model, "t2i_adapter_model")
+                    elif t2i_adapter.adapter_type == "lineart":
+                        t2i_adapter_node.connect("t2i_adapter_model", t2i_adapter_lineart_model, "t2i_adapter_model")
+                    elif t2i_adapter.adapter_type == "sketch":
+                        t2i_adapter_node.connect("t2i_adapter_model", t2i_adapter_sketch_model, "t2i_adapter_model")
+
+                    t2i_adapter_node.connect("image", t2i_adapter_image_node, "image")
+                    image_generation.connect("t2i_adapter", t2i_adapter_node, "t2i_adapter")
+                    self.node_graph.add_node(t2i_adapter_node)
+                    t2i_adapter.id = t2i_adapter_node.id
+                    self.node_graph.add_node(t2i_adapter_image_node, f"adapter_image_{t2i_adapter_node.id}")
+
+                image_send.updated = True
+
+            modified_t2i_adapters = self.t2i_adapter_list.get_modified()
+
+            if len(modified_t2i_adapters) > 0:
+                for t2i_adapter in modified_t2i_adapters:
+                    t2i_adapter_image_node = self.node_graph.get_node_by_name(f"adapter_image_{t2i_adapter.id}")
+                    t2i_adapter_image_node.update_image(t2i_adapter.annotator_image)
+                    t2i_adapter_node = self.node_graph.get_node(t2i_adapter.id)
+                    t2i_adapter_node.update_adaptert(t2i_adapter.conditioning_scale, t2i_adapter.conditioning_factor, t2i_adapter.enabled)
+
+                image_send.updated = True
+
+        removed_t2i_adapters = self.t2i_adapter_list.get_removed()
+        if len(removed_t2i_adapters) > 0:
+            for t2i_adapter in removed_t2i_adapters:
+                adapter_image_node = self.node_graph.get_node_by_name(f"adapter_image_{t2i_adapter.id}")
+                self.node_graph.delete_node_by_id(adapter_image_node.id)
+                self.node_graph.delete_node_by_id(t2i_adapter.id)
+
+        self.t2i_adapter_list.save_state()
+        self.t2i_adapter_list.dropped_image = False
 
         try:
             self.node_graph()

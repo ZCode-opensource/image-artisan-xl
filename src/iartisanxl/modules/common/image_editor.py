@@ -1,9 +1,8 @@
 from importlib.resources import files
 
-from PyQt6.QtWidgets import QGraphicsScene, QGraphicsPixmapItem, QGraphicsView, QGraphicsPathItem
-
+from PyQt6.QtWidgets import QGraphicsScene, QGraphicsPixmapItem, QGraphicsView, QGraphicsPathItem, QApplication, QMenu, QFileDialog
 from PyQt6.QtCore import Qt, QRectF, QPoint, QTimer, QSize
-from PyQt6.QtGui import QPixmap, QPainter, QPainterPath, QColor, QRadialGradient, QBrush, QPen, QCursor, QGuiApplication
+from PyQt6.QtGui import QPixmap, QPainter, QPainterPath, QColor, QRadialGradient, QBrush, QPen, QCursor, QGuiApplication, QAction
 from PyQt6.QtSvg import QSvgRenderer
 
 from iartisanxl.modules.common.drop_lightbox import DropLightBox
@@ -94,6 +93,7 @@ class ImageEditor(QGraphicsView):
 
     def set_image_scale(self, scale_factor):
         if self._photo is not None:
+            self._photo.setTransformOriginPoint(self._photo.boundingRect().center())
             self._photo.setScale(scale_factor)
 
     def set_image_x(self, x_position):
@@ -104,10 +104,15 @@ class ImageEditor(QGraphicsView):
         if self._photo is not None:
             self._photo.setY(y_position)
 
+    def rotate_image(self, angle):
+        if self._photo is not None:
+            self._photo.setTransformOriginPoint(self._photo.boundingRect().center())
+            self._photo.setRotation(angle)
+
     def has_photo(self):
         return not self._empty
 
-    def fit_in_view(self):
+    def fit_in_view(self, apply_zoom=True):
         rect = QRectF(self._photo.pixmap().rect())
         if not rect.isNull():
             self.setSceneRect(rect)
@@ -121,7 +126,15 @@ class ImageEditor(QGraphicsView):
                     viewrect.height() / scenerect.height(),
                 )
                 self.scale(factor, factor)
-            self._zoom = 0
+                if apply_zoom and self._zoom != 0:
+                    factor = 1.25 if self._zoom > 0 else 0.8
+                    self.scale(factor ** abs(self._zoom), factor ** abs(self._zoom))
+            else:
+                self._zoom = 0
+
+    def resizeEvent(self, event):
+        self.fit_in_view()
+        super().resizeEvent(event)
 
     def enterEvent(self, event):
         self.setFocus()
@@ -282,12 +295,16 @@ class ImageEditor(QGraphicsView):
         self.original_pixmap = None
         self._empty = True
 
-    def get_painted_image(self):
+    def get_painted_pixmap(self):
         pixmap = QPixmap(self.original_width, self.original_height)
         painter = QPainter(pixmap)
         self.render(painter)
         painter.end()
 
+        return pixmap
+
+    def get_painted_image(self):
+        pixmap = self.get_painted_pixmap()
         return pixmap.toImage()
 
     def create_cursor(self, svg_path, use_crosshair):
@@ -352,3 +369,40 @@ class ImageEditor(QGraphicsView):
 
     def dropEvent(self, event):
         pass
+
+    def paste_image(self):
+        clipboard = QApplication.clipboard()
+        pixmap = clipboard.pixmap()
+        if not pixmap.isNull():
+            self.set_pixmap(pixmap)
+
+    def copy_image(self):
+        if self._photo is not None:
+            pixmap = self.get_painted_pixmap()
+            clipboard = QApplication.clipboard()
+            clipboard.setPixmap(pixmap)
+
+    def contextMenuEvent(self, event):
+        context_menu = QMenu(self)
+
+        copy_action = QAction("Copy Image", self)
+        copy_action.triggered.connect(self.copy_image)
+        context_menu.addAction(copy_action)
+
+        paste_action = QAction("Paste Image", self)
+        paste_action.triggered.connect(self.paste_image)
+        context_menu.addAction(paste_action)
+
+        save_action = QAction("Save Image", self)
+        save_action.triggered.connect(self.save_image)
+        context_menu.addAction(save_action)
+
+        context_menu.exec(event.globalPos())
+
+    def save_image(self):
+        if self._photo is not None:
+            file_dialog = QFileDialog()
+            export_path, _ = file_dialog.getSaveFileName()
+            if export_path:
+                pixmap = self.get_painted_pixmap()
+                pixmap.save(export_path)

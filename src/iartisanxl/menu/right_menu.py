@@ -1,4 +1,4 @@
-from PyQt6.QtWidgets import QWidget, QSizePolicy, QHBoxLayout, QVBoxLayout, QFrame
+from PyQt6.QtWidgets import QSizePolicy, QHBoxLayout, QVBoxLayout, QFrame
 from PyQt6.QtCore import QPropertyAnimation, QEasingCurve, QTimer
 
 from iartisanxl.buttons.expand_right_button import ExpandRightButton
@@ -6,9 +6,12 @@ from iartisanxl.buttons.vertical_button import VerticalButton
 from iartisanxl.generation.image_generation_data import ImageGenerationData
 from iartisanxl.generation.lora_list import LoraList
 from iartisanxl.generation.controlnet_list import ControlNetList
+from iartisanxl.generation.t2i_adapter_list import T2IAdapterList
 from iartisanxl.app.directories import DirectoriesObject
+from iartisanxl.app.preferences import PreferencesObject
 from iartisanxl.modules.common.image_viewer_simple import ImageViewerSimple
 from iartisanxl.modules.common.prompt_window import PromptWindow
+from iartisanxl.modules.common.panels.panel_container import PanelContainer
 
 
 class RightMenu(QFrame):
@@ -18,28 +21,30 @@ class RightMenu(QFrame):
     def __init__(
         self,
         module_options: dict,
+        preferences: PreferencesObject,
         directories: DirectoriesObject,
         image_generation_data: ImageGenerationData,
         lora_list: LoraList,
         controlnet_list: ControlNetList,
+        t2i_adapter_list: T2IAdapterList,
         image_viewer: ImageViewerSimple,
         prompt_window: PromptWindow,
         show_error: callable,
-        open_dialog: callable,
         *args,
         **kwargs,
     ):
         super().__init__(*args, **kwargs)
 
         self.module_options = module_options
+        self.preferences = preferences
         self.directories = directories
         self.image_generation_data = image_generation_data
         self.lora_list = lora_list
         self.controlnet_list = controlnet_list
+        self.t2i_adapter_list = t2i_adapter_list
         self.image_viewer = image_viewer
         self.prompt_window = prompt_window
         self.show_error = show_error
-        self.module_open_dialog = open_dialog
 
         self.expanded = self.module_options.get("right_menu_expanded")
         self.animating = False
@@ -58,7 +63,6 @@ class RightMenu(QFrame):
         self.panels = {}
         self.current_panel = None
         self.current_panel_text = None
-
         self.init_ui()
 
     def init_ui(self):
@@ -74,14 +78,7 @@ class RightMenu(QFrame):
         self.button_layout.addStretch()
         self.main_layout.addLayout(self.button_layout)
 
-        self.panel_container = QWidget()
-        self.panel_container.setObjectName("panel_container")
-        self.panel_layout = QVBoxLayout()
-        self.panel_layout.setContentsMargins(0, 0, 0, 0)
-        self.panel_layout.setSpacing(0)
-        self.panel_container.setLayout(self.panel_layout)
-        self.panel_container.setMinimumWidth(0)
-        self.panel_container.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Expanding)
+        self.panel_container = PanelContainer()
         self.main_layout.addWidget(self.panel_container)
 
         self.setLayout(self.main_layout)
@@ -95,12 +92,16 @@ class RightMenu(QFrame):
             "class": panel_class,
             "args": (
                 *args,
+                self.module_options,
+                self.preferences,
                 self.directories,
+                self.image_viewer,
                 self.prompt_window,
                 self.show_error,
                 self.image_generation_data,
                 self.lora_list,
                 self.controlnet_list,
+                self.t2i_adapter_list,
             ),
             "kwargs": kwargs,
         }
@@ -174,24 +175,7 @@ class RightMenu(QFrame):
             del self.current_panel
 
         panel = panel_class(*args, **kwargs)
-        panel.dialog_opened.connect(self.on_open_dialog)
-        self.panel_layout.addWidget(panel)
+        self.panel_container.panel_layout.addWidget(panel)
 
         self.current_panel = panel
         self.current_panel_text = text
-
-    def on_open_dialog(self, panel, dialog_class, title):
-        dialog = dialog_class(
-            self.directories,
-            title,
-            self.show_error,
-            self.image_generation_data,
-            self.image_viewer,
-            self.prompt_window,
-        )
-        self.module_open_dialog(dialog)
-
-        for _text, panel_info in self.panels.items():
-            if isinstance(panel, panel_info["class"]):
-                panel.current_dialog = dialog
-                break

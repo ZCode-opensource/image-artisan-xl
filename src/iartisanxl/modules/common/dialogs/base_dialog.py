@@ -24,6 +24,7 @@ class CustomSizeGrip(QSizeGrip):
 class BaseDialog(QDialog):
     generation_updated = pyqtSignal()
     dialog_updated = pyqtSignal()
+    closed = pyqtSignal()
 
     border_color = QColor("#ff6b6b6b")
 
@@ -81,5 +82,6 @@ class BaseDialog(QDialog):
         painter.drawLine(self.width(), 0, self.width(), self.height())
         painter.drawLine(0, self.height(), self.width(), self.height())
 
-    def dialog_raised(self):
-        pass
+    def closeEvent(self, event):
+        self.closed.emit()
+        super().closeEvent(event)

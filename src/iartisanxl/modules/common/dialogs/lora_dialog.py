@@ -65,15 +65,9 @@ class LoraDialog(BaseDialog):
 
         lora_frame.setLayout(self.lora_frame_layout)
         lora_frame.setFixedWidth(350)
-        lora_frame.setSizePolicy(
-            QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding
-        )
+        lora_frame.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
         content_layout.addWidget(lora_frame)
         self.main_layout.addLayout(content_layout)
-
-        if not self.loading_loras:
-            self.loading_loras = True
-            self.lora_items_view.load_items()
 
     def load_settings(self):
         geometry = self.settings.value("geometry")
@@ -195,6 +189,4 @@ class LoraDialog(BaseDialog):
             model_new_path = os.path.join(self.directories.models_loras, file_name)
 
             shutil.move(path, model_new_path)
-            self.lora_items_view.add_single_item_from_path(
-                model_new_path, "safetensors"
-            )
+            self.lora_items_view.add_single_item_from_path(model_new_path, "safetensors")

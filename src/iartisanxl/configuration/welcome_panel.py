@@ -70,6 +70,8 @@ class WelcomePanel(BaseSetupPanel):
             "vaes": "./models/vae",
             "models_loras": "./models/loras",
             "models_controlnets": "./models/controlnet",
+            "models_t2i_adapters": "./models/t2i-adapter",
+            "models_ip2_adapters": "./models/ip-adapter",
             "outputs_images": "./outputs/images",
         }
 

@@ -9,6 +9,7 @@ class Node:
 
     def __init__(self):
         self.id = None
+        self.enabled = True
         self.name = None
         self.elapsed_time = None
         self.updated = True
@@ -28,13 +29,9 @@ class Node:
             raise TypeError("node must be an instance of Node or its subclass")
 
         if input_name not in self.REQUIRED_INPUTS + self.OPTIONAL_INPUTS:
-            raise ValueError(
-                f'The input "{input_name}" is not present in "{self.__class__.__name__}"'
-            )
+            raise ValueError(f'The input "{input_name}" is not present in "{self.__class__.__name__}"')
         if output_name not in node.OUTPUTS:
-            raise ValueError(
-                f'The output "{output_name}" is not present in "{node.__class__.__name__}"'
-            )
+            raise ValueError(f'The output "{output_name}" is not present in "{node.__class__.__name__}"')
         self.dependencies.append(node)
         self.connections[input_name].append((node, output_name))
         node.dependents.append(self)
@@ -42,11 +39,7 @@ class Node:
 
     def disconnect(self, input_name: str, node, output_name: str):
         if input_name in self.connections:
-            self.connections[input_name] = [
-                (n, out_name)
-                for n, out_name in self.connections[input_name]
-                if not (n == node and out_name == output_name)
-            ]
+            self.connections[input_name] = [(n, out_name) for n, out_name in self.connections[input_name] if not (n == node and out_name == output_name)]
             if not self.connections[input_name]:
                 del self.connections[input_name]
         if node in self.dependencies:
@@ -57,9 +50,7 @@ class Node:
     def disconnect_from_node(self, node):
         self.dependencies = [dep for dep in self.dependencies if dep != node]
         for input_name, conns in list(self.connections.items()):
-            self.connections[input_name] = [
-                (n, output_name) for n, output_name in conns if n != node
-            ]
+            self.connections[input_name] = [(n, output_name) for n, output_name in conns if n != node]
             if not self.connections[input_name]:
                 del self.connections[input_name]
                 self.set_updated()
@@ -69,11 +60,7 @@ class Node:
 
     def connections_changed(self, new_connections):
         # Convert current connections to a format that can be compared with new_connections
-        current_connections = [
-            (dep.id, output_name)
-            for input_name, deps in self.connections.items()
-            for dep, output_name in deps
-        ]
+        current_connections = [(dep.id, output_name) for input_name, deps in self.connections.items() for dep, output_name in deps]
         return set(current_connections) != set(new_connections)
 
     def set_updated(self, updated_nodes=None, update_dependents=True):
@@ -87,23 +74,16 @@ class Node:
     def __getattr__(self, name):
         if name in self.REQUIRED_INPUTS + self.OPTIONAL_INPUTS:
             return self.get_input_value(name)
-        raise AttributeError(
-            f"'{self.__class__.__name__}' object has no attribute '{name}'"
-        )
+        raise AttributeError(f"'{self.__class__.__name__}' object has no attribute '{name}'")
 
     def get_input_value(self, input_name):
         if input_name in self.connections:
-            values = [
-                node.values[output_name]
-                for node, output_name in self.connections[input_name]
-            ]
+            values = [node.values[output_name] for node, output_name in self.connections[input_name]]
             return values if len(values) > 1 else values[0]
         elif input_name in self.OPTIONAL_INPUTS:
             return None
         else:
-            raise ValueError(
-                f'The required input "{input_name}" is not connected in "{self.__class__.__name__}"'
-            )
+            raise ValueError(f'The required input "{input_name}" is not connected in "{self.__class__.__name__}"')
 
     def __call__(self):
         self.updated = False

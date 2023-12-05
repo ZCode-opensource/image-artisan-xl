@@ -15,7 +15,6 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtGui import QImage, QPixmap
 from PyQt6.QtCore import QSettings
 
-from iartisanxl.app.event_bus import EventBus
 from iartisanxl.modules.base_module import BaseModule
 from iartisanxl.modules.common.drop_lightbox import DropLightBox
 from iartisanxl.modules.common.image_viewer_simple import ImageViewerSimple
@@ -23,11 +22,14 @@ from iartisanxl.modules.common.prompt_window import PromptWindow
 from iartisanxl.modules.common.panels.generation_panel import GenerationPanel
 from iartisanxl.modules.common.panels.lora_panel import LoraPanel
 from iartisanxl.modules.common.panels.controlnet_panel import ControlNetPanel
+from iartisanxl.modules.common.panels.t2i_panel import T2IPanel
+from iartisanxl.modules.common.panels.ip_adapter_panel import IPAdapterPanel
 from iartisanxl.menu.right_menu import RightMenu
 from iartisanxl.generation.image_generation_data import ImageGenerationData
 from iartisanxl.generation.lora_list import LoraList
 from iartisanxl.generation.lora_data_object import LoraDataObject
 from iartisanxl.generation.controlnet_list import ControlNetList
+from iartisanxl.generation.t2i_adapter_list import T2IAdapterList
 from iartisanxl.generation.model_data_object import ModelDataObject
 from iartisanxl.generation.vae_data_object import VaeDataObject
 from iartisanxl.generation.schedulers.schedulers import schedulers
@@ -69,6 +71,7 @@ class TextToImageModule(BaseModule):
 
         self.lora_list = LoraList()
         self.controlnet_list = ControlNetList()
+        self.t2i_adapter_list = T2IAdapterList()
         self.image_generation_data = ImageGenerationData(
             module="texttoimage",
             seed=0,
@@ -113,7 +116,6 @@ class TextToImageModule(BaseModule):
         self.auto_save = False
         self.continuous_generation = False
 
-        self.event_bus = EventBus()
         self.event_bus.subscribe("lora", self.on_lora)
         self.event_bus.subscribe("image_generation_data", self.on_image_generation_data)
         self.event_bus.subscribe("auto_generate", self.on_auto_generate)
@@ -157,22 +159,25 @@ class TextToImageModule(BaseModule):
 
         self.right_menu = RightMenu(
             self.module_options,
+            self.preferences,
             self.directories,
             self.image_generation_data,
             self.lora_list,
             self.controlnet_list,
+            self.t2i_adapter_list,
             self.image_viewer,
             self.prompt_window,
             self.show_error,
-            self.open_dialog,
         )
         top_layout.addWidget(self.right_menu)
         top_layout.setStretch(0, 1)
 
         # Add the panels to the menu
-        self.right_menu.add_panel("Generation", GenerationPanel, schedulers, self.module_options)
+        self.right_menu.add_panel("Generation", GenerationPanel, schedulers)
         self.right_menu.add_panel("LoRAs", LoraPanel)
-        self.right_menu.add_panel("ControlNet", ControlNetPanel, self.preferences)
+        self.right_menu.add_panel("ControlNet", ControlNetPanel)
+        self.right_menu.add_panel("T2I Adapters", T2IPanel)
+        self.right_menu.add_panel("IP Adapters", IPAdapterPanel)
 
         main_layout.setStretch(0, 16)
         main_layout.setStretch(1, 0)
@@ -354,6 +359,7 @@ class TextToImageModule(BaseModule):
         self.node_graph_thread.image_generation_data = self.image_generation_data
         self.node_graph_thread.lora_list = self.lora_list
         self.node_graph_thread.controlnet_list = self.controlnet_list
+        self.node_graph_thread.t2i_adapter_list = self.t2i_adapter_list
         self.node_graph_thread.model_offload = self.preferences.model_offload
         self.node_graph_thread.sequential_offload = self.preferences.sequential_offload
 
@@ -447,7 +453,21 @@ class TextToImageModule(BaseModule):
         generation_data = data.get("generation_data")
         image = ImageProcessor()
         image.serialized_data = generation_data
-        self.image_generation_data.update_from_json(generation_data)
+        loras = self.image_generation_data.update_from_json(generation_data)
+
+        if len(loras) > 0:
+            self.lora_list.clear_loras()
+
+            for lora in loras:
+                lora_object = LoraDataObject(
+                    name=lora["lora_name"],
+                    filename=lora["name"],
+                    version=lora["version"],
+                    path=lora["path"],
+                    weight=lora["scale"],
+                )
+                self.lora_list.add(lora_object)
+
         self.event_bus.publish("update_from_json", {})
         self.lora_list.dropped_image = True
         self.prompt_window.unblock_seed()

@@ -25,11 +25,7 @@ class ModelDialog(BaseDialog):
     MODEL_IMG = files("iartisanxl.theme.images").joinpath("model.webp")
     model_selected = pyqtSignal(ModelDataObject)
 
-    def __init__(
-        self,
-        *args,
-        **kwargs,
-    ):
+    def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
         self.setWindowTitle("Base model")
@@ -71,16 +67,9 @@ class ModelDialog(BaseDialog):
 
         model_frame.setLayout(self.model_frame_layout)
         model_frame.setFixedWidth(350)
-        model_frame.setSizePolicy(
-            QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding
-        )
+        model_frame.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
         content_layout.addWidget(model_frame)
         self.main_layout.addLayout(content_layout)
-
-    def dialog_raised(self):
-        super().dialog_raised()
-        self.loading_models = True
-        self.model_items_view.load_items()
 
     def load_settings(self):
         geometry = self.settings.value("geometry")
@@ -219,18 +208,12 @@ class ModelDialog(BaseDialog):
     def on_model_imported(self, path: str):
         if path.endswith(".safetensors"):
             file_name = os.path.basename(path)
-            model_new_path = os.path.join(
-                self.directories.models_safetensors, file_name
-            )
+            model_new_path = os.path.join(self.directories.models_safetensors, file_name)
 
             shutil.move(path, model_new_path)
-            self.model_items_view.add_single_item_from_path(
-                model_new_path, "safetensors"
-            )
+            self.model_items_view.add_single_item_from_path(model_new_path, "safetensors")
         else:
-            if os.path.isdir(path) and os.path.exists(
-                os.path.join(path, "model_index.json")
-            ):
+            if os.path.isdir(path) and os.path.exists(os.path.join(path, "model_index.json")):
                 shutil.move(path, self.directories.models_diffusers)
                 dir_name = os.path.basename(path)
                 self.model_items_view.add_single_item_from_path(
