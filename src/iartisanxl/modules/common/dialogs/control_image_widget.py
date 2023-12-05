@@ -135,3 +135,10 @@ class ControlImageWidget(QWidget):
         width = self.image_generation_data.image_width
         height = self.image_generation_data.image_height
         self.image_editor.set_white_pixmap(width, height)
+
+    def clear_image(self):
+        self.image_scale_control.reset()
+        self.image_x_pos_control.reset()
+        self.image_y_pos_control.reset()
+        self.image_rotation_control.reset()
+        self.image_editor.clear()

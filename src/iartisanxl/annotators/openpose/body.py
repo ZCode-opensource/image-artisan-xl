@@ -1,15 +1,11 @@
 import cv2
 import numpy as np
 import math
-import time
 from scipy.ndimage.filters import gaussian_filter
-import matplotlib.pyplot as plt
-import matplotlib
 import torch
-from torchvision import transforms
 
-from . import util
-from .model import bodypose_model
+from iartisanxl.annotators.openpose import util
+from iartisanxl.annotators.openpose.model import bodypose_model
 
 
 class Body(object):
@@ -22,7 +18,6 @@ class Body(object):
         self.model.eval()
 
     def __call__(self, oriImg):
-        # scale_search = [0.5, 1.0, 1.5, 2.0]
         scale_search = [0.5]
         boxsize = 368
         stride = 8
@@ -33,21 +28,11 @@ class Body(object):
         heatmap_avg = np.zeros((oriImg.shape[0], oriImg.shape[1], 19))
         paf_avg = np.zeros((oriImg.shape[0], oriImg.shape[1], 38))
 
-        for m in range(len(multiplier)):
-            scale = multiplier[m]
-            imageToTest = cv2.resize(
-                oriImg, (0, 0), fx=scale, fy=scale, interpolation=cv2.INTER_CUBIC
-            )
-            imageToTest_padded, pad = util.padRightDownCorner(
-                imageToTest, stride, padValue
-            )
-            im = (
-                np.transpose(
-                    np.float32(imageToTest_padded[:, :, :, np.newaxis]), (3, 2, 0, 1)
-                )
-                / 256
-                - 0.5
-            )
+        # pylint: disable=no-member
+        for _m, scale in enumerate(multiplier):
+            imageToTest = cv2.resize(oriImg, (0, 0), fx=scale, fy=scale, interpolation=cv2.INTER_CUBIC)
+            imageToTest_padded, pad = util.padRightDownCorner(imageToTest, stride, padValue)
+            im = np.transpose(np.float32(imageToTest_padded[:, :, :, np.newaxis]), (3, 2, 0, 1)) / 256 - 0.5
             im = np.ascontiguousarray(im)
 
             data = torch.from_numpy(im).float()
@@ -61,38 +46,16 @@ class Body(object):
 
             # extract outputs, resize, and remove padding
             # heatmap = np.transpose(np.squeeze(net.blobs[output_blobs.keys()[1]].data), (1, 2, 0))  # output 1 is heatmaps
-            heatmap = np.transpose(
-                np.squeeze(Mconv7_stage6_L2), (1, 2, 0)
-            )  # output 1 is heatmaps
-            heatmap = cv2.resize(
-                heatmap, (0, 0), fx=stride, fy=stride, interpolation=cv2.INTER_CUBIC
-            )
-            heatmap = heatmap[
-                : imageToTest_padded.shape[0] - pad[2],
-                : imageToTest_padded.shape[1] - pad[3],
-                :,
-            ]
-            heatmap = cv2.resize(
-                heatmap,
-                (oriImg.shape[1], oriImg.shape[0]),
-                interpolation=cv2.INTER_CUBIC,
-            )
+            heatmap = np.transpose(np.squeeze(Mconv7_stage6_L2), (1, 2, 0))  # output 1 is heatmaps
+            heatmap = cv2.resize(heatmap, (0, 0), fx=stride, fy=stride, interpolation=cv2.INTER_CUBIC)
+            heatmap = heatmap[: imageToTest_padded.shape[0] - pad[2], : imageToTest_padded.shape[1] - pad[3], :]
+            heatmap = cv2.resize(heatmap, (oriImg.shape[1], oriImg.shape[0]), interpolation=cv2.INTER_CUBIC)
 
             # paf = np.transpose(np.squeeze(net.blobs[output_blobs.keys()[0]].data), (1, 2, 0))  # output 0 is PAFs
-            paf = np.transpose(
-                np.squeeze(Mconv7_stage6_L1), (1, 2, 0)
-            )  # output 0 is PAFs
-            paf = cv2.resize(
-                paf, (0, 0), fx=stride, fy=stride, interpolation=cv2.INTER_CUBIC
-            )
-            paf = paf[
-                : imageToTest_padded.shape[0] - pad[2],
-                : imageToTest_padded.shape[1] - pad[3],
-                :,
-            ]
-            paf = cv2.resize(
-                paf, (oriImg.shape[1], oriImg.shape[0]), interpolation=cv2.INTER_CUBIC
-            )
+            paf = np.transpose(np.squeeze(Mconv7_stage6_L1), (1, 2, 0))  # output 0 is PAFs
+            paf = cv2.resize(paf, (0, 0), fx=stride, fy=stride, interpolation=cv2.INTER_CUBIC)
+            paf = paf[: imageToTest_padded.shape[0] - pad[2], : imageToTest_padded.shape[1] - pad[3], :]
+            paf = cv2.resize(paf, (oriImg.shape[1], oriImg.shape[0]), interpolation=cv2.INTER_CUBIC)
 
             heatmap_avg += heatmap_avg + heatmap / len(multiplier)
             paf_avg += +paf / len(multiplier)
@@ -114,22 +77,12 @@ class Body(object):
             map_down[:, :-1] = one_heatmap[:, 1:]
 
             peaks_binary = np.logical_and.reduce(
-                (
-                    one_heatmap >= map_left,
-                    one_heatmap >= map_right,
-                    one_heatmap >= map_up,
-                    one_heatmap >= map_down,
-                    one_heatmap > thre1,
-                )
+                (one_heatmap >= map_left, one_heatmap >= map_right, one_heatmap >= map_up, one_heatmap >= map_down, one_heatmap > thre1)
             )
-            peaks = list(
-                zip(np.nonzero(peaks_binary)[1], np.nonzero(peaks_binary)[0])
-            )  # note reverse
+            peaks = list(zip(np.nonzero(peaks_binary)[1], np.nonzero(peaks_binary)[0]))  # note reverse
             peaks_with_score = [x + (map_ori[x[1], x[0]],) for x in peaks]
             peak_id = range(peak_counter, peak_counter + len(peaks))
-            peaks_with_score_and_id = [
-                peaks_with_score[i] + (peak_id[i],) for i in range(len(peak_id))
-            ]
+            peaks_with_score_and_id = [peaks_with_score[i] + (peak_id[i],) for i in range(len(peak_id))]
 
             all_peaks.append(peaks_with_score_and_id)
             peak_counter += len(peaks)
@@ -199,64 +152,24 @@ class Body(object):
                         norm = max(0.001, norm)
                         vec = np.divide(vec, norm)
 
-                        startend = list(
-                            zip(
-                                np.linspace(candA[i][0], candB[j][0], num=mid_num),
-                                np.linspace(candA[i][1], candB[j][1], num=mid_num),
-                            )
-                        )
+                        startend = list(zip(np.linspace(candA[i][0], candB[j][0], num=mid_num), np.linspace(candA[i][1], candB[j][1], num=mid_num)))
 
-                        vec_x = np.array(
-                            [
-                                score_mid[
-                                    int(round(startend[I][1])),
-                                    int(round(startend[I][0])),
-                                    0,
-                                ]
-                                for I in range(len(startend))
-                            ]
-                        )
-                        vec_y = np.array(
-                            [
-                                score_mid[
-                                    int(round(startend[I][1])),
-                                    int(round(startend[I][0])),
-                                    1,
-                                ]
-                                for I in range(len(startend))
-                            ]
-                        )
+                        vec_x = np.array([score_mid[int(round(startend[I][1])), int(round(startend[I][0])), 0] for I in range(len(startend))])
+                        vec_y = np.array([score_mid[int(round(startend[I][1])), int(round(startend[I][0])), 1] for I in range(len(startend))])
 
-                        score_midpts = np.multiply(vec_x, vec[0]) + np.multiply(
-                            vec_y, vec[1]
-                        )
-                        score_with_dist_prior = sum(score_midpts) / len(
-                            score_midpts
-                        ) + min(0.5 * oriImg.shape[0] / norm - 1, 0)
-                        criterion1 = len(
-                            np.nonzero(score_midpts > thre2)[0]
-                        ) > 0.8 * len(score_midpts)
+                        score_midpts = np.multiply(vec_x, vec[0]) + np.multiply(vec_y, vec[1])
+                        score_with_dist_prior = sum(score_midpts) / len(score_midpts) + min(0.5 * oriImg.shape[0] / norm - 1, 0)
+                        criterion1 = len(np.nonzero(score_midpts > thre2)[0]) > 0.8 * len(score_midpts)
                         criterion2 = score_with_dist_prior > 0
                         if criterion1 and criterion2:
-                            connection_candidate.append(
-                                [
-                                    i,
-                                    j,
-                                    score_with_dist_prior,
-                                    score_with_dist_prior + candA[i][2] + candB[j][2],
-                                ]
-                            )
+                            connection_candidate.append([i, j, score_with_dist_prior, score_with_dist_prior + candA[i][2] + candB[j][2]])
 
-                connection_candidate = sorted(
-                    connection_candidate, key=lambda x: x[2], reverse=True
-                )
+                connection_candidate = sorted(connection_candidate, key=lambda x: x[2], reverse=True)
                 connection = np.zeros((0, 5))
-                for c in range(len(connection_candidate)):
-                    i, j, s = connection_candidate[c][0:3]
+                for _c, candidate in enumerate(connection_candidate):
+                    i, j, s = candidate[:3]
                     if i not in connection[:, 3] and j not in connection[:, 4]:
-                        connection = np.vstack(
-                            [connection, [candA[i][3], candB[j][3], s, i, j]]
-                        )
+                        connection = np.vstack([connection, [candA[i][3], candB[j][3], s, i, j]])
                         if len(connection) >= min(nA, nB):
                             break
 
@@ -279,11 +192,8 @@ class Body(object):
                 for i in range(len(connection_all[k])):  # = 1:size(temp,1)
                     found = 0
                     subset_idx = [-1, -1]
-                    for j in range(len(subset)):  # 1:size(subset,1):
-                        if (
-                            subset[j][indexA] == partAs[i]
-                            or subset[j][indexB] == partBs[i]
-                        ):
+                    for j, subset_item in enumerate(subset):
+                        if subset_item[indexA] == partAs[i] or subset_item[indexB] == partBs[i]:
                             subset_idx[found] = j
                             found += 1
 
@@ -292,16 +202,10 @@ class Body(object):
                         if subset[j][indexB] != partBs[i]:
                             subset[j][indexB] = partBs[i]
                             subset[j][-1] += 1
-                            subset[j][-2] += (
-                                candidate[partBs[i].astype(int), 2]
-                                + connection_all[k][i][2]
-                            )
+                            subset[j][-2] += candidate[partBs[i].astype(int), 2] + connection_all[k][i][2]
                     elif found == 2:  # if found 2 and disjoint, merge them
                         j1, j2 = subset_idx
-                        membership = (
-                            (subset[j1] >= 0).astype(int)
-                            + (subset[j2] >= 0).astype(int)
-                        )[:-2]
+                        membership = ((subset[j1] >= 0).astype(int) + (subset[j2] >= 0).astype(int))[:-2]
                         if len(np.nonzero(membership == 2)[0]) == 0:  # merge
                             subset[j1][:-2] += subset[j2][:-2] + 1
                             subset[j1][-2:] += subset[j2][-2:]
@@ -310,10 +214,7 @@ class Body(object):
                         else:  # as like found == 1
                             subset[j1][indexB] = partBs[i]
                             subset[j1][-1] += 1
-                            subset[j1][-2] += (
-                                candidate[partBs[i].astype(int), 2]
-                                + connection_all[k][i][2]
-                            )
+                            subset[j1][-2] += candidate[partBs[i].astype(int), 2] + connection_all[k][i][2]
 
                     # if find no partA in the subset, create a new subset
                     elif not found and k < 17:
@@ -321,29 +222,15 @@ class Body(object):
                         row[indexA] = partAs[i]
                         row[indexB] = partBs[i]
                         row[-1] = 2
-                        row[-2] = (
-                            sum(candidate[connection_all[k][i, :2].astype(int), 2])
-                            + connection_all[k][i][2]
-                        )
+                        row[-2] = sum(candidate[connection_all[k][i, :2].astype(int), 2]) + connection_all[k][i][2]
                         subset = np.vstack([subset, row])
         # delete some rows of subset which has few parts occur
         deleteIdx = []
-        for i in range(len(subset)):
-            if subset[i][-1] < 4 or subset[i][-2] / subset[i][-1] < 0.4:
+        for i, subset_item in enumerate(subset):
+            if subset_item[-1] < 4 or subset_item[-2] / subset_item[-1] < 0.4:
                 deleteIdx.append(i)
         subset = np.delete(subset, deleteIdx, axis=0)
 
         # subset: n*20 array, 0-17 is the index in candidate, 18 is the total score, 19 is the total parts
         # candidate: x, y, score, id
         return candidate, subset
-
-
-if __name__ == "__main__":
-    body_estimation = Body("../model/body_pose_model.pth")
-
-    test_image = "../images/ski.jpg"
-    oriImg = cv2.imread(test_image)  # B,G,R order
-    candidate, subset = body_estimation(oriImg)
-    canvas = util.draw_bodypose(oriImg, candidate, subset)
-    plt.imshow(canvas[:, :, [2, 1, 0]])
-    plt.show()

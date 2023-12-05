@@ -24,13 +24,11 @@ class GenerationPanel(BasePanel):
     def __init__(
         self,
         schedulers,
-        module_options: dict,
         *args,
         **kwargs,
     ):
         super().__init__(*args, **kwargs)
         self.schedulers = schedulers
-        self.module_options = module_options
         self.event_bus = EventBus()
         self.event_bus.subscribe("update_from_json", self.update_ui)
         self.event_bus.subscribe("selected_model", self.on_model_selected)
@@ -39,7 +37,7 @@ class GenerationPanel(BasePanel):
         if self.directories.vaes and os.path.isdir(self.directories.vaes):
             self.vaes = next(os.walk(self.directories.vaes))[1]
 
-        self.model_dialog = None
+        self.dialog = None
         self.init_ui()
         self.update_ui()
 
@@ -227,7 +225,22 @@ class GenerationPanel(BasePanel):
         self.image_generation_data.base_scheduler = index
 
     def open_model_dialog(self):
-        self.dialog_opened.emit(self, ModelDialog, "Models")
+        self.dialog = ModelDialog(
+            self.directories,
+            "Models",
+            self.show_error,
+            self.image_generation_data,
+            self.image_viewer,
+            self.prompt_window,
+        )
+
+        self.dialog.closed.connect(self.on_dialog_closed)
+        self.dialog.loading_models = True
+        self.dialog.model_items_view.load_items()
+        self.dialog.show()
+
+    def on_dialog_closed(self):
+        self.dialog = None
 
     def on_vae_selected(self):
         vae = VaeDataObject(name=self.vae_combobox.currentText(), path=self.vae_combobox.currentData())

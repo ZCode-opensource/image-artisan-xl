@@ -8,6 +8,7 @@ from iartisanxl.generation.lora_list import LoraList
 from iartisanxl.generation.controlnet_list import ControlNetList
 from iartisanxl.generation.t2i_adapter_list import T2IAdapterList
 from iartisanxl.app.directories import DirectoriesObject
+from iartisanxl.app.preferences import PreferencesObject
 from iartisanxl.modules.common.image_viewer_simple import ImageViewerSimple
 from iartisanxl.modules.common.prompt_window import PromptWindow
 
@@ -19,6 +20,7 @@ class RightMenu(QFrame):
     def __init__(
         self,
         module_options: dict,
+        preferences: PreferencesObject,
         directories: DirectoriesObject,
         image_generation_data: ImageGenerationData,
         lora_list: LoraList,
@@ -27,13 +29,13 @@ class RightMenu(QFrame):
         image_viewer: ImageViewerSimple,
         prompt_window: PromptWindow,
         show_error: callable,
-        open_dialog: callable,
         *args,
         **kwargs,
     ):
         super().__init__(*args, **kwargs)
 
         self.module_options = module_options
+        self.preferences = preferences
         self.directories = directories
         self.image_generation_data = image_generation_data
         self.lora_list = lora_list
@@ -42,7 +44,6 @@ class RightMenu(QFrame):
         self.image_viewer = image_viewer
         self.prompt_window = prompt_window
         self.show_error = show_error
-        self.module_open_dialog = open_dialog
 
         self.expanded = self.module_options.get("right_menu_expanded")
         self.animating = False
@@ -98,7 +99,10 @@ class RightMenu(QFrame):
             "class": panel_class,
             "args": (
                 *args,
+                self.module_options,
+                self.preferences,
                 self.directories,
+                self.image_viewer,
                 self.prompt_window,
                 self.show_error,
                 self.image_generation_data,
@@ -178,24 +182,7 @@ class RightMenu(QFrame):
             del self.current_panel
 
         panel = panel_class(*args, **kwargs)
-        panel.dialog_opened.connect(self.on_open_dialog)
         self.panel_layout.addWidget(panel)
 
         self.current_panel = panel
         self.current_panel_text = text
-
-    def on_open_dialog(self, panel, dialog_class, title):
-        dialog = dialog_class(
-            self.directories,
-            title,
-            self.show_error,
-            self.image_generation_data,
-            self.image_viewer,
-            self.prompt_window,
-        )
-        self.module_open_dialog(dialog)
-
-        for _text, panel_info in self.panels.items():
-            if isinstance(panel, panel_info["class"]):
-                panel.current_dialog = dialog
-                break

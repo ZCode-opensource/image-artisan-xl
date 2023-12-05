@@ -15,7 +15,6 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtGui import QImage, QPixmap
 from PyQt6.QtCore import QSettings
 
-from iartisanxl.app.event_bus import EventBus
 from iartisanxl.modules.base_module import BaseModule
 from iartisanxl.modules.common.drop_lightbox import DropLightBox
 from iartisanxl.modules.common.image_viewer_simple import ImageViewerSimple
@@ -117,7 +116,6 @@ class TextToImageModule(BaseModule):
         self.auto_save = False
         self.continuous_generation = False
 
-        self.event_bus = EventBus()
         self.event_bus.subscribe("lora", self.on_lora)
         self.event_bus.subscribe("image_generation_data", self.on_image_generation_data)
         self.event_bus.subscribe("auto_generate", self.on_auto_generate)
@@ -161,6 +159,7 @@ class TextToImageModule(BaseModule):
 
         self.right_menu = RightMenu(
             self.module_options,
+            self.preferences,
             self.directories,
             self.image_generation_data,
             self.lora_list,
@@ -169,17 +168,16 @@ class TextToImageModule(BaseModule):
             self.image_viewer,
             self.prompt_window,
             self.show_error,
-            self.open_dialog,
         )
         top_layout.addWidget(self.right_menu)
         top_layout.setStretch(0, 1)
 
         # Add the panels to the menu
-        self.right_menu.add_panel("Generation", GenerationPanel, schedulers, self.module_options)
+        self.right_menu.add_panel("Generation", GenerationPanel, schedulers)
         self.right_menu.add_panel("LoRAs", LoraPanel)
-        self.right_menu.add_panel("ControlNet", ControlNetPanel, self.preferences)
-        self.right_menu.add_panel("T2I Adapters", T2IPanel, self.preferences)
-        self.right_menu.add_panel("IP Adapters", IPAdapterPanel, self.preferences)
+        self.right_menu.add_panel("ControlNet", ControlNetPanel)
+        self.right_menu.add_panel("T2I Adapters", T2IPanel)
+        self.right_menu.add_panel("IP Adapters", IPAdapterPanel)
 
         main_layout.setStretch(0, 16)
         main_layout.setStretch(1, 0)
@@ -237,6 +235,26 @@ class TextToImageModule(BaseModule):
         torch.cuda.empty_cache()
         torch.cuda.ipc_collect()
         super().closeEvent(event)
+
+    def on_dialogs(self, data):
+        if data["action"] == "open":
+            dialog_class = data["class"]
+            if dialog_class in self.dialogs:
+                self.dialogs[dialog_class].raise_()
+                self.dialogs[dialog_class].activateWindow()
+            else:
+                dialog = dialog_class(
+                    self.directories,
+                    data["title"],
+                    self.show_error,
+                    self.image_generation_data,
+                    self.image_viewer,
+                    self.prompt_window,
+                )
+                self.dialogs[dialog_class] = dialog
+                dialog.closed.connect(lambda: self.on_dialog_closed(dialog_class))
+                dialog.show()
+                dialog.dialog_raised()
 
     def dragEnterEvent(self, event):
         if event.mimeData().hasUrls():

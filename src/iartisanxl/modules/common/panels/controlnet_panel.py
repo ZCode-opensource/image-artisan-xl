@@ -1,28 +1,22 @@
+import torch
+
 from PyQt6.QtWidgets import QVBoxLayout, QPushButton, QWidget
 
 from iartisanxl.app.event_bus import EventBus
 from iartisanxl.modules.common.panels.base_panel import BasePanel
 from iartisanxl.modules.common.dialogs.controlnet_dialog import ControlNetDialog
 from iartisanxl.modules.common.controlnet_added_item import ControlNetAddedItem
-from iartisanxl.app.preferences import PreferencesObject
 from iartisanxl.formats.image import ImageProcessor
 from iartisanxl.generation.controlnet_data_object import ControlNetDataObject
 
 
 class ControlNetPanel(BasePanel):
-    def __init__(
-        self,
-        preferences: PreferencesObject,
-        *args,
-        **kwargs,
-    ):
+    def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-
-        self.preferences = preferences
-
         self.event_bus = EventBus()
         self.event_bus.subscribe("controlnet", self.on_controlnet)
         self.controlnets = []
+        self.dialog = None
 
         self.init_ui()
         self.update_ui()
@@ -41,9 +35,6 @@ class ControlNetPanel(BasePanel):
         main_layout.addStretch()
         self.setLayout(main_layout)
 
-    def open_controlnet_dialog(self):
-        self.dialog_opened.emit(self, ControlNetDialog, "ControlNet")
-
     def update_ui(self):
         if len(self.controlnet_list.controlnets) > 0:
             for controlnet in self.controlnet_list.controlnets:
@@ -52,6 +43,24 @@ class ControlNetPanel(BasePanel):
                 controlnet_widget.edit_clicked.connect(self.on_edit_clicked)
                 controlnet_widget.enabled.connect(self.on_controlnet_enabled)
                 self.controlnets_layout.addWidget(controlnet_widget)
+
+    def open_controlnet_dialog(self):
+        self.dialog = ControlNetDialog(
+            self.directories,
+            "ControlNet",
+            self.show_error,
+            self.image_generation_data,
+            self.image_viewer,
+            self.prompt_window,
+        )
+        self.dialog.closed.connect(self.on_dialog_closed)
+        self.dialog.show()
+
+    def on_dialog_closed(self):
+        self.dialog.depth_estimator = None
+        self.dialog = None
+        torch.cuda.empty_cache()
+        torch.cuda.ipc_collect()
 
     def on_controlnet(self, data):
         if data["action"] == "add":
@@ -77,29 +86,25 @@ class ControlNetPanel(BasePanel):
                     widget.controlnet = data["controlnet"]
                     break
 
-    def on_edit_clicked(self, controlnet: ControlNetDataObject):
-        if self.current_dialog is None or not self.current_dialog.isVisible():
-            self.dialog_opened.emit(self, ControlNetDialog, "ControlNet")
-
-        self.current_dialog.controlnet = controlnet
-        self.current_dialog.update_ui()
-
-    def clear_controlnets(self):
-        self.controlnets = []
-
-        while self.controlnets_layout.count():
-            item = self.controlnets_layout.takeAt(0)
-            widget = item.widget()
-            if widget is not None:
-                widget.deleteLater()
-
     def on_remove_clicked(self, controlnet_widget: ControlNetAddedItem):
         self.controlnet_list.remove(controlnet_widget.controlnet)
         self.controlnets_layout.removeWidget(controlnet_widget)
         controlnet_widget.deleteLater()
 
-    def on_controlnet_enabled(self, controlet_id, enabled):
-        self.controlnet_list.update_controlnet(controlet_id, {"enabled": enabled})
+        if self.dialog is not None:
+            self.dialog.controlnet = None
+            self.dialog.reset_ui()
+
+    def on_edit_clicked(self, controlnet: ControlNetDataObject):
+        if self.dialog is None:
+            self.open_controlnet_dialog()
+
+        self.dialog.controlnet = controlnet
+        self.dialog.update_ui()
 
     def clean_up(self):
         self.event_bus.unsubscribe("controlnet", self.on_controlnet)
+        super().clean_up()
+
+    def on_controlnet_enabled(self, controlet_id, enabled):
+        self.controlnet_list.update_controlnet(controlet_id, {"enabled": enabled})

@@ -1,21 +1,21 @@
-import cv2
 import numpy as np
+import torch
 
 
 from PyQt6.QtWidgets import QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QSlider, QComboBox, QWidget
 from PyQt6.QtCore import QSettings, Qt
 from PyQt6.QtGui import QImage, QPixmap
 from superqt import QDoubleRangeSlider, QDoubleSlider
-from transformers import DPTImageProcessor, DPTForDepthEstimation
 
 from iartisanxl.app.event_bus import EventBus
 from iartisanxl.buttons.color_button import ColorButton
 from iartisanxl.modules.common.dialogs.base_dialog import BaseDialog
 from iartisanxl.modules.common.dialogs.control_image_widget import ControlImageWidget
-from iartisanxl.annotators.openpose import OpenposeDetector
-from iartisanxl.annotators.lineart import LineartDetector
-from iartisanxl.annotators.canny import CannyDetector
-from iartisanxl.annotators.utils import HWC3, resize_image, get_depth_map, numpy_image_to_pixmap
+from iartisanxl.annotators.openpose.open_pose_detector import OpenPoseDetector
+from iartisanxl.annotators.lineart.lineart_generator import LineArtGenerator
+from iartisanxl.annotators.pidinet.pidinet_generator import PidinetGenerator
+from iartisanxl.annotators.depth.depth_estimator import DepthEstimator
+from iartisanxl.annotators.canny.canny_edges_detector import CannyEdgesDetector
 from iartisanxl.generation.t2i_adapter_data_object import T2IAdapterDataObject
 from iartisanxl.formats.image import ImageProcessor
 
@@ -25,7 +25,7 @@ class T2IDialog(BaseDialog):
         super().__init__(*args, **kwargs)
 
         self.setWindowTitle("T2I Adapters")
-        self.setMinimumSize(800, 800)
+        self.setMinimumSize(500, 500)
 
         self.settings = QSettings("ZCode", "ImageArtisanXL")
         self.settings.beginGroup("t2i_adapters_dialog")
@@ -39,13 +39,15 @@ class T2IDialog(BaseDialog):
         self.adapter = None
         self.conditioning_scale = 0.50
         self.conditioning_factor = 1.0
-
-        self.depth_estimator = None
-        self.image_processor = None
-        self.lineart_detector = None
-
+        self.annotator_resolution = 0.5
         self.canny_low = 100
         self.canny_high = 300
+
+        self.canny_detector = None
+        self.depth_estimator = None
+        self.openpose_detector = None
+        self.lineart_generator = None
+        self.pidinet_generator = None
 
         self.init_ui()
 
@@ -58,8 +60,7 @@ class T2IDialog(BaseDialog):
 
         self.annotator_combo = QComboBox()
         self.annotator_combo.addItem("Canny", "canny")
-        self.annotator_combo.addItem("Depth Midas", "depth")
-        self.annotator_combo.addItem("Depth Zoe", "depth_zoe")
+        self.annotator_combo.addItem("Depth", "depth")
         self.annotator_combo.addItem("Pose", "pose")
         self.annotator_combo.addItem("Line Art", "lineart")
         self.annotator_combo.addItem("Sketch", "sketch")
@@ -87,8 +88,13 @@ class T2IDialog(BaseDialog):
         control_layout.addWidget(self.conditioning_factor_value_label)
         content_layout.addLayout(control_layout)
 
+        second_control_layout = QHBoxLayout()
+        second_control_layout.setSpacing(10)
+        second_control_layout.setContentsMargins(10, 2, 10, 2)
         self.canny_widget = QWidget()
         canny_layout = QHBoxLayout(self.canny_widget)
+        canny_layout.setSpacing(10)
+        canny_layout.setContentsMargins(0, 0, 0, 0)
         canny_label = QLabel("Canny tresholds:")
         canny_layout.addWidget(canny_label)
         self.canny_low_label = QLabel(f"{self.canny_low}")
@@ -100,7 +106,54 @@ class T2IDialog(BaseDialog):
         canny_layout.addWidget(self.canny_slider)
         self.canny_high_label = QLabel(f"{self.canny_high}")
         canny_layout.addWidget(self.canny_high_label)
-        content_layout.addWidget(self.canny_widget)
+        second_control_layout.addWidget(self.canny_widget)
+
+        self.depth_widget = QWidget()
+        depth_layout = QHBoxLayout(self.depth_widget)
+        depth_layout.setSpacing(10)
+        depth_layout.setContentsMargins(0, 0, 0, 0)
+        self.depth_type_combo = QComboBox()
+        self.depth_type_combo.addItem("Depth Hybrid Midas", "dpt-hybrid-midas")
+        self.depth_type_combo.addItem("Depth BEiT Base 384", "dpt-beit-base-384")
+        self.depth_type_combo.addItem("Depth BEiT Large 512", "dpt-beit-large-512")
+        depth_layout.addWidget(self.depth_type_combo)
+        self.depth_widget.setVisible(False)
+        second_control_layout.addWidget(self.depth_widget)
+
+        self.lineart_widget = QWidget()
+        lineart_layout = QHBoxLayout(self.lineart_widget)
+        lineart_layout.setSpacing(10)
+        lineart_layout.setContentsMargins(0, 0, 0, 0)
+        self.lineart_type_combo = QComboBox()
+        self.lineart_type_combo.addItem("Anime", "anime_style")
+        self.lineart_type_combo.addItem("Open Sketch", "opensketch_style")
+        self.lineart_type_combo.addItem("Countour", "contour_style")
+        lineart_layout.addWidget(self.lineart_type_combo)
+        self.lineart_widget.setVisible(False)
+        second_control_layout.addWidget(self.lineart_widget)
+
+        self.sketch_widget = QWidget()
+        sketch_layout = QHBoxLayout(self.sketch_widget)
+        sketch_layout.setSpacing(10)
+        sketch_layout.setContentsMargins(0, 0, 0, 0)
+        self.sketch_type_combo = QComboBox()
+        self.sketch_type_combo.addItem("Pidinet Table 5", "table5")
+        self.sketch_type_combo.addItem("Pidinet Table 7", "table7")
+        sketch_layout.addWidget(self.sketch_type_combo)
+        self.sketch_widget.setVisible(False)
+        second_control_layout.addWidget(self.sketch_widget)
+
+        annotator_resolution_label = QLabel("Annotator resolution:")
+        second_control_layout.addWidget(annotator_resolution_label)
+        self.annotator_resolution_slider = QDoubleSlider(Qt.Orientation.Horizontal)
+        self.annotator_resolution_slider.setRange(0.05, 1.0)
+        self.annotator_resolution_slider.setValue(self.annotator_resolution)
+        self.annotator_resolution_slider.valueChanged.connect(self.on_annotator_resolution_changed)
+        second_control_layout.addWidget(self.annotator_resolution_slider)
+        self.annotator_resolution_value_label = QLabel(f"{int(self.annotator_resolution * 100)}%")
+        second_control_layout.addWidget(self.annotator_resolution_value_label)
+
+        content_layout.addLayout(second_control_layout)
 
         brush_layout = QHBoxLayout()
         brush_layout.setContentsMargins(10, 0, 10, 0)
@@ -168,6 +221,16 @@ class T2IDialog(BaseDialog):
         self.settings.beginGroup("t2i_adapters_dialog")
         self.settings.setValue("geometry", self.saveGeometry())
         self.settings.endGroup()
+
+        self.canny_detector = None
+        self.depth_estimator = None
+        self.openpose_detector = None
+        self.lineart_generator = None
+        self.pidinet_generator = None
+
+        torch.cuda.empty_cache()
+        torch.cuda.ipc_collect()
+
         super().closeEvent(event)
 
     def on_annotate(self):
@@ -181,69 +244,86 @@ class T2IDialog(BaseDialog):
             arr = np.frombuffer(ptr, np.uint8).reshape((height, width, 4))
             numpy_image = arr[..., :3]
 
+            annotator_image = None
+
             if annotator_index == 0:
-                low_threshold = self.canny_low
-                high_threshold = self.canny_high
+                if self.canny_detector is None:
+                    self.canny_detector = CannyEdgesDetector()
 
-                canny_detector = CannyDetector()
-                detected_map = canny_detector(
+                annotator_image = self.canny_detector.get_canny_edges(
                     numpy_image,
-                    low_threshold=low_threshold,
-                    high_threshold=high_threshold,
-                    detect_resolution=int(self.image_generation_data.image_height / 2),
-                    image_resolution=self.image_generation_data.image_height,
+                    self.canny_low,
+                    self.canny_high,
+                    resolution=(
+                        int(self.image_generation_data.image_width * self.annotator_resolution),
+                        int(self.image_generation_data.image_height * self.annotator_resolution),
+                    ),
                 )
-
-                pixmap = numpy_image_to_pixmap(detected_map)
-                self.annotator_widget.image_editor.set_pixmap(pixmap)
-
-                self.annotator_widget.image_editor.set_pixmap(pixmap)
             elif annotator_index == 1:
                 if self.depth_estimator is None:
-                    self.depth_estimator = DPTForDepthEstimation.from_pretrained("./models/annotators/dpt-hybrid-midas").to("cuda")
+                    self.depth_estimator = DepthEstimator(self.depth_type_combo.currentData())
 
-                if self.image_processor is None:
-                    self.image_processor = DPTImageProcessor.from_pretrained("./models/annotators/dpt-hybrid-midas")
+                self.depth_estimator.change_model(self.depth_type_combo.currentData())
 
-                depthmap = get_depth_map(numpy_image, width, height, self.image_processor, self.depth_estimator)
+                annotator_image = self.depth_estimator.get_depth_map(
+                    numpy_image,
+                    (
+                        int(self.image_generation_data.image_width * self.annotator_resolution),
+                        int(self.image_generation_data.image_height * self.annotator_resolution),
+                    ),
+                )
+            elif annotator_index == 2:
+                if self.openpose_detector is None:
+                    self.openpose_detector = OpenPoseDetector()
 
+                annotator_image = self.openpose_detector.get_open_pose(
+                    numpy_image,
+                    (
+                        int(self.image_generation_data.image_width * self.annotator_resolution),
+                        int(self.image_generation_data.image_height * self.annotator_resolution),
+                    ),
+                )
+            elif annotator_index == 3:
+                if self.lineart_generator is None:
+                    self.lineart_generator = LineArtGenerator(model_type=self.lineart_type_combo.currentData())
+
+                self.lineart_generator.change_model(self.lineart_type_combo.currentData())
+
+                annotator_image = self.lineart_generator.get_lines(
+                    numpy_image,
+                    (
+                        int(self.image_generation_data.image_width * self.annotator_resolution),
+                        int(self.image_generation_data.image_height * self.annotator_resolution),
+                    ),
+                )
+            elif annotator_index == 4:
+                if self.pidinet_generator is None:
+                    self.pidinet_generator = PidinetGenerator(self.sketch_type_combo.currentData())
+
+                self.pidinet_generator.change_model(self.sketch_type_combo.currentData())
+
+                annotator_image = self.pidinet_generator.get_edges(
+                    numpy_image,
+                    (
+                        int(self.image_generation_data.image_width * self.annotator_resolution),
+                        int(self.image_generation_data.image_height * self.annotator_resolution),
+                    ),
+                )
+
+            if annotator_image is not None:
                 qimage = QImage(
-                    depthmap.tobytes(),
-                    depthmap.shape[1],
-                    depthmap.shape[0],
+                    annotator_image.tobytes(),
+                    annotator_image.shape[1],
+                    annotator_image.shape[0],
                     QImage.Format.Format_RGB888,
                 )
                 pixmap = QPixmap.fromImage(qimage)
                 self.annotator_widget.image_editor.set_pixmap(pixmap)
-            elif annotator_index == 3:
-                model_openpose = OpenposeDetector()
-                input_image = HWC3(numpy_image)
-                detected_map, _ = model_openpose(resize_image(input_image, self.image_generation_data.image_height), True)
-                detected_map = HWC3(detected_map)
-                img = resize_image(input_image, self.image_generation_data.image_height)
-                H, W, _ = img.shape
-                # pylint: disable=no-member
-                detected_map = cv2.resize(detected_map, (W, H), interpolation=cv2.INTER_NEAREST)
-                pixmap = numpy_image_to_pixmap(detected_map)
-                self.annotator_widget.image_editor.set_pixmap(pixmap)
-            elif annotator_index == 4:
-                if self.lineart_detector is None:
-                    self.lineart_detector = LineartDetector.from_pretrained("./models/annotators/lineart").to("cuda")
-                detected_map = self.lineart_detector(
-                    numpy_image,
-                    detect_resolution=int(self.image_generation_data.image_height / 3),
-                    image_resolution=self.image_generation_data.image_height,
-                    output_type="np",
-                )
-                pixmap = numpy_image_to_pixmap(detected_map)
-                self.annotator_widget.image_editor.set_pixmap(pixmap)
-            else:
-                pass
 
     def on_t2i_adapter_added(self):
         if self.adapter is None:
             self.adapter = T2IAdapterDataObject(
-                adapter_type=self.annotator_combo.currentText(),
+                adapter_type=self.annotator_combo.currentData(),
                 enabled=True,
                 conditioning_scale=round(self.conditioning_scale, 2),
                 conditioning_factor=self.conditioning_factor,
@@ -252,7 +332,7 @@ class T2IDialog(BaseDialog):
                 canny_high=self.canny_high,
             )
         else:
-            self.adapter.adapter_type = self.annotator_combo.currentText()
+            self.adapter.adapter_type = self.annotator_combo.currentData()
             self.adapter.conditioning_scale = round(self.conditioning_scale, 2)
             self.adapter.conditioning_factor = self.conditioning_factor
 
@@ -290,8 +370,37 @@ class T2IDialog(BaseDialog):
         self.on_annotate()
 
     def on_annotator_changed(self):
-        self.canny_widget.setVisible(self.annotator_combo.currentIndex() == 0)
+        if self.annotator_combo.currentIndex() == 0:
+            self.canny_widget.setVisible(True)
+            self.depth_widget.setVisible(False)
+            self.lineart_widget.setVisible(False)
+            self.sketch_widget.setVisible(False)
+        elif self.annotator_combo.currentIndex() == 1:
+            self.canny_widget.setVisible(False)
+            self.depth_widget.setVisible(True)
+            self.lineart_widget.setVisible(False)
+            self.sketch_widget.setVisible(False)
+        elif self.annotator_combo.currentIndex() == 3:
+            self.canny_widget.setVisible(False)
+            self.depth_widget.setVisible(False)
+            self.lineart_widget.setVisible(True)
+            self.sketch_widget.setVisible(False)
+        elif self.annotator_combo.currentIndex() == 4:
+            self.canny_widget.setVisible(False)
+            self.depth_widget.setVisible(False)
+            self.lineart_widget.setVisible(False)
+            self.sketch_widget.setVisible(True)
+        else:
+            self.canny_widget.setVisible(False)
+            self.depth_widget.setVisible(False)
+            self.lineart_widget.setVisible(False)
+            self.sketch_widget.setVisible(False)
+
         self.annotator_widget.image_editor.clear()
+
+    def on_annotator_resolution_changed(self, value):
+        self.annotator_resolution = value
+        self.annotator_resolution_value_label.setText(f"{int(value * 100)}%")
 
     def update_ui(self):
         self.conditioning_scale_slider.setValue(self.adapter.conditioning_scale)
@@ -310,3 +419,16 @@ class T2IDialog(BaseDialog):
 
         if self.adapter.adapter_id is not None:
             self.add_button.setText("Update")
+
+    def reset_ui(self):
+        self.conditioning_scale_slider.setValue(0.50)
+        self.conditioning_scale_value_label.setText(f"{0.50:.2f}")
+        self.conditioning_factor_slider.setValue(1.0)
+        self.canny_slider.setValue((100, 300))
+        self.annotator_combo.setCurrentIndex(0)
+        self.on_annotator_changed()
+
+        self.source_widget.clear_image()
+        self.annotator_widget.clear_image()
+
+        self.add_button.setText("Add")

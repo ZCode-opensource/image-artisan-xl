@@ -1,3 +1,5 @@
+import torch
+
 from PyQt6.QtWidgets import QVBoxLayout, QPushButton, QWidget
 
 from iartisanxl.app.event_bus import EventBus
@@ -5,18 +7,16 @@ from iartisanxl.modules.common.panels.base_panel import BasePanel
 from iartisanxl.modules.common.dialogs.t2i_dialog import T2IDialog
 from iartisanxl.modules.common.adapter_added_item import AdapterAddedItem
 from iartisanxl.generation.t2i_adapter_data_object import T2IAdapterDataObject
-from iartisanxl.app.preferences import PreferencesObject
 from iartisanxl.formats.image import ImageProcessor
 
 
 class T2IPanel(BasePanel):
-    def __init__(self, preferences: PreferencesObject, *args, **kwargs):
+    def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.preferences = preferences
-
         self.event_bus = EventBus()
         self.event_bus.subscribe("t2i_adapters", self.on_t2i_adapters)
         self.t2i_adapters = []
+        self.dialog = None
 
         self.init_ui()
         self.update_ui()
@@ -45,7 +45,22 @@ class T2IPanel(BasePanel):
                 self.adapters_layout.addWidget(adapter_widget)
 
     def open_t2i_dialog(self):
-        self.dialog_opened.emit(self, T2IDialog, "T2IDialog")
+        self.dialog = T2IDialog(
+            self.directories,
+            "T2I adapter",
+            self.show_error,
+            self.image_generation_data,
+            self.image_viewer,
+            self.prompt_window,
+        )
+        self.dialog.closed.connect(self.on_dialog_closed)
+        self.dialog.show()
+
+    def on_dialog_closed(self):
+        self.dialog.depth_estimator = None
+        self.dialog = None
+        torch.cuda.empty_cache()
+        torch.cuda.ipc_collect()
 
     def on_t2i_adapters(self, data):
         if data["action"] == "add":
@@ -76,15 +91,20 @@ class T2IPanel(BasePanel):
         self.adapters_layout.removeWidget(adapter_widget)
         adapter_widget.deleteLater()
 
-    def on_edit_clicked(self, adapter: T2IAdapterDataObject):
-        if self.current_dialog is None or not self.current_dialog.isVisible():
-            self.dialog_opened.emit(self, T2IDialog, "T2IDialog")
+        if self.dialog is not None:
+            self.dialog.adapter = None
+            self.dialog.reset_ui()
 
-        self.current_dialog.adapter = adapter
-        self.current_dialog.update_ui()
+    def on_edit_clicked(self, adapter: T2IAdapterDataObject):
+        if self.dialog is None:
+            self.open_t2i_dialog()
+
+        self.dialog.adapter = adapter
+        self.dialog.update_ui()
 
     def clean_up(self):
         self.event_bus.unsubscribe("t2i_adapters", self.on_t2i_adapters)
+        super().clean_up()
 
     def on_enabled(self, adapter_id, enabled):
         self.t2i_adapter_list.update_adapter(adapter_id, {"enabled": enabled})

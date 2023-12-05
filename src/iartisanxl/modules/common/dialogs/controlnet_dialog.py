@@ -1,5 +1,5 @@
-import cv2
 import numpy as np
+import torch
 
 from PyQt6.QtWidgets import (
     QVBoxLayout,
@@ -13,16 +13,16 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import QSettings, Qt
 from PyQt6.QtGui import QImage, QPixmap
 from superqt import QDoubleRangeSlider, QDoubleSlider
-from transformers import DPTImageProcessor, DPTForDepthEstimation
 
 from iartisanxl.app.event_bus import EventBus
 from iartisanxl.buttons.color_button import ColorButton
 from iartisanxl.modules.common.dialogs.base_dialog import BaseDialog
 from iartisanxl.modules.common.dialogs.control_image_widget import ControlImageWidget
 from iartisanxl.generation.controlnet_data_object import ControlNetDataObject
-from iartisanxl.annotators.openpose import OpenposeDetector
 from iartisanxl.formats.image import ImageProcessor
-from iartisanxl.annotators.utils import HWC3, resize_image, get_depth_map
+from iartisanxl.annotators.openpose.open_pose_detector import OpenPoseDetector
+from iartisanxl.annotators.depth.depth_estimator import DepthEstimator
+from iartisanxl.annotators.canny.canny_edges_detector import CannyEdgesDetector
 
 
 class ControlNetDialog(BaseDialog):
@@ -30,7 +30,7 @@ class ControlNetDialog(BaseDialog):
         super().__init__(*args, **kwargs)
 
         self.setWindowTitle("ControlNet")
-        self.setMinimumSize(800, 800)
+        self.setMinimumSize(500, 500)
 
         self.settings = QSettings("ZCode", "ImageArtisanXL")
         self.settings.beginGroup("controlnet_dialog")
@@ -45,12 +45,13 @@ class ControlNetDialog(BaseDialog):
         self.conditioning_scale = 0.50
         self.control_guidance_start = 0.0
         self.control_guidance_end = 1.0
-
-        self.depth_estimator = None
-        self.image_processor = None
-
+        self.annotator_resolution = 0.5
         self.canny_low = 100
         self.canny_high = 300
+
+        self.canny_detector = None
+        self.depth_estimator = None
+        self.openpose_detector = None
 
         self.init_ui()
 
@@ -61,12 +62,12 @@ class ControlNetDialog(BaseDialog):
         control_layout.setContentsMargins(10, 0, 10, 0)
         control_layout.setSpacing(10)
 
-        self.controlnet_combo = QComboBox()
-        self.controlnet_combo.addItem("Canny", "canny")
-        self.controlnet_combo.addItem("Depth Midas", "depth")
-        self.controlnet_combo.addItem("Pose", "pose")
-        self.controlnet_combo.currentIndexChanged.connect(self.on_annotator_changed)
-        control_layout.addWidget(self.controlnet_combo)
+        self.annotator_combo = QComboBox()
+        self.annotator_combo.addItem("Canny", "canny")
+        self.annotator_combo.addItem("Depth Midas", "depth")
+        self.annotator_combo.addItem("Pose", "pose")
+        self.annotator_combo.currentIndexChanged.connect(self.on_annotator_changed)
+        control_layout.addWidget(self.annotator_combo)
 
         conditioning_scale_label = QLabel("Conditioning scale:")
         control_layout.addWidget(conditioning_scale_label)
@@ -93,8 +94,13 @@ class ControlNetDialog(BaseDialog):
         control_layout.addWidget(self.guidance_end_value_label)
         content_layout.addLayout(control_layout)
 
+        second_control_layout = QHBoxLayout()
+        second_control_layout.setSpacing(10)
+        second_control_layout.setContentsMargins(10, 2, 10, 2)
         self.canny_widget = QWidget()
         canny_layout = QHBoxLayout(self.canny_widget)
+        canny_layout.setSpacing(10)
+        canny_layout.setContentsMargins(0, 0, 0, 0)
         canny_label = QLabel("Canny tresholds:")
         canny_layout.addWidget(canny_label)
         self.canny_low_label = QLabel(f"{self.canny_low}")
@@ -106,7 +112,31 @@ class ControlNetDialog(BaseDialog):
         canny_layout.addWidget(self.canny_slider)
         self.canny_high_label = QLabel(f"{self.canny_high}")
         canny_layout.addWidget(self.canny_high_label)
-        content_layout.addWidget(self.canny_widget)
+        second_control_layout.addWidget(self.canny_widget)
+
+        self.depth_widget = QWidget()
+        depth_layout = QHBoxLayout(self.depth_widget)
+        depth_layout.setSpacing(10)
+        depth_layout.setContentsMargins(0, 0, 0, 0)
+        self.depth_type_combo = QComboBox()
+        self.depth_type_combo.addItem("Depth Hybrid Midas", "dpt-hybrid-midas")
+        self.depth_type_combo.addItem("Depth BEiT Base 384", "dpt-beit-base-384")
+        self.depth_type_combo.addItem("Depth BEiT Large 512", "dpt-beit-large-512")
+        depth_layout.addWidget(self.depth_type_combo)
+        self.depth_widget.setVisible(False)
+        second_control_layout.addWidget(self.depth_widget)
+
+        annotator_resolution_label = QLabel("Annotator resolution:")
+        second_control_layout.addWidget(annotator_resolution_label)
+        self.annotator_resolution_slider = QDoubleSlider(Qt.Orientation.Horizontal)
+        self.annotator_resolution_slider.setRange(0.05, 1.0)
+        self.annotator_resolution_slider.setValue(self.annotator_resolution)
+        self.annotator_resolution_slider.valueChanged.connect(self.on_annotator_resolution_changed)
+        second_control_layout.addWidget(self.annotator_resolution_slider)
+        self.annotator_resolution_value_label = QLabel(f"{int(self.annotator_resolution * 100)}%")
+        second_control_layout.addWidget(self.annotator_resolution_value_label)
+
+        content_layout.addLayout(second_control_layout)
 
         brush_layout = QHBoxLayout()
         brush_layout.setContentsMargins(10, 0, 10, 0)
@@ -174,10 +204,18 @@ class ControlNetDialog(BaseDialog):
         self.settings.beginGroup("controlnet_dialog")
         self.settings.setValue("geometry", self.saveGeometry())
         self.settings.endGroup()
+
+        self.canny_detector = None
+        self.depth_estimator = None
+        self.openpose_detector = None
+
+        torch.cuda.empty_cache()
+        torch.cuda.ipc_collect()
+
         super().closeEvent(event)
 
     def on_annotate(self):
-        annotator_index = self.controlnet_combo.currentIndex()
+        annotator_index = self.annotator_combo.currentIndex()
 
         if self.source_widget.image_editor.original_pixmap is not None:
             source_image = self.source_widget.image_editor.get_painted_image()
@@ -187,74 +225,71 @@ class ControlNetDialog(BaseDialog):
             arr = np.frombuffer(ptr, np.uint8).reshape((height, width, 4))
             numpy_image = arr[..., :3]
 
+            annotator_image = None
+
             if annotator_index == 0:
-                low_threshold = self.canny_low
-                high_threshold = self.canny_high
+                if self.canny_detector is None:
+                    self.canny_detector = CannyEdgesDetector()
 
-                canny_image = cv2.Canny(numpy_image, low_threshold, high_threshold)  # pylint: disable=no-member
-
-                canny_image = np.stack([canny_image] * 3, axis=-1)
-                qimage = QImage(
-                    canny_image.data,
-                    canny_image.shape[1],
-                    canny_image.shape[0],
-                    canny_image.strides[0],
-                    QImage.Format.Format_RGB888,
+                annotator_image = self.canny_detector.get_canny_edges(
+                    numpy_image,
+                    self.canny_low,
+                    self.canny_high,
+                    resolution=(
+                        int(self.image_generation_data.image_width * self.annotator_resolution),
+                        int(self.image_generation_data.image_height * self.annotator_resolution),
+                    ),
                 )
-                pixmap = QPixmap.fromImage(qimage)
-
-                self.annotator_widget.image_editor.set_pixmap(pixmap)
             elif annotator_index == 1:
                 if self.depth_estimator is None:
-                    self.depth_estimator = DPTForDepthEstimation.from_pretrained("./models/annotators/dpt-hybrid-midas").to("cuda")
+                    self.depth_estimator = DepthEstimator(self.depth_type_combo.currentData())
 
-                if self.image_processor is None:
-                    self.image_processor = DPTImageProcessor.from_pretrained("./models/annotators/dpt-hybrid-midas")
+                self.depth_estimator.change_model(self.depth_type_combo.currentData())
 
-                depthmap = get_depth_map(numpy_image, width, height, self.image_processor, self.depth_estimator)
+                annotator_image = self.depth_estimator.get_depth_map(
+                    numpy_image,
+                    (
+                        int(self.image_generation_data.image_width * self.annotator_resolution),
+                        int(self.image_generation_data.image_height * self.annotator_resolution),
+                    ),
+                )
+            elif annotator_index == 2:
+                if self.openpose_detector is None:
+                    self.openpose_detector = OpenPoseDetector()
 
+                annotator_image = self.openpose_detector.get_open_pose(
+                    numpy_image,
+                    (
+                        int(self.image_generation_data.image_width * self.annotator_resolution),
+                        int(self.image_generation_data.image_height * self.annotator_resolution),
+                    ),
+                )
+
+            if annotator_image is not None:
                 qimage = QImage(
-                    depthmap.tobytes(),
-                    depthmap.shape[1],
-                    depthmap.shape[0],
+                    annotator_image.tobytes(),
+                    annotator_image.shape[1],
+                    annotator_image.shape[0],
                     QImage.Format.Format_RGB888,
                 )
                 pixmap = QPixmap.fromImage(qimage)
                 self.annotator_widget.image_editor.set_pixmap(pixmap)
-            elif annotator_index == 2:
-                model_openpose = OpenposeDetector()
-                input_image = HWC3(numpy_image)
-                detected_map, _ = model_openpose(resize_image(input_image, self.image_generation_data.image_height), True)
-                detected_map = HWC3(detected_map)
-                img = resize_image(input_image, self.image_generation_data.image_height)
-                H, W, _ = img.shape
-                # pylint: disable=no-member
-                detected_map = cv2.resize(detected_map, (W, H), interpolation=cv2.INTER_NEAREST)
-
-                height, width, _channel = detected_map.shape
-                bytesPerLine = 3 * width
-                qimage = QImage(detected_map.data, width, height, bytesPerLine, QImage.Format.Format_RGB888).rgbSwapped()
-
-                pixmap = QPixmap.fromImage(qimage)
-                self.annotator_widget.image_editor.set_pixmap(pixmap)
-            else:
-                pass
 
     def on_controlnet_added(self):
         if self.controlnet is None:
             self.controlnet = ControlNetDataObject(
-                controlnet_type=self.controlnet_combo.currentText(),
+                controlnet_type=self.annotator_combo.currentText(),
                 enabled=True,
                 guess_mode=False,
                 conditioning_scale=round(self.conditioning_scale, 2),
                 guidance_start=self.control_guidance_start,
                 guidance_end=self.control_guidance_end,
-                type_index=self.controlnet_combo.currentIndex(),
+                type_index=self.annotator_combo.currentIndex(),
                 canny_low=self.canny_low,
                 canny_high=self.canny_high,
             )
         else:
-            self.controlnet.controlnet_type = self.controlnet_combo.currentText()
+            self.controlnet.controlnet_type = self.annotator_combo.currentText()
             self.controlnet.conditioning_scale = round(self.conditioning_scale, 2)
             self.controlnet.guidance_start = self.control_guidance_start
             self.controlnet.guidance_end = self.control_guidance_end
@@ -295,15 +330,26 @@ class ControlNetDialog(BaseDialog):
         self.on_annotate()
 
     def on_annotator_changed(self):
-        self.canny_widget.setVisible(self.controlnet_combo.currentIndex() == 0)
-        self.annotator_widget.image_editor.clear()
+        if self.annotator_combo.currentIndex() == 0:
+            self.canny_widget.setVisible(True)
+            self.depth_widget.setVisible(False)
+        elif self.annotator_combo.currentIndex() == 1:
+            self.canny_widget.setVisible(False)
+            self.depth_widget.setVisible(True)
+        else:
+            self.canny_widget.setVisible(False)
+            self.depth_widget.setVisible(False)
+
+    def on_annotator_resolution_changed(self, value):
+        self.annotator_resolution = value
+        self.annotator_resolution_value_label.setText(f"{int(value * 100)}%")
 
     def update_ui(self):
         self.conditioning_scale_slider.setValue(self.controlnet.conditioning_scale)
         self.conditioning_scale_value_label.setText(f"{self.controlnet.conditioning_scale:.2f}")
         self.guidance_slider.setValue((self.controlnet.guidance_start, self.controlnet.guidance_end))
         self.canny_slider.setValue((self.controlnet.canny_low, self.controlnet.canny_high))
-        self.controlnet_combo.setCurrentIndex(self.controlnet.type_index)
+        self.annotator_combo.setCurrentIndex(self.controlnet.type_index)
         self.on_annotator_changed()
 
         image_processor = ImageProcessor()
@@ -315,3 +361,16 @@ class ControlNetDialog(BaseDialog):
 
         if self.controlnet.controlnet_id is not None:
             self.add_button.setText("Update")
+
+    def reset_ui(self):
+        self.conditioning_scale_slider.setValue(0.50)
+        self.conditioning_scale_value_label.setText(f"{0.50:.2f}")
+        self.guidance_slider.setValue((0, 1))
+        self.canny_slider.setValue((100, 300))
+        self.annotator_combo.setCurrentIndex(0)
+        self.on_annotator_changed()
+
+        self.source_widget.clear_image()
+        self.annotator_widget.clear_image()
+
+        self.add_button.setText("Add")

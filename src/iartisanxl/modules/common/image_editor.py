@@ -112,7 +112,7 @@ class ImageEditor(QGraphicsView):
     def has_photo(self):
         return not self._empty
 
-    def fit_in_view(self):
+    def fit_in_view(self, apply_zoom=True):
         rect = QRectF(self._photo.pixmap().rect())
         if not rect.isNull():
             self.setSceneRect(rect)
@@ -126,7 +126,15 @@ class ImageEditor(QGraphicsView):
                     viewrect.height() / scenerect.height(),
                 )
                 self.scale(factor, factor)
-            self._zoom = 0
+                if apply_zoom and self._zoom != 0:
+                    factor = 1.25 if self._zoom > 0 else 0.8
+                    self.scale(factor ** abs(self._zoom), factor ** abs(self._zoom))
+            else:
+                self._zoom = 0
+
+    def resizeEvent(self, event):
+        self.fit_in_view()
+        super().resizeEvent(event)
 
     def enterEvent(self, event):
         self.setFocus()

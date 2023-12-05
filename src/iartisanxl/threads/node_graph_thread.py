@@ -261,6 +261,8 @@ class NodeGraphThread(QThread):
         removed_controlnets = self.controlnet_list.get_removed()
         if len(removed_controlnets) > 0:
             for controlnet in removed_controlnets:
+                control_image_node = self.node_graph.get_node_by_name(f"control_image_{controlnet.id}")
+                self.node_graph.delete_node_by_id(control_image_node.id)
                 self.node_graph.delete_node_by_id(controlnet.id)
 
         self.controlnet_list.save_state()
@@ -270,13 +272,14 @@ class NodeGraphThread(QThread):
         t2i_adapter_types = self.t2i_adapter_list.get_used_types()
 
         for t2i_adapter_type in t2i_adapter_types:
-            if t2i_adapter_type == "Canny":
+            print(f"{t2i_adapter_type=}")
+            if t2i_adapter_type == "canny":
                 t2i_adapter_canny_model = self.node_graph.get_node_by_name("t2i_adapter_canny_model")
 
                 if t2i_adapter_canny_model is None:
                     t2i_adapter_canny_model = T2IAdapterModelNode(path=os.path.join(self.directories.models_t2i_adapters, "t2i-adapter-canny-sdxl-1.0"))
                     self.node_graph.add_node(t2i_adapter_canny_model, "t2i_adapter_canny_model")
-            elif t2i_adapter_type == "Depth Midas":
+            elif t2i_adapter_type == "depth":
                 t2i_adapter_depth_model = self.node_graph.get_node_by_name("t2i_adapter_depth_model")
 
                 if t2i_adapter_depth_model is None:
@@ -284,21 +287,13 @@ class NodeGraphThread(QThread):
                         path=os.path.join(self.directories.models_t2i_adapters, "t2i-adapter-depth-midas-sdxl-1.0")
                     )
                     self.node_graph.add_node(t2i_adapter_depth_model, "t2i_adapter_depth_model")
-            elif t2i_adapter_type == "Depth Zoe":
-                t2i_adapter_depth_zoe_model = self.node_graph.get_node_by_name("t2i_adapter_depth_zoe_model")
-
-                if t2i_adapter_depth_zoe_model is None:
-                    t2i_adapter_depth_zoe_model = T2IAdapterModelNode(
-                        path=os.path.join(self.directories.models_t2i_adapters, "t2i-adapter-depth-zoe-sdxl-1.0")
-                    )
-                    self.node_graph.add_node(t2i_adapter_depth_model, "t2i_adapter_depth_zoe_model")
-            elif t2i_adapter_type == "Pose":
+            elif t2i_adapter_type == "pose":
                 t2i_adapter_pose_model = self.node_graph.get_node_by_name("t2i_adapter_pose_model")
 
                 if t2i_adapter_pose_model is None:
                     t2i_adapter_pose_model = T2IAdapterModelNode(path=os.path.join(self.directories.models_t2i_adapters, "t2i-adapter-openpose-sdxl-1.0"))
                     self.node_graph.add_node(t2i_adapter_pose_model, "t2i_adapter_pose_model")
-            elif t2i_adapter_type == "Line Art":
+            elif t2i_adapter_type == "lineart":
                 t2i_adapter_lineart_model = self.node_graph.get_node_by_name("t2i_adapter_lineart_model")
 
                 if t2i_adapter_lineart_model is None:
@@ -306,7 +301,7 @@ class NodeGraphThread(QThread):
                         path=os.path.join(self.directories.models_t2i_adapters, "t2i-adapter-lineart-sdxl-1.0")
                     )
                     self.node_graph.add_node(t2i_adapter_lineart_model, "t2i_adapter_lineart_model")
-            elif t2i_adapter_type == "Sketch":
+            elif t2i_adapter_type == "sketch":
                 t2i_adapter_sketch_model = self.node_graph.get_node_by_name("t2i_adapter_sketch_model")
 
                 if t2i_adapter_sketch_model is None:
@@ -323,17 +318,15 @@ class NodeGraphThread(QThread):
                         conditioning_scale=t2i_adapter.conditioning_scale, conditioning_factor=t2i_adapter.conditioning_factor
                     )
 
-                    if t2i_adapter.adapter_type == "Canny":
+                    if t2i_adapter.adapter_type == "canny":
                         t2i_adapter_node.connect("t2i_adapter_model", t2i_adapter_canny_model, "t2i_adapter_model")
-                    elif t2i_adapter.adapter_type == "Depth Midas":
+                    elif t2i_adapter.adapter_type == "depth":
                         t2i_adapter_node.connect("t2i_adapter_model", t2i_adapter_depth_model, "t2i_adapter_model")
-                    elif t2i_adapter.adapter_type == "Depth Zoe":
-                        t2i_adapter_node.connect("t2i_adapter_model", t2i_adapter_depth_zoe_model, "t2i_adapter_model")
-                    elif t2i_adapter.adapter_type == "Pose":
+                    elif t2i_adapter.adapter_type == "pose":
                         t2i_adapter_node.connect("t2i_adapter_model", t2i_adapter_pose_model, "t2i_adapter_model")
-                    elif t2i_adapter.adapter_type == "Line Art":
+                    elif t2i_adapter.adapter_type == "lineart":
                         t2i_adapter_node.connect("t2i_adapter_model", t2i_adapter_lineart_model, "t2i_adapter_model")
-                    elif t2i_adapter.adapter_type == "Sketch":
+                    elif t2i_adapter.adapter_type == "sketch":
                         t2i_adapter_node.connect("t2i_adapter_model", t2i_adapter_sketch_model, "t2i_adapter_model")
 
                     t2i_adapter_node.connect("image", t2i_adapter_image_node, "image")
@@ -358,6 +351,8 @@ class NodeGraphThread(QThread):
         removed_t2i_adapters = self.t2i_adapter_list.get_removed()
         if len(removed_t2i_adapters) > 0:
             for t2i_adapter in removed_t2i_adapters:
+                adapter_image_node = self.node_graph.get_node_by_name(f"adapter_image_{t2i_adapter.id}")
+                self.node_graph.delete_node_by_id(adapter_image_node.id)
                 self.node_graph.delete_node_by_id(t2i_adapter.id)
 
         self.t2i_adapter_list.save_state()
