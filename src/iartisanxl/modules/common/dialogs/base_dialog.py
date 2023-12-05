@@ -3,6 +3,7 @@ from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import QPainter, QColor, QPen
 
 from iartisanxl.app.directories import DirectoriesObject
+from iartisanxl.app.preferences import PreferencesObject
 from iartisanxl.app.title_bar import TitleBar
 from iartisanxl.modules.common.image_viewer_simple import ImageViewerSimple
 from iartisanxl.modules.common.prompt_window import PromptWindow
@@ -31,6 +32,7 @@ class BaseDialog(QDialog):
     def __init__(
         self,
         directories: DirectoriesObject,
+        preferences: PreferencesObject,
         title: str,
         show_error: callable,
         image_generation_data: ImageGenerationData,
@@ -44,6 +46,7 @@ class BaseDialog(QDialog):
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint)
         self.show_error = show_error
         self.directories = directories
+        self.preferences = preferences
         self.image_generation_data = image_generation_data
         self.image_viewer = image_viewer
         self.prompt_window = prompt_window

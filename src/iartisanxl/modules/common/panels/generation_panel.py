@@ -228,6 +228,7 @@ class GenerationPanel(BasePanel):
         if self.parent().model_dialog is None:
             self.parent().model_dialog = ModelDialog(
                 self.directories,
+                self.preferences,
                 "Models",
                 self.show_error,
                 self.image_generation_data,

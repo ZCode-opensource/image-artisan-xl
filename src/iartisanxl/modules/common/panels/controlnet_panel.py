@@ -48,6 +48,7 @@ class ControlNetPanel(BasePanel):
         if self.parent().controlnet_dialog is None:
             self.parent().controlnet_dialog = ControlNetDialog(
                 self.directories,
+                self.preferences,
                 "ControlNet",
                 self.show_error,
                 self.image_generation_data,

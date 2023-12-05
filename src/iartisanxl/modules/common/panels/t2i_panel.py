@@ -48,6 +48,7 @@ class T2IPanel(BasePanel):
         if self.parent().t2i_adapter_dialog is None:
             self.parent().t2i_adapter_dialog = T2IDialog(
                 self.directories,
+                self.preferences,
                 "T2I adapter",
                 self.show_error,
                 self.image_generation_data,

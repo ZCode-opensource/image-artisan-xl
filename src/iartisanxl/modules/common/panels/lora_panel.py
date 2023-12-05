@@ -71,6 +71,7 @@ class LoraPanel(BasePanel):
         if self.parent().lora_dialog is None:
             self.parent().lora_dialog = LoraDialog(
                 self.directories,
+                self.preferences,
                 "LoRAs",
                 self.show_error,
                 self.image_generation_data,

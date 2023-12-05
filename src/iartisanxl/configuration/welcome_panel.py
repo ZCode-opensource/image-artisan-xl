@@ -65,14 +65,14 @@ class WelcomePanel(BaseSetupPanel):
         base_dirs = ["Documents", "Image Artisan XL"]
 
         sub_dirs = {
-            "models_diffusers": "./models/diffusers",
-            "models_safetensors": "./models/safetensors",
-            "vaes": "./models/vae",
-            "models_loras": "./models/loras",
-            "models_controlnets": "./models/controlnet",
-            "models_t2i_adapters": "./models/t2i-adapter",
-            "models_ip2_adapters": "./models/ip-adapter",
-            "outputs_images": "./outputs/images",
+            "models_diffusers": os.path.join("models", "diffusers"),
+            "models_safetensors": os.path.join("models", "safetensors"),
+            "vaes": os.path.join("models", "vae"),
+            "models_loras": os.path.join("models", "loras"),
+            "models_controlnets": os.path.join("models", "controlnet"),
+            "models_t2i_adapters": os.path.join("models", "t2i-adapter"),
+            "models_ip_adapters": os.path.join("models", "ip-adapter"),
+            "outputs_images": os.path.join("outputs", "images"),
         }
 
         home_dir = os.path.expanduser("~")
@@ -93,6 +93,9 @@ class WelcomePanel(BaseSetupPanel):
         settings.setValue("models_safetensors", self.directories.models_safetensors)
         settings.setValue("vaes", self.directories.vaes)
         settings.setValue("models_loras", self.directories.models_loras)
+        settings.setValue("models_controlnets", self.directories.models_controlnets)
+        settings.setValue("models_t2i_adapters", self.directories.models_t2i_adapters)
+        settings.setValue("models_ip_adapters", self.directories.models_ip_adapters)
         settings.setValue("outputs_images", self.directories.outputs_images)
 
         self.finish_setup.emit()

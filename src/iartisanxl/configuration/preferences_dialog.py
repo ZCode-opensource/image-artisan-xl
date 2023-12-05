@@ -48,23 +48,17 @@ class SelectDirectoryWidget(QWidget):
         directory_widget.setObjectName("setup_directory_widget")
         directory_layout = QVBoxLayout(directory_widget)
 
-        select_directory_button = QPushButton(
-            f"Select {self.directory_text.lower()} directory"
-        )
-        select_directory_button.clicked.connect(
-            lambda: self.select_function(self.directory_type)
-        )
+        select_directory_button = QPushButton(f"Select {self.directory_text.lower()} directory")
+        select_directory_button.clicked.connect(lambda: self.select_function(self.directory_type))
         select_directory_button.parent_widget = self
         directory_layout.addWidget(select_directory_button)
 
         path_layout = QHBoxLayout()
-        path_label = QLabel(f"{self.directory_text} path: ")
+        path_label = QLabel("Path: ")
         path_label.setFixedWidth(90)
         path_layout.addWidget(path_label)
         self.directory_label = QLabel(self.selected_dir)
-        path_layout.addWidget(
-            self.directory_label, alignment=Qt.AlignmentFlag.AlignLeft
-        )
+        path_layout.addWidget(self.directory_label, alignment=Qt.AlignmentFlag.AlignLeft)
         directory_layout.addLayout(path_layout)
 
         main_layout.addWidget(directory_widget)
@@ -115,9 +109,7 @@ class PreferencesDialog(QDialog):
 
         left_layout = QVBoxLayout()
         left_layout.setSpacing(1)
-        diffusers_widget = SelectDirectoryWidget(
-            self.directories.models_diffusers, "Diffusers", 1, self.on_select_directory
-        )
+        diffusers_widget = SelectDirectoryWidget(self.directories.models_diffusers, "Diffusers", 1, self.on_select_directory)
         left_layout.addWidget(diffusers_widget, stretch=1)
         safetensors_widget = SelectDirectoryWidget(
             self.directories.models_safetensors,
@@ -126,13 +118,9 @@ class PreferencesDialog(QDialog):
             self.on_select_directory,
         )
         left_layout.addWidget(safetensors_widget, stretch=1)
-        vaes_widget = SelectDirectoryWidget(
-            self.directories.vaes, "Vaes", 3, self.on_select_directory
-        )
+        vaes_widget = SelectDirectoryWidget(self.directories.vaes, "Vaes", 3, self.on_select_directory)
         left_layout.addWidget(vaes_widget, stretch=1)
-        loras_widget = SelectDirectoryWidget(
-            self.directories.models_loras, "LoRAs", 4, self.on_select_directory
-        )
+        loras_widget = SelectDirectoryWidget(self.directories.models_loras, "LoRAs", 4, self.on_select_directory)
         left_layout.addWidget(loras_widget, stretch=1)
         controlnets_widget = SelectDirectoryWidget(
             self.directories.models_controlnets,
@@ -141,10 +129,24 @@ class PreferencesDialog(QDialog):
             self.on_select_directory,
         )
         left_layout.addWidget(controlnets_widget, stretch=1)
+        t2i_adapters_widget = SelectDirectoryWidget(
+            self.directories.models_t2i_adapters,
+            "T2I Adapters",
+            6,
+            self.on_select_directory,
+        )
+        left_layout.addWidget(t2i_adapters_widget, stretch=1)
+        ip_adapters_widget = SelectDirectoryWidget(
+            self.directories.models_ip_adapters,
+            "IP Adapters",
+            7,
+            self.on_select_directory,
+        )
+        left_layout.addWidget(ip_adapters_widget, stretch=1)
         images_widget = SelectDirectoryWidget(
             self.directories.outputs_images,
             "Output images",
-            6,
+            8,
             self.on_select_directory,
         )
         left_layout.addWidget(images_widget, stretch=1)
@@ -156,12 +158,8 @@ class PreferencesDialog(QDialog):
         inner_right_layout = QGridLayout()
         inner_right_layout.setSpacing(10)
         self.intermediate_images_checkbox = QCheckBox("Display intermediate images")
-        self.intermediate_images_checkbox.setChecked(
-            self.preferences.intermediate_images
-        )
-        self.intermediate_images_checkbox.stateChanged.connect(
-            self.on_checkbox_state_changed
-        )
+        self.intermediate_images_checkbox.setChecked(self.preferences.intermediate_images)
+        self.intermediate_images_checkbox.stateChanged.connect(self.on_checkbox_state_changed)
         inner_right_layout.addWidget(self.intermediate_images_checkbox, 0, 0)
         self.tomes_base_checkbox = QCheckBox("Enable token merging")
         self.tomes_base_checkbox.setChecked(self.preferences.use_tomes)
@@ -173,9 +171,7 @@ class PreferencesDialog(QDialog):
         inner_right_layout.addWidget(self.offload_base_checkbox, 1, 0)
         self.sequential_offload_checkbox = QCheckBox("Enable sequential CPU offload")
         self.sequential_offload_checkbox.setChecked(self.preferences.sequential_offload)
-        self.sequential_offload_checkbox.stateChanged.connect(
-            self.on_checkbox_state_changed
-        )
+        self.sequential_offload_checkbox.stateChanged.connect(self.on_checkbox_state_changed)
         inner_right_layout.addWidget(self.sequential_offload_checkbox, 1, 1)
         right_layout.addLayout(inner_right_layout)
 
@@ -184,35 +180,21 @@ class PreferencesDialog(QDialog):
         image_options_layout = QGridLayout()
         image_options_layout.setSpacing(10)
         self.save_image_metadata_checkbox = QCheckBox("Save image metadata")
-        self.save_image_metadata_checkbox.setChecked(
-            self.preferences.save_image_metadata
-        )
-        self.save_image_metadata_checkbox.stateChanged.connect(
-            self.on_checkbox_state_changed
-        )
+        self.save_image_metadata_checkbox.setChecked(self.preferences.save_image_metadata)
+        self.save_image_metadata_checkbox.stateChanged.connect(self.on_checkbox_state_changed)
         image_options_layout.addWidget(self.save_image_metadata_checkbox, 0, 0)
-        self.save_image_control_annotators_checkbox = QCheckBox(
-            "Save image control annotators"
-        )
-        self.save_image_control_annotators_checkbox.setChecked(
-            self.preferences.save_image_control_annotators
-        )
-        self.save_image_control_annotators_checkbox.stateChanged.connect(
-            self.on_checkbox_state_changed
-        )
-        image_options_layout.addWidget(
-            self.save_image_control_annotators_checkbox, 0, 1
-        )
-        self.save_image_control_sources_checkbox = QCheckBox(
-            "Save image control sources"
-        )
-        self.save_image_control_sources_checkbox.setChecked(
-            self.preferences.save_image_control_sources
-        )
-        self.save_image_control_sources_checkbox.stateChanged.connect(
-            self.on_checkbox_state_changed
-        )
+        self.save_image_control_annotators_checkbox = QCheckBox("Save image control annotators")
+        self.save_image_control_annotators_checkbox.setChecked(self.preferences.save_image_control_annotators)
+        self.save_image_control_annotators_checkbox.stateChanged.connect(self.on_checkbox_state_changed)
+        image_options_layout.addWidget(self.save_image_control_annotators_checkbox, 0, 1)
+        self.save_image_control_sources_checkbox = QCheckBox("Save image control sources")
+        self.save_image_control_sources_checkbox.setChecked(self.preferences.save_image_control_sources)
+        self.save_image_control_sources_checkbox.stateChanged.connect(self.on_checkbox_state_changed)
         image_options_layout.addWidget(self.save_image_control_sources_checkbox, 1, 0)
+        self.hide_nsfw_checkbox = QCheckBox("Hide NSFW tag")
+        self.hide_nsfw_checkbox.setChecked(self.preferences.hide_nsfw)
+        self.hide_nsfw_checkbox.stateChanged.connect(self.on_checkbox_state_changed)
+        image_options_layout.addWidget(self.hide_nsfw_checkbox, 1, 1)
         right_layout.addLayout(image_options_layout)
 
         right_layout.addStretch()
@@ -251,6 +233,9 @@ class PreferencesDialog(QDialog):
         elif sender == self.save_image_control_sources_checkbox:
             settings.setValue("save_image_control_sources", sender.isChecked())
             self.preferences.save_image_control_sources = sender.isChecked()
+        elif sender == self.hide_nsfw_checkbox:
+            settings.setValue("hide_nsfw", sender.isChecked())
+            self.preferences.hide_nsfw = sender.isChecked()
 
     def on_select_directory(self, dir_type):
         dialog = QFileDialog()
@@ -265,44 +250,42 @@ class PreferencesDialog(QDialog):
         settings = QSettings("ZCode", "ImageArtisanXL")
 
         if dir_type == 1:
-            selected_path = dialog.getExistingDirectory(
-                None, "Select a directory", self.directories.models_diffusers
-            )
-            self.directories.models_diffusers = selected_path
-            settings.setValue("models_diffusers", selected_path)
+            selected_path = dialog.getExistingDirectory(None, "Select a directory", self.directories.models_diffusers)
+            if len(selected_path) > 0:
+                self.directories.models_diffusers = selected_path
+                settings.setValue("models_diffusers", selected_path)
         elif dir_type == 2:
-            selected_path = dialog.getExistingDirectory(
-                None, "Select a directory", self.directories.models_safetensors
-            )
+            selected_path = dialog.getExistingDirectory(None, "Select a directory", self.directories.models_safetensors)
             self.directories.models_safetensors = selected_path
             settings.setValue("models_safetensors", selected_path)
         elif dir_type == 3:
-            selected_path = dialog.getExistingDirectory(
-                None, "Select a directory", self.directories.vaes
-            )
+            selected_path = dialog.getExistingDirectory(None, "Select a directory", self.directories.vaes)
             self.directories.vaes = selected_path
             settings.setValue("vaes", selected_path)
         elif dir_type == 4:
-            selected_path = dialog.getExistingDirectory(
-                None, "Select a directory", self.directories.models_loras
-            )
+            selected_path = dialog.getExistingDirectory(None, "Select a directory", self.directories.models_loras)
             self.directories.models_loras = selected_path
             settings.setValue("models_loras", selected_path)
         elif dir_type == 5:
-            selected_path = dialog.getExistingDirectory(
-                None, "Select a directory", self.directories.models_controlnets
-            )
+            selected_path = dialog.getExistingDirectory(None, "Select a directory", self.directories.models_controlnets)
             self.directories.models_controlnets = selected_path
             settings.setValue("models_controlnets", selected_path)
+        elif dir_type == 6:
+            selected_path = dialog.getExistingDirectory(None, "Select a directory", self.directories.models_t2i_adapters)
+            self.directories.models_t2i_adapters = selected_path
+            settings.setValue("models_t2i_adapters", selected_path)
+        elif dir_type == 7:
+            selected_path = dialog.getExistingDirectory(None, "Select a directory", self.directories.models_ip_adapters)
+            self.directories.models_ip_adapters = selected_path
+            settings.setValue("models_ip_adapters", selected_path)
         else:
-            selected_path = dialog.getExistingDirectory(
-                None, "Select a directory", self.directories.outputs_images
-            )
+            selected_path = dialog.getExistingDirectory(None, "Select a directory", self.directories.outputs_images)
             self.directories.outputs_images = selected_path
             settings.setValue("outputs_images", selected_path)
 
-        sender_button = self.sender()
-        sender_button.parent_widget.directory_label.setText(selected_path)
+        if len(selected_path) > 0:
+            sender_button = self.sender()
+            sender_button.parent_widget.directory_label.setText(selected_path)
 
     def paintEvent(self, event):
         super().paintEvent(event)

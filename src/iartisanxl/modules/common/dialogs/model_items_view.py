@@ -24,6 +24,7 @@ from iartisanxl.threads.model_items_loader_thread import ModelItemsLoaderThread
 from iartisanxl.modules.common.model_item import ModelItem
 from iartisanxl.modules.common.item_selector import ItemSelector
 from iartisanxl.modules.common.drop_lightbox import DropLightBox
+from iartisanxl.app.preferences import PreferencesObject
 
 
 class ModelItemsView(QWidget):
@@ -31,17 +32,19 @@ class ModelItemsView(QWidget):
     finished_loading = pyqtSignal()
     item_imported = pyqtSignal(str)
 
-    def __init__(self, directories: tuple, default_image: str, *args, **kwargs):
+    def __init__(self, directories: tuple, preferences: PreferencesObject, default_image: str, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
         self.thumb_width = 150
         self.thumb_height = 150
         self.directories = directories
+        self.preferences = preferences
         self.default_image = default_image
         self.model_items_loader_thread = None
         self.loading_images = False
         self.tags = None
         self.logger = logging.getLogger()
+        self.hide_nsfw = True
 
         self.setAcceptDrops(True)
 
@@ -113,9 +116,7 @@ class ModelItemsView(QWidget):
                             }
                             model_files.append(data)
             else:
-                for filepath in glob.iglob(
-                    os.path.join(directory["path"], "*.safetensors")
-                ):
+                for filepath in glob.iglob(os.path.join(directory["path"], "*.safetensors")):
                     filename = os.path.basename(filepath)
                     root_filename, _ = os.path.splitext(filename)
 
@@ -135,6 +136,7 @@ class ModelItemsView(QWidget):
             self.thumb_width,
             self.thumb_height,
             self.default_image,
+            self.preferences,
         )
         self.model_items_loader_thread.model_item_loaded.connect(self.add_model_item)
         self.model_items_loader_thread.finished.connect(self.on_loading_finished)
@@ -152,9 +154,7 @@ class ModelItemsView(QWidget):
 
     def add_model_item(self, data: dict, buffer: BytesIO):
         model_item = ModelItem(data, buffer, self.thumb_width, self.thumb_height)
-        model_item.clicked.connect(
-            lambda: self.model_item_clicked.emit(model_item.data)
-        )
+        model_item.clicked.connect(lambda: self.model_item_clicked.emit(model_item.data))
         self.flow_layout.addWidget(model_item)
 
         if data.get("tags") is not None:
@@ -166,9 +166,7 @@ class ModelItemsView(QWidget):
         options = QFileDialog.Option.ReadOnly | QFileDialog.Option.HideNameFilterDetails
         dialog.setOptions(options)
 
-        filepath, _ = dialog.getOpenFileName(
-            None, "Select a a model", "", "*.safetensors", options=options
-        )
+        filepath, _ = dialog.getOpenFileName(None, "Select a a model", "", "*.safetensors", options=options)
         self.item_imported.emit(filepath)
 
     def on_loading_finished(self):

@@ -178,11 +178,10 @@ OptimizationsPanel QCheckBox {
 
 PreferencesDialog SelectDirectoryWidget QWidget#setup_directory_widget {
     border: 1px solid #3d4466;
-    padding: 30px;
 }
 
 PreferencesDialog SelectDirectoryWidget QWidget {
-    padding: 10px;
+
 }
 
 PreferencesDialog QCheckBox {
