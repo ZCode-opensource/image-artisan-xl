@@ -45,20 +45,24 @@ class ControlNetPanel(BasePanel):
                 self.controlnets_layout.addWidget(controlnet_widget)
 
     def open_controlnet_dialog(self):
-        self.dialog = ControlNetDialog(
-            self.directories,
-            "ControlNet",
-            self.show_error,
-            self.image_generation_data,
-            self.image_viewer,
-            self.prompt_window,
-        )
-        self.dialog.closed.connect(self.on_dialog_closed)
-        self.dialog.show()
+        if self.parent().controlnet_dialog is None:
+            self.parent().controlnet_dialog = ControlNetDialog(
+                self.directories,
+                "ControlNet",
+                self.show_error,
+                self.image_generation_data,
+                self.image_viewer,
+                self.prompt_window,
+            )
+            self.parent().controlnet_dialog.closed.connect(self.on_dialog_closed)
+            self.parent().controlnet_dialog.show()
+        else:
+            self.parent().controlnet_dialog.raise_()
+            self.parent().controlnet_dialog.activateWindow()
 
     def on_dialog_closed(self):
-        self.dialog.depth_estimator = None
-        self.dialog = None
+        self.parent().controlnet_dialog.depth_estimator = None
+        self.parent().controlnet_dialog = None
         torch.cuda.empty_cache()
         torch.cuda.ipc_collect()
 

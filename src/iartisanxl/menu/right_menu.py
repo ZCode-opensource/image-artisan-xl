@@ -1,4 +1,4 @@
-from PyQt6.QtWidgets import QWidget, QSizePolicy, QHBoxLayout, QVBoxLayout, QFrame
+from PyQt6.QtWidgets import QSizePolicy, QHBoxLayout, QVBoxLayout, QFrame
 from PyQt6.QtCore import QPropertyAnimation, QEasingCurve, QTimer
 
 from iartisanxl.buttons.expand_right_button import ExpandRightButton
@@ -11,6 +11,7 @@ from iartisanxl.app.directories import DirectoriesObject
 from iartisanxl.app.preferences import PreferencesObject
 from iartisanxl.modules.common.image_viewer_simple import ImageViewerSimple
 from iartisanxl.modules.common.prompt_window import PromptWindow
+from iartisanxl.modules.common.panels.panel_container import PanelContainer
 
 
 class RightMenu(QFrame):
@@ -62,7 +63,6 @@ class RightMenu(QFrame):
         self.panels = {}
         self.current_panel = None
         self.current_panel_text = None
-
         self.init_ui()
 
     def init_ui(self):
@@ -78,14 +78,7 @@ class RightMenu(QFrame):
         self.button_layout.addStretch()
         self.main_layout.addLayout(self.button_layout)
 
-        self.panel_container = QWidget()
-        self.panel_container.setObjectName("panel_container")
-        self.panel_layout = QVBoxLayout()
-        self.panel_layout.setContentsMargins(0, 0, 0, 0)
-        self.panel_layout.setSpacing(0)
-        self.panel_container.setLayout(self.panel_layout)
-        self.panel_container.setMinimumWidth(0)
-        self.panel_container.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Expanding)
+        self.panel_container = PanelContainer()
         self.main_layout.addWidget(self.panel_container)
 
         self.setLayout(self.main_layout)
@@ -182,7 +175,7 @@ class RightMenu(QFrame):
             del self.current_panel
 
         panel = panel_class(*args, **kwargs)
-        self.panel_layout.addWidget(panel)
+        self.panel_container.panel_layout.addWidget(panel)
 
         self.current_panel = panel
         self.current_panel_text = text

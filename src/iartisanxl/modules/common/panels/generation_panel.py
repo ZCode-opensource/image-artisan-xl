@@ -225,22 +225,26 @@ class GenerationPanel(BasePanel):
         self.image_generation_data.base_scheduler = index
 
     def open_model_dialog(self):
-        self.dialog = ModelDialog(
-            self.directories,
-            "Models",
-            self.show_error,
-            self.image_generation_data,
-            self.image_viewer,
-            self.prompt_window,
-        )
+        if self.parent().model_dialog is None:
+            self.parent().model_dialog = ModelDialog(
+                self.directories,
+                "Models",
+                self.show_error,
+                self.image_generation_data,
+                self.image_viewer,
+                self.prompt_window,
+            )
 
-        self.dialog.closed.connect(self.on_dialog_closed)
-        self.dialog.loading_models = True
-        self.dialog.model_items_view.load_items()
-        self.dialog.show()
+            self.parent().model_dialog.closed.connect(self.on_dialog_closed)
+            self.parent().model_dialog.loading_models = True
+            self.parent().model_dialog.model_items_view.load_items()
+            self.parent().model_dialog.show()
+        else:
+            self.parent().model_dialog.raise_()
+            self.parent().model_dialog.activateWindow()
 
     def on_dialog_closed(self):
-        self.dialog = None
+        self.parent().model_dialog = None
 
     def on_vae_selected(self):
         vae = VaeDataObject(name=self.vae_combobox.currentText(), path=self.vae_combobox.currentData())

@@ -236,26 +236,6 @@ class TextToImageModule(BaseModule):
         torch.cuda.ipc_collect()
         super().closeEvent(event)
 
-    def on_dialogs(self, data):
-        if data["action"] == "open":
-            dialog_class = data["class"]
-            if dialog_class in self.dialogs:
-                self.dialogs[dialog_class].raise_()
-                self.dialogs[dialog_class].activateWindow()
-            else:
-                dialog = dialog_class(
-                    self.directories,
-                    data["title"],
-                    self.show_error,
-                    self.image_generation_data,
-                    self.image_viewer,
-                    self.prompt_window,
-                )
-                self.dialogs[dialog_class] = dialog
-                dialog.closed.connect(lambda: self.on_dialog_closed(dialog_class))
-                dialog.show()
-                dialog.dialog_raised()
-
     def dragEnterEvent(self, event):
         if event.mimeData().hasUrls():
             event.acceptProposedAction()

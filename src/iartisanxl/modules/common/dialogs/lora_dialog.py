@@ -69,10 +69,6 @@ class LoraDialog(BaseDialog):
         content_layout.addWidget(lora_frame)
         self.main_layout.addLayout(content_layout)
 
-        if not self.loading_loras:
-            self.loading_loras = True
-            self.lora_items_view.load_items()
-
     def load_settings(self):
         geometry = self.settings.value("geometry")
         if geometry:

@@ -24,6 +24,7 @@ class LoraPanel(BasePanel):
 
         self.loras = []
         self.lora_scale = 1.0
+        self.dialog = None
         self.init_ui()
 
         self.event_bus = EventBus()
@@ -67,7 +68,26 @@ class LoraPanel(BasePanel):
         self.image_generation_data.lora_scale = self.lora_scale
 
     def open_lora_dialog(self):
-        self.dialog_opened.emit(self, LoraDialog, "LoRAs")
+        if self.parent().lora_dialog is None:
+            self.parent().lora_dialog = LoraDialog(
+                self.directories,
+                "LoRAs",
+                self.show_error,
+                self.image_generation_data,
+                self.image_viewer,
+                self.prompt_window,
+            )
+
+            self.parent().lora_dialog.closed.connect(self.on_dialog_closed)
+            self.parent().lora_dialog.loading_loras = True
+            self.parent().lora_dialog.lora_items_view.load_items()
+            self.parent().lora_dialog.show()
+        else:
+            self.parent().lora_dialog.raise_()
+            self.parent().lora_dialog.activateWindow()
+
+    def on_dialog_closed(self):
+        self.parent().lora_dialog = None
 
     def clear_loras(self):
         self.loras = []

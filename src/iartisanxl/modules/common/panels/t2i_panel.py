@@ -45,20 +45,24 @@ class T2IPanel(BasePanel):
                 self.adapters_layout.addWidget(adapter_widget)
 
     def open_t2i_dialog(self):
-        self.dialog = T2IDialog(
-            self.directories,
-            "T2I adapter",
-            self.show_error,
-            self.image_generation_data,
-            self.image_viewer,
-            self.prompt_window,
-        )
-        self.dialog.closed.connect(self.on_dialog_closed)
-        self.dialog.show()
+        if self.parent().t2i_adapter_dialog is None:
+            self.parent().t2i_adapter_dialog = T2IDialog(
+                self.directories,
+                "T2I adapter",
+                self.show_error,
+                self.image_generation_data,
+                self.image_viewer,
+                self.prompt_window,
+            )
+            self.parent().t2i_adapter_dialog.closed.connect(self.on_dialog_closed)
+            self.parent().t2i_adapter_dialog.show()
+        else:
+            self.parent().t2i_adapter_dialog.raise_()
+            self.parent().t2i_adapter_dialog.activate()
 
     def on_dialog_closed(self):
-        self.dialog.depth_estimator = None
-        self.dialog = None
+        self.parent().t2i_adapter_dialog.depth_estimator = None
+        self.parent().t2i_adapter_dialog = None
         torch.cuda.empty_cache()
         torch.cuda.ipc_collect()
 

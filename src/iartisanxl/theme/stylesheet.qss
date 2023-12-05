@@ -17,23 +17,23 @@ RightMenu {
     border-radius: 10;
 }
 
-RightMenu QWidget#panel_container {
+PanelContainer {
     background-color: #2a3541;
 }
 
-RightMenu QWidget#panel_container QSlider, 
-RightMenu QWidget#panel_container QLabel, 
-RightMenu QWidget#panel_container QCheckBox {
+PanelContainer QWidget#panel_container QSlider, 
+PanelContainer QWidget#panel_container QLabel, 
+PanelContainer QWidget#panel_container QCheckBox {
     background-color: #2a3541;
     border: 0px;
 }
 
-RightMenu QWidget#panel_container QFrame {
+PanelContainer QWidget#panel_container QFrame {
     background-color: #2a3541;
     border: 1px solid #fff;
 }
 
-RightMenu QWidget#panel_container QLabel {
+PanelContainer QWidget#panel_container QLabel {
     border: 0;
 }
 
