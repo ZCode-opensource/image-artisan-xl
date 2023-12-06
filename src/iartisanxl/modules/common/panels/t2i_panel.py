@@ -1,5 +1,3 @@
-import torch
-
 from PyQt6.QtWidgets import QVBoxLayout, QPushButton, QWidget
 
 from iartisanxl.app.event_bus import EventBus
@@ -44,27 +42,17 @@ class T2IPanel(BasePanel):
                 self.adapters_layout.addWidget(adapter_widget)
 
     def open_t2i_dialog(self):
-        if self.parent().t2i_adapter_dialog is None:
-            self.parent().t2i_adapter_dialog = T2IDialog(
-                self.directories,
-                self.preferences,
-                "T2I adapter",
-                self.show_error,
-                self.image_generation_data,
-                self.image_viewer,
-                self.prompt_window,
-            )
-            self.parent().t2i_adapter_dialog.closed.connect(self.on_dialog_closed)
-            self.parent().t2i_adapter_dialog.show()
-        else:
-            self.parent().t2i_adapter_dialog.raise_()
-            self.parent().t2i_adapter_dialog.activate()
-
-    def on_dialog_closed(self):
-        self.parent().t2i_adapter_dialog.depth_estimator = None
-        self.parent().t2i_adapter_dialog = None
-        torch.cuda.empty_cache()
-        torch.cuda.ipc_collect()
+        self.parent().open_dialog(
+            "t2i",
+            T2IDialog,
+            self.directories,
+            self.preferences,
+            "T2I adapter",
+            self.show_error,
+            self.image_generation_data,
+            self.image_viewer,
+            self.prompt_window,
+        )
 
     def on_t2i_adapters(self, data):
         if data["action"] == "add":
@@ -95,16 +83,16 @@ class T2IPanel(BasePanel):
         self.adapters_layout.removeWidget(adapter_widget)
         adapter_widget.deleteLater()
 
-        if self.parent().t2i_adapter_dialog is not None:
-            self.parent().t2i_adapter_dialog.adapter = None
-            self.parent().t2i_adapter_dialog.reset_ui()
+        if self.parent().t2i_dialog is not None:
+            self.parent().t2i_dialog.adapter = None
+            self.parent().t2i_dialog.reset_ui()
 
     def on_edit_clicked(self, adapter: T2IAdapterDataObject):
-        if self.parent().t2i_adapter_dialog is None:
+        if self.parent().t2i_dialog is None:
             self.open_t2i_dialog()
 
-        self.parent().t2i_adapter_dialog.adapter = adapter
-        self.parent().t2i_adapter_dialog.update_ui()
+        self.parent().t2i_dialog.adapter = adapter
+        self.parent().t2i_dialog.update_ui()
 
     def clean_up(self):
         self.event_bus.unsubscribe("t2i_adapters", self.on_t2i_adapters)

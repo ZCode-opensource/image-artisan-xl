@@ -260,10 +260,14 @@ class T2IDialog(BaseDialog):
                     ),
                 )
             elif annotator_index == 1:
-                if self.depth_estimator is None:
-                    self.depth_estimator = DepthEstimator(self.depth_type_combo.currentData())
+                try:
+                    if self.depth_estimator is None:
+                        self.depth_estimator = DepthEstimator(self.depth_type_combo.currentData())
 
-                self.depth_estimator.change_model(self.depth_type_combo.currentData())
+                    self.depth_estimator.change_model(self.depth_type_combo.currentData())
+                except OSError:
+                    self.show_error("You need to download the annotators from the downloader menu first.")
+                    return
 
                 annotator_image = self.depth_estimator.get_depth_map(
                     numpy_image,
@@ -273,8 +277,12 @@ class T2IDialog(BaseDialog):
                     ),
                 )
             elif annotator_index == 2:
-                if self.openpose_detector is None:
-                    self.openpose_detector = OpenPoseDetector()
+                try:
+                    if self.openpose_detector is None:
+                        self.openpose_detector = OpenPoseDetector()
+                except FileNotFoundError:
+                    self.show_error("You need to download the annotators from the downloader menu first.")
+                    return
 
                 annotator_image = self.openpose_detector.get_open_pose(
                     numpy_image,
@@ -284,10 +292,14 @@ class T2IDialog(BaseDialog):
                     ),
                 )
             elif annotator_index == 3:
-                if self.lineart_generator is None:
-                    self.lineart_generator = LineArtGenerator(model_type=self.lineart_type_combo.currentData())
+                try:
+                    if self.lineart_generator is None:
+                        self.lineart_generator = LineArtGenerator(model_type=self.lineart_type_combo.currentData())
 
-                self.lineart_generator.change_model(self.lineart_type_combo.currentData())
+                    self.lineart_generator.change_model(self.lineart_type_combo.currentData())
+                except FileNotFoundError:
+                    self.show_error("You need to download the annotators from the downloader menu first.")
+                    return
 
                 annotator_image = self.lineart_generator.get_lines(
                     numpy_image,
@@ -297,8 +309,12 @@ class T2IDialog(BaseDialog):
                     ),
                 )
             elif annotator_index == 4:
-                if self.pidinet_generator is None:
-                    self.pidinet_generator = PidinetGenerator(self.sketch_type_combo.currentData())
+                try:
+                    if self.pidinet_generator is None:
+                        self.pidinet_generator = PidinetGenerator(self.sketch_type_combo.currentData())
+                except FileNotFoundError:
+                    self.show_error("You need to download the annotators from the downloader menu first.")
+                    return
 
                 self.pidinet_generator.change_model(self.sketch_type_combo.currentData())
 

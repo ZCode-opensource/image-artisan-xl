@@ -18,6 +18,7 @@ from iartisanxl.windows.snackbar import SnackBar
 from iartisanxl.app.directories import DirectoriesObject
 from iartisanxl.app.preferences import PreferencesObject
 from iartisanxl.configuration.preferences_dialog import PreferencesDialog
+from iartisanxl.app.downloader_dialog import DownloaderDialog
 
 
 class MainWindow(QMainWindow):
@@ -62,12 +63,8 @@ class MainWindow(QMainWindow):
 
         self.settings.beginGroup("gui")
         self.gui_options = {
-            "left_menu_expanded": self.settings.value(
-                "left_menu_expanded", True, type=bool
-            ),
-            "current_module": self.settings.value(
-                "current_module", "Text to image", type=str
-            ),
+            "left_menu_expanded": self.settings.value("left_menu_expanded", True, type=bool),
+            "current_module": self.settings.value("current_module", "Text to image", type=str),
         }
         self.settings.endGroup()
 
@@ -85,6 +82,7 @@ class MainWindow(QMainWindow):
         self.snackbar_timer.timeout.connect(self.hide_snackbar)
 
         self.preferences_dialog = None
+        self.downloader_dialog = None
 
         self.load_modules()
 
@@ -116,6 +114,7 @@ class MainWindow(QMainWindow):
 
         self.left_menu = LeftMenu(self.gui_options)
         self.left_menu.open_preferences.connect(self.on_open_preferences)
+        self.left_menu.open_downloader.connect(self.on_open_downloader)
         content_layout.addWidget(self.left_menu)
 
         workspace = QFrame()
@@ -149,9 +148,7 @@ class MainWindow(QMainWindow):
         self.settings.endGroup()
 
         self.settings.beginGroup("gui")
-        self.settings.setValue(
-            "left_menu_expanded", self.gui_options.get("left_menu_expanded")
-        )
+        self.settings.setValue("left_menu_expanded", self.gui_options.get("left_menu_expanded"))
         self.settings.setValue("current_module", self.gui_options.get("current_module"))
         self.settings.endGroup()
 
@@ -165,9 +162,7 @@ class MainWindow(QMainWindow):
 
     def load_modules(self):
         for label, (icon, module_class) in MODULES.items():
-            self.left_menu.add_module_button(
-                icon, label, module_class, self.load_module
-            )
+            self.left_menu.add_module_button(icon, label, module_class, self.load_module)
 
     def load_module(self, module_class, label):
         if self.workspace_layout.count() > 0:
@@ -177,15 +172,11 @@ class MainWindow(QMainWindow):
             current_module.deleteLater()
 
         try:
-            self.module = module_class(
-                self.status_bar, self.show_snackbar, self.directories, self.preferences
-            )
+            self.module = module_class(self.status_bar, self.show_snackbar, self.directories, self.preferences)
             self.workspace_layout.addWidget(self.module)
             self.gui_options["current_module"] = label
         except TypeError as module_error:
-            self.logger.error(
-                "Error loading the module with this message: %s", str(module_error)
-            )
+            self.logger.error("Error loading the module with this message: %s", str(module_error))
             self.logger.debug("TypeError exception", exc_info=True)
             self.show_snackbar(f"{module_error}")
 
@@ -244,3 +235,7 @@ class MainWindow(QMainWindow):
     def on_open_preferences(self):
         self.preferences_dialog = PreferencesDialog(self.directories, self.preferences)
         self.preferences_dialog.show()
+
+    def on_open_downloader(self):
+        self.downloader_dialog = DownloaderDialog(self.directories)
+        self.downloader_dialog.show()

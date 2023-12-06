@@ -369,3 +369,46 @@ QListView::item:selected {
     background-color: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
                             stop: 0 #4a4d63, stop: 1 #3a3e4d);
 }
+
+DownloaderDialog QProgressBar:horizontal {
+    background-color: #353636;
+    border: 10px solid #181b28;
+    border-radius: 0.13em;
+    padding: 0em;
+}
+
+DownloaderDialog DownloadItem {    
+    border: 1px solid #bbbbbb;
+}
+
+DownloaderDialog DownloadItem QWidget {
+    color: #ffffff;  
+}
+
+DownloaderDialog DownloadItem QCheckBox {
+    background-color: #181b28;
+}
+
+DownloaderDialog DownloadItem:disabled {
+    border: 1px solid #424242;
+}
+
+DownloaderDialog DownloadItem QWidget:disabled {    
+    color: #747474;    
+}
+
+QTabWidget#tab_downloader QTabBar::tab {
+    background-color: #181b28;
+}
+
+QTabWidget#tab_downloader::pane {
+    border: 1px solid #25293d;
+}
+
+QTabWidget#tab_downloader QTabBar::tab:selected {
+    background-color: #2c3149;
+}
+
+QTabWidget#tab_downloader>QWidget>QWidget {
+    background-color: #181b28;
+}
