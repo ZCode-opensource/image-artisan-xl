@@ -16,7 +16,6 @@ class T2IPanel(BasePanel):
         self.event_bus = EventBus()
         self.event_bus.subscribe("t2i_adapters", self.on_t2i_adapters)
         self.t2i_adapters = []
-        self.dialog = None
 
         self.init_ui()
         self.update_ui()
@@ -96,16 +95,16 @@ class T2IPanel(BasePanel):
         self.adapters_layout.removeWidget(adapter_widget)
         adapter_widget.deleteLater()
 
-        if self.dialog is not None:
-            self.dialog.adapter = None
-            self.dialog.reset_ui()
+        if self.parent().t2i_adapter_dialog is not None:
+            self.parent().t2i_adapter_dialog.adapter = None
+            self.parent().t2i_adapter_dialog.reset_ui()
 
     def on_edit_clicked(self, adapter: T2IAdapterDataObject):
-        if self.dialog is None:
+        if self.parent().t2i_adapter_dialog is None:
             self.open_t2i_dialog()
 
-        self.dialog.adapter = adapter
-        self.dialog.update_ui()
+        self.parent().t2i_adapter_dialog.adapter = adapter
+        self.parent().t2i_adapter_dialog.update_ui()
 
     def clean_up(self):
         self.event_bus.unsubscribe("t2i_adapters", self.on_t2i_adapters)
