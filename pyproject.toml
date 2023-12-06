@@ -24,7 +24,7 @@ dependencies = [
     "tomesd",
     "attrs",
     "omegaconf",
-    "peft>=0.6.3",
+    "peft>=0.6.3.dev0",
     "opencv-python>=4.8.1.78",
     "matplotlib",
     "scikit-image",

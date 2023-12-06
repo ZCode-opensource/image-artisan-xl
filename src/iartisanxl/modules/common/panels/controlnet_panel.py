@@ -16,7 +16,6 @@ class ControlNetPanel(BasePanel):
         self.event_bus = EventBus()
         self.event_bus.subscribe("controlnet", self.on_controlnet)
         self.controlnets = []
-        self.dialog = None
 
         self.init_ui()
         self.update_ui()
@@ -45,20 +44,17 @@ class ControlNetPanel(BasePanel):
                 self.controlnets_layout.addWidget(controlnet_widget)
 
     def open_controlnet_dialog(self):
-        if self.parent().controlnet_dialog is None:
-            self.parent().controlnet_dialog = ControlNetDialog(
-                self.directories,
-                "ControlNet",
-                self.show_error,
-                self.image_generation_data,
-                self.image_viewer,
-                self.prompt_window,
-            )
-            self.parent().controlnet_dialog.closed.connect(self.on_dialog_closed)
-            self.parent().controlnet_dialog.show()
-        else:
-            self.parent().controlnet_dialog.raise_()
-            self.parent().controlnet_dialog.activateWindow()
+        self.parent().open_dialog(
+            "controlnet",
+            ControlNetDialog,
+            self.directories,
+            self.preferences,
+            "ControlNet",
+            self.show_error,
+            self.image_generation_data,
+            self.image_viewer,
+            self.prompt_window,
+        )
 
     def on_dialog_closed(self):
         self.parent().controlnet_dialog.depth_estimator = None
@@ -95,16 +91,17 @@ class ControlNetPanel(BasePanel):
         self.controlnets_layout.removeWidget(controlnet_widget)
         controlnet_widget.deleteLater()
 
-        if self.dialog is not None:
-            self.dialog.controlnet = None
-            self.dialog.reset_ui()
+        if self.parent().controlnet_dialog is not None:
+            self.parent().controlnet_dialog.controlnet = None
+            self.parent().controlnet_dialog.reset_ui()
 
     def on_edit_clicked(self, controlnet: ControlNetDataObject):
-        if self.dialog is None:
+        if self.parent().controlnet_dialog is None:
             self.open_controlnet_dialog()
 
-        self.dialog.controlnet = controlnet
-        self.dialog.update_ui()
+        self.parent().controlnet_dialog.controlnet = controlnet
+        self.parent().controlnet_dialog.update_ui()
+        self.parent().controlnet_dialog.raise_()
 
     def clean_up(self):
         self.event_bus.unsubscribe("controlnet", self.on_controlnet)

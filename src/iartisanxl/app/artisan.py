@@ -49,6 +49,7 @@ class ArtisanApplication(QApplication):
         save_image_metadata = settings.value("save_image_metadata", False, type=bool)
         save_image_control_annotators = settings.value("save_image_control_annotators", False, type=bool)
         save_image_control_sources = settings.value("save_image_control_sources", False, type=bool)
+        hide_nsfw = settings.value("hide_nsfw", True, type=bool)
 
         self.preferences = PreferencesObject(
             intermediate_images=intermediate_images,
@@ -58,6 +59,7 @@ class ArtisanApplication(QApplication):
             save_image_metadata=save_image_metadata,
             save_image_control_annotators=save_image_control_annotators,
             save_image_control_sources=save_image_control_sources,
+            hide_nsfw=hide_nsfw,
         )
 
         models_diffusers = settings.value("models_diffusers", None, type=str)
@@ -66,7 +68,7 @@ class ArtisanApplication(QApplication):
         models_loras = settings.value("models_loras", None, type=str)
         models_controlnets = settings.value("models_controlnets", None, type=str)
         models_t2i_adapters = settings.value("models_t2i_adapters", None, type=str)
-        models_ip2_adapters = settings.value("models_ip2_adapters", None, type=str)
+        models_ip_adapters = settings.value("models_ip_adapters", None, type=str)
         outputs_images = settings.value("outputs_images", None, type=str)
 
         self.directories = DirectoriesObject(
@@ -76,7 +78,7 @@ class ArtisanApplication(QApplication):
             models_loras=models_loras,
             models_controlnets=models_controlnets,
             models_t2i_adapters=models_t2i_adapters,
-            models_ip2_adapters=models_ip2_adapters,
+            models_ip_adapters=models_ip_adapters,
             outputs_images=outputs_images,
         )
 
@@ -89,7 +91,7 @@ class ArtisanApplication(QApplication):
                 models_loras,
                 models_controlnets,
                 models_t2i_adapters,
-                models_ip2_adapters,
+                models_ip_adapters,
                 outputs_images,
             ]
         ):

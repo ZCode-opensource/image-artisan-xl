@@ -56,7 +56,7 @@ class ModelDialog(BaseDialog):
     def init_ui(self):
         content_layout = QHBoxLayout()
 
-        self.model_items_view = ModelItemsView(self.model_directories, self.MODEL_IMG)
+        self.model_items_view = ModelItemsView(self.model_directories, self.preferences, self.MODEL_IMG)
         self.model_items_view.model_item_clicked.connect(self.on_model_item_clicked)
         self.model_items_view.item_imported.connect(self.on_model_imported)
         self.model_items_view.finished_loading.connect(self.on_finished_loading_models)

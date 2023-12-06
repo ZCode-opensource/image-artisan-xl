@@ -54,7 +54,7 @@ class LoraDialog(BaseDialog):
     def init_ui(self):
         content_layout = QHBoxLayout()
 
-        self.lora_items_view = ModelItemsView(self.loras_directories, self.LORA_IMG)
+        self.lora_items_view = ModelItemsView(self.loras_directories, self.preferences, self.LORA_IMG)
         self.lora_items_view.item_imported.connect(self.on_lora_imported)
         self.lora_items_view.model_item_clicked.connect(self.on_lora_item_clicked)
         self.lora_items_view.finished_loading.connect(self.on_finished_loading_loras)

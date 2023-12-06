@@ -7,6 +7,7 @@ from PIL import Image
 from PyQt6.QtCore import QThread, pyqtSignal
 
 from iartisanxl.modules.common.model_utils import get_metadata_from_safetensors
+from iartisanxl.app.preferences import PreferencesObject
 
 
 class ModelItemsLoaderThread(QThread):
@@ -18,6 +19,7 @@ class ModelItemsLoaderThread(QThread):
         item_width: int,
         item_height: int,
         default_image: str,
+        preferences: PreferencesObject,
         *args,
         **kwargs,
     ):
@@ -26,11 +28,10 @@ class ModelItemsLoaderThread(QThread):
         self.model_files = model_files
         self.item_width = item_width
         self.item_height = item_height
+        self.preferences = preferences
 
         pil_image = Image.open(default_image)
-        pil_image.thumbnail(
-            (self.item_width, self.item_height), Image.Resampling.LANCZOS
-        )
+        pil_image.thumbnail((self.item_width, self.item_height), Image.Resampling.LANCZOS)
         self.default_image_buffer = BytesIO()
         pil_image.save(self.default_image_buffer, format="WEBP")
 
@@ -51,6 +52,9 @@ class ModelItemsLoaderThread(QThread):
             image = metadata.get("iartisan_image")
             tags = metadata.get("iartisan_tags")
 
+            if self.preferences.hide_nsfw and tags is not None and "nsfw" in tags:
+                continue
+
             if image is not None:
                 img_bytes = base64.b64decode(image)
                 buffer = io.BytesIO(img_bytes)
@@ -64,11 +68,7 @@ class ModelItemsLoaderThread(QThread):
                 model["name"] = name
             else:
                 root_filename = model["root_filename"]
-                model["name"] = (
-                    (root_filename[:20] + "...")
-                    if len(root_filename) > 20
-                    else root_filename
-                )
+                model["name"] = (root_filename[:20] + "...") if len(root_filename) > 20 else root_filename
 
             if version is not None:
                 model_version = version

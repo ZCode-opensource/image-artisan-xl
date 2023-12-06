@@ -37,7 +37,6 @@ class GenerationPanel(BasePanel):
         if self.directories.vaes and os.path.isdir(self.directories.vaes):
             self.vaes = next(os.walk(self.directories.vaes))[1]
 
-        self.dialog = None
         self.init_ui()
         self.update_ui()
 
@@ -121,7 +120,6 @@ class GenerationPanel(BasePanel):
 
         self.vae_combobox = QComboBox()
         self.vae_combobox.addItem("Model default", "")
-        self.vae_combobox.addItem("Vae FP16 Fixed", "./models/vae-fp16")
         if self.vaes:
             for vae in self.vaes:
                 self.vae_combobox.addItem(vae, self.directories.vaes + "/" + vae)
@@ -225,29 +223,28 @@ class GenerationPanel(BasePanel):
         self.image_generation_data.base_scheduler = index
 
     def open_model_dialog(self):
-        if self.parent().model_dialog is None:
-            self.parent().model_dialog = ModelDialog(
-                self.directories,
-                "Models",
-                self.show_error,
-                self.image_generation_data,
-                self.image_viewer,
-                self.prompt_window,
-            )
+        self.parent().open_dialog(
+            "model",
+            ModelDialog,
+            self.directories,
+            self.preferences,
+            "Models",
+            self.show_error,
+            self.image_generation_data,
+            self.image_viewer,
+            self.prompt_window,
+        )
 
-            self.parent().model_dialog.closed.connect(self.on_dialog_closed)
-            self.parent().model_dialog.loading_models = True
-            self.parent().model_dialog.model_items_view.load_items()
-            self.parent().model_dialog.show()
-        else:
-            self.parent().model_dialog.raise_()
-            self.parent().model_dialog.activateWindow()
-
-    def on_dialog_closed(self):
-        self.parent().model_dialog = None
+        self.parent().model_dialog.loading_models = True
+        self.parent().model_dialog.model_items_view.load_items()
 
     def on_vae_selected(self):
-        vae = VaeDataObject(name=self.vae_combobox.currentText(), path=self.vae_combobox.currentData())
+        path = self.vae_combobox.currentData()
+
+        if len(path) == 0:
+            path = os.path.join(self.image_generation_data.model.path, "vae")
+
+        vae = VaeDataObject(name=self.vae_combobox.currentText(), path=path)
         self.image_generation_data.vae = vae
 
     def on_split_positive_prompt(self, value):

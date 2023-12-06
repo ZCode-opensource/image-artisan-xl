@@ -45,13 +45,7 @@ class ImageGenerationData:
 
     def get_changed_attributes(self):
         current_state = attr.asdict(self)
-        changed_attributes = {
-            k: v
-            for k, v in current_state.items()
-            if k != "previous_state"
-            and self.previous_state
-            and self.previous_state[k] != v
-        }
+        changed_attributes = {k: v for k, v in current_state.items() if k != "previous_state" and self.previous_state and self.previous_state[k] != v}
         return changed_attributes
 
     def update_from_json(self, json_graph):
@@ -140,7 +134,7 @@ class ImageGenerationData:
         node_graph.add_node(prompts_encoder, "prompts_encoder")
 
         vae_model = VaeModelNode(path=self.vae.path, vae_name=self.vae.name)
-        node_graph.add_node(vae_model, "vae_model")
+        node_graph.add_node(vae_model, "vae")
 
         seed = NumberNode(number=self.seed)
         node_graph.add_node(seed, "seed")
@@ -172,16 +166,12 @@ class ImageGenerationData:
         image_generation.connect("scheduler", base_scheduler, "scheduler")
         image_generation.connect("num_inference_steps", steps, "value")
         image_generation.connect("latents", latents, "latents")
-        image_generation.connect(
-            "pooled_prompt_embeds", prompts_encoder, "pooled_prompt_embeds"
-        )
+        image_generation.connect("pooled_prompt_embeds", prompts_encoder, "pooled_prompt_embeds")
         image_generation.connect("width", image_width, "value")
         image_generation.connect("height", image_height, "value")
         image_generation.connect("prompt_embeds", prompts_encoder, "prompt_embeds")
         image_generation.connect("guidance_scale", guidance_scale, "value")
-        image_generation.connect(
-            "negative_prompt_embeds", prompts_encoder, "negative_prompt_embeds"
-        )
+        image_generation.connect("negative_prompt_embeds", prompts_encoder, "negative_prompt_embeds")
         image_generation.connect(
             "negative_pooled_prompt_embeds",
             prompts_encoder,

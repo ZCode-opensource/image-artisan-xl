@@ -66,17 +66,19 @@ class NodeGraphThread(QThread):
             send_node.image_callback = self.preview_image
         else:
             changed = self.image_generation_data.get_changed_attributes()
+
             for attr_name, new_value in changed.items():
                 node = self.node_graph.get_node_by_name(attr_name)
 
-                if attr_name == "model":
-                    node.update_model(path=new_value["path"], model_name=new_value["name"], version=new_value["version"], model_type=new_value["type"])
-                elif attr_name == "vae":
-                    node.update_model(path=new_value["path"], vae_name=new_value["name"])
-                else:
-                    node.update_value(new_value)
+                if node is not None:
+                    if attr_name == "model":
+                        node.update_model(path=new_value["path"], model_name=new_value["name"], version=new_value["version"], model_type=new_value["type"])
+                    elif attr_name == "vae":
+                        node.update_model(path=new_value["path"], vae_name=new_value["name"])
+                    else:
+                        node.update_value(new_value)
 
-            self.image_generation_data.update_previous_state()
+        self.image_generation_data.update_previous_state()
 
         if self.node_graph.sequential_offload != self.sequential_offload:
             self.check_and_update("sequential_offload", "sequential_offload", self.sequential_offload)
@@ -272,7 +274,6 @@ class NodeGraphThread(QThread):
         t2i_adapter_types = self.t2i_adapter_list.get_used_types()
 
         for t2i_adapter_type in t2i_adapter_types:
-            print(f"{t2i_adapter_type=}")
             if t2i_adapter_type == "canny":
                 t2i_adapter_canny_model = self.node_graph.get_node_by_name("t2i_adapter_canny_model")
 
@@ -363,7 +364,13 @@ class NodeGraphThread(QThread):
         except KeyError:
             self.generation_error.emit("There was an error while generating.", False)
         except FileNotFoundError:
-            self.generation_error.emit("There's a missing model file in the generation.", False)
+            self.generation_error.emit(
+                "There's a missing model file in the generation, choose a different one or download missing models from the downloader", False
+            )
+        except OSError:
+            self.generation_error.emit(
+                "There's a missing model file in the generation, choose a different one or download missing models from the downloader", False
+            )
 
         if not self.node_graph.updated:
             self.generation_error.emit("Nothing was changed", False)

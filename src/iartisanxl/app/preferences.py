@@ -10,3 +10,4 @@ class PreferencesObject:
     save_image_metadata = attr.ib(type=bool)
     save_image_control_annotators = attr.ib(type=bool)
     save_image_control_sources = attr.ib(type=bool)
+    hide_nsfw = attr.ib(type=bool)

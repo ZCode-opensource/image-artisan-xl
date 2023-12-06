@@ -1,0 +1,392 @@
+{
+    "essential_items":[
+        {
+            "title": "SDXL 1.0",
+            "description": "Stable Diffusion XL 1.0: This is the base model required for image generation. The model size is approximately 6.46 GB.",
+            "destination_directory": "diffusers",
+            "destination_subdirectory": "stable-diffusion-xl-base-1.0",
+            "files": [
+                {
+                    "file": "model_index.json", 
+                    "url":"https://huggingface.co/OzzyGT/stable-diffusion-xl-base-1.0/raw/main/model_index.json"
+                },
+                {
+                    "file": "scheduler_config.json",
+                    "destination_directory": "scheduler", 
+                    "url":"https://huggingface.co/OzzyGT/stable-diffusion-xl-base-1.0/blob/main/scheduler/scheduler_config.json"
+                },
+                {
+                    "file": "config.json",
+                    "destination_directory": "text_encoder", 
+                    "url":"https://huggingface.co/OzzyGT/stable-diffusion-xl-base-1.0/raw/main/text_encoder/config.json"
+                },
+                {
+                    "file": "model.fp16.safetensors",
+                    "destination_directory": "text_encoder", 
+                    "url":"https://huggingface.co/OzzyGT/stable-diffusion-xl-base-1.0/resolve/main/text_encoder/model.fp16.safetensors?download=true"
+                },
+                {
+                    "file": "config.json",
+                    "destination_directory": "text_encoder_2", 
+                    "url":"https://huggingface.co/OzzyGT/stable-diffusion-xl-base-1.0/raw/main/text_encoder_2/config.json"
+                },
+                {
+                    "file": "model.fp16.safetensors",
+                    "destination_directory": "text_encoder_2", 
+                    "url":"https://huggingface.co/OzzyGT/stable-diffusion-xl-base-1.0/resolve/main/text_encoder_2/model.fp16.safetensors?download=true"
+                },
+                {
+                    "file": "merges.txt",
+                    "destination_directory": "tokenizer", 
+                    "url":"https://huggingface.co/OzzyGT/stable-diffusion-xl-base-1.0/raw/main/tokenizer/merges.txt"
+                },
+                {
+                    "file": "special_tokens_map.json",
+                    "destination_directory": "tokenizer", 
+                    "url":"https://huggingface.co/OzzyGT/stable-diffusion-xl-base-1.0/raw/main/tokenizer/special_tokens_map.json"
+                },
+                {
+                    "file": "tokenizer_config.json",
+                    "destination_directory": "tokenizer", 
+                    "url":"https://huggingface.co/OzzyGT/stable-diffusion-xl-base-1.0/raw/main/tokenizer/tokenizer_config.json"
+                },
+                {
+                    "file": "vocab.json",
+                    "destination_directory": "tokenizer", 
+                    "url":"https://huggingface.co/OzzyGT/stable-diffusion-xl-base-1.0/raw/main/tokenizer/vocab.json"
+                },
+                {
+                    "file": "merges.txt",
+                    "destination_directory": "tokenizer_2", 
+                    "url":"https://huggingface.co/OzzyGT/stable-diffusion-xl-base-1.0/raw/main/tokenizer_2/merges.txt"
+                },
+                {
+                    "file": "special_tokens_map.json",
+                    "destination_directory": "tokenizer_2", 
+                    "url":"https://huggingface.co/OzzyGT/stable-diffusion-xl-base-1.0/raw/main/tokenizer_2/special_tokens_map.json"
+                },
+                {
+                    "file": "tokenizer_config.json",
+                    "destination_directory": "tokenizer_2", 
+                    "url":"https://huggingface.co/OzzyGT/stable-diffusion-xl-base-1.0/raw/main/tokenizer_2/tokenizer_config.json"
+                },
+                {
+                    "file": "vocab.json",
+                    "destination_directory": "tokenizer_2", 
+                    "url":"https://huggingface.co/OzzyGT/stable-diffusion-xl-base-1.0/raw/main/tokenizer_2/vocab.json"
+                },                                                                                                                                                                             
+                {
+                    "file": "config.json", 
+                    "destination_directory": "unet", 
+                    "url":"https://huggingface.co/OzzyGT/stable-diffusion-xl-base-1.0/raw/main/unet/config.json"
+                },                
+                {
+                    "file": "diffusion_pytorch_model.fp16.safetensors", 
+                    "destination_directory": "unet", 
+                    "url":"https://huggingface.co/OzzyGT/stable-diffusion-xl-base-1.0/resolve/main/unet/diffusion_pytorch_model.fp16.safetensors?download=true"
+                },
+                {
+                    "file": "config.json", 
+                    "destination_directory": "vae", 
+                    "url":"https://huggingface.co/OzzyGT/stable-diffusion-xl-base-1.0/raw/main/vae/config.json"
+                },
+                {
+                    "file": "diffusion_pytorch_model.fp16.safetensors", 
+                    "destination_directory": "vae", 
+                    "url":"https://huggingface.co/OzzyGT/stable-diffusion-xl-base-1.0/resolve/main/vae/diffusion_pytorch_model.fp16.safetensors?download=true"
+                }                                            
+            ]
+        },
+        {
+            "title": "TAESD XL",
+            "description": "Tiny AutoEncoder for Stable Diffusion XL: This model uses a small memory footprint and allows for near real-time visualization of the denoising process. It is necessary for enabling the ‘Display intermediate images’ feature. The model size is approximately 4.8 MB.",
+            "destination_directory": "app_models",
+            "destination_subdirectory": "taesd",
+            "files": [
+                {
+                    "file": "taesdxl_decoder.pth", 
+                    "url": "https://github.com/madebyollin/taesd/raw/main/taesdxl_decoder.pth"
+                }
+            ]
+        },
+        {
+            "title": "VAE FP16 FIXED",
+            "description": "Fixed VAE: This version has resolved the half-precision issue that caused black images in the original version. The model size is approximately 319 MB.",
+            "destination_directory": "vae",
+            "destination_subdirectory": "vae-16fp-fix",
+            "files": [
+                {
+                    "file": "config.json", 
+                    "url": "https://huggingface.co/madebyollin/sdxl-vae-fp16-fix/raw/main/config.json"                    
+                },
+                {
+                    "file": "diffusion_pytorch_model.fp16.safetensors", 
+                    "url": "https://huggingface.co/madebyollin/sdxl-vae-fp16-fix/resolve/main/diffusion_pytorch_model.safetensors?download=true"                    
+                }                
+            ]
+        },
+        {
+            "title": "Annotators - Depth MiDaS",
+            "description": "Dense Prediction Transformer: This is the 'hybrid' version of the model as stated in the paper. It is the standard annotator for the Depth Controlnets and T2I Adapters. The model size is approximately 466 MB.",
+            "destination_directory": "app_models",
+            "destination_subdirectory": "annotators/depth",
+            "check_directory": "dpt-hybrid-midas",
+            "files": [
+                {
+                    "file": "config.json",
+                    "destination_directory": "dpt-hybrid-midas", 
+                    "url": "https://huggingface.co/Intel/dpt-hybrid-midas/raw/main/config.json"  
+                },
+                {
+                    "file": "preprocessor_config.json",
+                    "destination_directory": "dpt-hybrid-midas", 
+                    "url": "https://huggingface.co/Intel/dpt-hybrid-midas/raw/main/preprocessor_config.json"  
+                },
+                {
+                    "file": "pytorch_model.bin",
+                    "destination_directory": "dpt-hybrid-midas", 
+                    "url": "https://huggingface.co/Intel/dpt-hybrid-midas/resolve/main/pytorch_model.bin?download=true"  
+                }                                                                           
+            ]
+        },
+        {
+            "title": "Annotators - Depth BEiT 384",
+            "description": "Intel Depth Model: This is the latest depth model from Intel. The model size is approximately 422 MB.",
+            "destination_directory": "app_models",
+            "destination_subdirectory": "annotators/depth",
+            "check_directory": "dpt-beit-base-384",
+            "files": [
+                {
+                    "file": "config.json",
+                    "destination_directory": "dpt-beit-base-384", 
+                    "url": "https://huggingface.co/Intel/dpt-beit-base-384/raw/main/config.json"  
+                },
+                {
+                    "file": "preprocessor_config.json",
+                    "destination_directory": "dpt-beit-base-384", 
+                    "url": "https://huggingface.co/Intel/dpt-beit-base-384/raw/main/preprocessor_config.json"  
+                },
+                {
+                    "file": "model.safetensors",
+                    "destination_directory": "dpt-beit-base-384", 
+                    "url": "https://huggingface.co/Intel/dpt-beit-base-384/resolve/main/model.safetensors?download=true"  
+                }
+            ]
+        },
+        {
+            "title": "Annotators - Depth BEiT 512",
+            "description": "This is the most recent depth model from Intel. The model size is approximately 1.28 GB.",
+            "destination_directory": "app_models",
+            "destination_subdirectory": "annotators/depth",
+            "check_directory": "dpt-beit-large-512",
+            "files": [
+                {
+                    "file": "config.json",
+                    "destination_directory": "dpt-beit-large-512", 
+                    "url": "https://huggingface.co/Intel/dpt-beit-large-512/raw/main/config.json"  
+                },
+                {
+                    "file": "preprocessor_config.json",
+                    "destination_directory": "dpt-beit-large-512", 
+                    "url": "https://huggingface.co/Intel/dpt-beit-large-512/raw/main/preprocessor_config.json"  
+                },
+                {
+                    "file": "model.safetensors",
+                    "destination_directory": "dpt-beit-large-512", 
+                    "url": "https://huggingface.co/Intel/dpt-beit-large-512/resolve/main/model.safetensors?download=true"  
+                }
+            ]
+        },
+        {
+            "title": "Annotators - Line Art",
+            "description": "Line Art: These are the models necessary for using the line art version of the T2I Adapters. The total size is approximately 49.1 MB.",
+            "destination_directory": "app_models",
+            "destination_subdirectory": "annotators/lineart",
+            "files": [
+                {
+                    "file": "netG_A_latest.pth",
+                    "destination_directory": "anime_style",
+                    "url": "https://huggingface.co/OzzyGT/lineart/resolve/main/anime_style/netG_A_latest.pth?download=true"
+                },
+                {
+                    "file": "netG_A_latest.pth",
+                    "destination_directory": "contour_style",
+                    "url": "https://huggingface.co/OzzyGT/lineart/resolve/main/contour_style/netG_A_latest.pth?download=true"
+                },
+                {
+                    "file": "netG_A_latest.pth",
+                    "destination_directory": "opensketch_style",
+                    "url": "https://huggingface.co/OzzyGT/lineart/resolve/main/opensketch_style/netG_A_latest.pth?download=true"
+                }
+            ]
+        },
+        {
+            "title": "Annotators - OpenPose",
+            "description": "OpenPose: These are the models necessary for using the OpenPose Controlnet and T2I adapters. The total size is approximately 340 MB.",
+            "destination_directory": "app_models",
+            "destination_subdirectory": "annotators",
+            "files": [
+                {
+                    "file": "body_pose_model.pth",
+                    "destination_directory": "openpose",
+                    "url": "https://huggingface.co/OzzyGT/openpose/resolve/main/body_pose_model.pth?download=true"
+                },
+                {
+                    "file": "hand_pose_model.pth",
+                    "destination_directory": "openpose",
+                    "url": "https://huggingface.co/OzzyGT/openpose/resolve/main/hand_pose_model.pth?download=true"
+                }
+            ]
+        },
+        {
+            "title": "Annotators - Sketch",
+            "description": "Sketch: These are the models necessary for using the sketch Controlnet and T2I adapters. The total size is approximately 5.47 MB.",
+            "destination_directory": "app_models",
+            "destination_subdirectory": "annotators",
+            "files": [
+                {
+                    "file": "table5_pidinet.pth",
+                    "destination_directory": "pidinet",
+                    "url": "https://github.com/hellozhuo/pidinet/raw/master/trained_models/table5_pidinet.pth"
+                },
+                {
+                    "file": "table7_pidinet.pth",
+                    "destination_directory": "pidinet",
+                    "url": "https://github.com/hellozhuo/pidinet/raw/master/trained_models/table7_pidinet.pth"
+                } 
+            ]
+        }                  
+    ],
+    "controlnet_items": [
+        {
+            "title": "ControlNet - Canny",
+            "description": "ControlNet model to use with the canny annotator or with an image with canny edges. The total size is approximately 305 MB.",
+            "destination_directory": "controlnets",
+            "destination_subdirectory": "controlnet-canny-sdxl-1.0-small",
+            "files": [
+                {
+                    "file": "config.json",
+                    "url": "https://huggingface.co/diffusers/controlnet-canny-sdxl-1.0-small/raw/main/config.json"
+                },
+                {
+                    "file": "diffusion_pytorch_model.fp16.safetensors",
+                    "url": "https://huggingface.co/diffusers/controlnet-canny-sdxl-1.0-small/resolve/main/diffusion_pytorch_model.fp16.safetensors?download=true"
+                }                             
+            ]
+        },
+        {
+            "title": "ControlNet - Depth",
+            "description": "ControlNet model to use with the depth annotator or with a depthmap image. The total size is approximately 305 MB.",
+            "destination_directory": "controlnets",
+            "destination_subdirectory": "controlnet-depth-sdxl-1.0-small",
+            "files": [
+                {
+                    "file": "config.json",
+                    "url": "https://huggingface.co/diffusers/controlnet-depth-sdxl-1.0-small/raw/main/config.json"
+                },
+                {
+                    "file": "diffusion_pytorch_model.fp16.safetensors",
+                    "url": "https://huggingface.co/diffusers/controlnet-depth-sdxl-1.0-small/resolve/main/diffusion_pytorch_model.fp16.safetensors?download=true"
+                }                             
+            ]
+        },
+        {
+            "title": "ControlNet - OpenPose",
+            "description": "ControlNet model to use with the OpenPose annotator or with an image that has an openpose skeleton. The total size is approximately 2.33 GB.",
+            "destination_directory": "controlnets",
+            "destination_subdirectory": "controlnet-openpose-sdxl-1.0",
+            "files": [
+                {
+                    "file": "config.json",
+                    "url": "https://huggingface.co/OzzyGT/controlnet-openpose-sdxl-1.0/raw/main/config.json"
+                },
+                {
+                    "file": "diffusion_pytorch_model.fp16.safetensors",
+                    "url": "https://huggingface.co/OzzyGT/controlnet-openpose-sdxl-1.0/resolve/main/diffusion_pytorch_model.fp16.safetensors?download=true"
+                }                             
+            ]
+        }              
+    ],
+    "t2i_items": [
+        {
+            "title": "T2I Adapter - Canny",
+            "description": "T2I Adapter model to use with the canny annotator or with an image with canny edges. The total size is approximately 150 MB.",
+            "destination_directory": "t2i_adapters",
+            "destination_subdirectory": "t2i-adapter-canny-sdxl-1.0",
+            "files": [
+                {
+                    "file": "config.json",
+                    "url": "https://huggingface.co/TencentARC/t2i-adapter-canny-sdxl-1.0/raw/main/config.json"
+                },
+                {
+                    "file": "diffusion_pytorch_model.fp16.safetensors",
+                    "url": "https://huggingface.co/TencentARC/t2i-adapter-canny-sdxl-1.0/resolve/main/diffusion_pytorch_model.fp16.safetensors?download=true"
+                }                             
+            ]            
+        },
+        {
+            "title": "T2I Adapter - Depth",
+            "description": "T2I Adapter model to use with the depth annotator or with a depthmap image. The total size is approximately 150 MB.",
+            "destination_directory": "t2i_adapters",
+            "destination_subdirectory": "t2i-adapter-depth-midas-sdxl-1.0",
+            "files": [
+                {
+                    "file": "config.json",
+                    "url": "https://huggingface.co/TencentARC/t2i-adapter-depth-midas-sdxl-1.0/raw/main/config.json"
+                },
+                {
+                    "file": "diffusion_pytorch_model.fp16.safetensors",
+                    "url": "https://huggingface.co/TencentARC/t2i-adapter-depth-midas-sdxl-1.0/resolve/main/diffusion_pytorch_model.fp16.safetensors?download=true"
+                }                             
+            ]            
+        },
+        {
+            "title": "T2I Adapter - Line Art",
+            "description": "T2I Adapter model to use with the Line Art annotator or with image that has line drawings. The total size is approximately 150 MB.",
+            "destination_directory": "t2i_adapters",
+            "destination_subdirectory": "t2i-adapter-lineart-sdxl-1.0",
+            "files": [
+                {
+                    "file": "config.json",
+                    "url": "https://huggingface.co/TencentARC/t2i-adapter-lineart-sdxl-1.0/raw/main/config.json"
+                },
+                {
+                    "file": "diffusion_pytorch_model.fp16.safetensors",
+                    "url": "https://huggingface.co/TencentARC/t2i-adapter-lineart-sdxl-1.0/resolve/main/diffusion_pytorch_model.fp16.safetensors?download=true"
+                }                             
+            ]            
+        },
+        {
+            "title": "T2I Adapter - Open Pose",
+            "description": "T2I Adapter model to use with the OpenPose annotator or with an image that has an openpose skeleton. The total size is approximately 300 MB.",
+            "destination_directory": "t2i_adapters",
+            "destination_subdirectory": "t2i-adapter-openpose-sdxl-1.0",
+            "files": [
+                {
+                    "file": "config.json",
+                    "url": "https://huggingface.co/TencentARC/t2i-adapter-openpose-sdxl-1.0/raw/main/config.json"
+                },
+                {
+                    "file": "diffusion_pytorch_model.fp16.safetensors",
+                    "url": "https://huggingface.co/TencentARC/t2i-adapter-openpose-sdxl-1.0/resolve/main/diffusion_pytorch_model.safetensors?download=true"
+                }                             
+            ]            
+        },
+        {
+            "title": "T2I Adapter - Sketch",
+            "description": "T2I Adapter model to use with the sketch annotator or with an image that has a sketch on it. The total size is approximately 150 MB.",
+            "destination_directory": "t2i_adapters",
+            "destination_subdirectory": "t2i-adapter-sketch-sdxl-1.0",
+            "files": [
+                {
+                    "file": "config.json",
+                    "url": "https://huggingface.co/TencentARC/t2i-adapter-sketch-sdxl-1.0/raw/main/config.json"
+                },
+                {
+                    "file": "diffusion_pytorch_model.fp16.safetensors",
+                    "url": "https://huggingface.co/TencentARC/t2i-adapter-sketch-sdxl-1.0/resolve/main/diffusion_pytorch_model.fp16.safetensors?download=true"
+                }                             
+            ]            
+        }                                     
+    ]
+}

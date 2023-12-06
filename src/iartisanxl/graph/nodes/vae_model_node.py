@@ -44,9 +44,12 @@ class VaeModelNode(Node):
         super().__call__()
         device = "cpu" if self.sequential_offload or self.cpu_offload else self.device
 
-        vae = AutoencoderKL.from_pretrained(self.path, torch_dtype=self.torch_dtype).to(
-            device
-        )
+        vae = AutoencoderKL.from_pretrained(
+            self.path,
+            torch_dtype=self.torch_dtype,
+            use_safetensors=True,
+            variant="fp16",
+        ).to(device)
         if self.sequential_offload:
             vae = accelerate.cpu_offload(vae, "cuda:0")
 

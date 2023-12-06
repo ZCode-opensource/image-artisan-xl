@@ -10,10 +10,12 @@ from iartisanxl.buttons.expand_button import ExpandButton
 
 class LeftMenu(QFrame):
     open_preferences = pyqtSignal()
+    open_downloader = pyqtSignal()
 
     EXPANDED_WIDTH = 150
     NORMAL_WIDTH = 43
     CONFIG_ICON = files("iartisanxl.theme.icons").joinpath("config.png")
+    DOWNLOADER_ICON = files("iartisanxl.theme.icons").joinpath("downloader.png")
 
     def __init__(self, gui_options: dict, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -51,6 +53,10 @@ class LeftMenu(QFrame):
         self.container_layout.addStretch()
 
         main_layout.addWidget(container)
+
+        downloader_button = MenuButton(icon=self.DOWNLOADER_ICON, label="Downloader")
+        downloader_button.clicked.connect(self.open_downloader.emit)
+        main_layout.addWidget(downloader_button)
 
         configuration_button = MenuButton(icon=self.CONFIG_ICON, label="Preferences")
         configuration_button.clicked.connect(self.open_preferences.emit)

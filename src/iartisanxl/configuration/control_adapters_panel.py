@@ -83,13 +83,13 @@ class ControlAdaptersPanel(BaseSetupPanel):
         )
         self.main_layout.addWidget(t2i_adapters_widget)
 
-        ip2_adapters_widget = SelectDirectoryWidget(
-            "<html><body>Directory for the IP2 adapters, they're used to control the style of the generations.</body></html>",
+        ip_adapters_widget = SelectDirectoryWidget(
+            "<html><body>Directory for the IP adapters, they're used to control the style of the generations.</body></html>",
             "IP Adapters",
             3,
             self.select_directory,
         )
-        self.main_layout.addWidget(ip2_adapters_widget)
+        self.main_layout.addWidget(ip_adapters_widget)
 
         self.main_layout.addStretch()
 
@@ -125,8 +125,8 @@ class ControlAdaptersPanel(BaseSetupPanel):
             self.directories.models_t2i_adapters = selected_path
             settings.setValue("models_t2i_adapters", selected_path)
         elif dir_type == 3:
-            self.directories.models_ip2_adapters = selected_path
-            settings.setValue("models_ip2_adapters", selected_path)
+            self.directories.models_ip_adapters = selected_path
+            settings.setValue("models_ip_adapters", selected_path)
 
         sender_button = self.sender()
         sender_button.parent_widget.directory_label.setText(selected_path)
