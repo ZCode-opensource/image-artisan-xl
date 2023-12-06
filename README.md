@@ -25,9 +25,9 @@ Another cool thing about this software is that it has a simple installation proc
 
 ## Architecture
 
-**Image Artisan XL** is a desktop application that uses PyQt6 as its graphical user interface. It mostly relies on the Diffusers library for generating images, using custom pipelines that are designed to meet the requirements of multithreading and real-time user interface updates.
+**Image Artisan XL** is a desktop application that uses PyQt6 as its graphical user interface. It mostly relies on the Diffusers library for generating images, using node graphs under the hood that are designed to meet the requirements of multithreading and real-time user interface updates.
 
-All the models used in **Image Artisan XL** are loaded in half-point precision (FP16) whenever possible. This allows for faster inference and memory savings, since using them at full precision makes no difference to most people. When using Stable Diffusion XL models, it is possible to use under 10 VRAM, although there may be some specific cases with VAE decoding where it goes over this limit (which is still being investigated).
+All the models used in **Image Artisan XL** are loaded in half-point precision (FP16) whenever possible. This allows for faster inference and memory savings, since using them at full precision makes no difference to most people. When using Stable Diffusion XL models, it is possible to use under 10 Video RAM, although there may be some specific cases with VAE decoding where it goes over this limit.
 
 It is highly recommended to use the included VAE with the FP16 fix, since the VAE in the base model and most of the shared ones need to be used in full precision to avoid generating black images.
 
@@ -40,6 +40,9 @@ It is highly recommended to use the included VAE with the FP16 fix, since the VA
 - Easy sharing of models and Lora's metadata since the information its stored in each model, including sample image, sample generation, triggers and tags for filtering.
 - Latent Consistency Models (LCM) and LoRAs for fast inference.
 - Segmind Stable Diffusion (SSD-1B) models for VRAM savings.
+- SDXL Turbo supported
+- ControlNet
+- T2I Adapters
 
 ## Limitations
 
@@ -60,13 +63,13 @@ You can read why [here](https://github.com/ZCode-opensource/image-artisan-xl/blo
 - Image to image.
 - Inpainting.
 - Outpainting.
-- ControlNet, T2I-Adapter and IP-Adapter.
+- IP-Adapter.
 - Upscaling.
 - Fine tune your own model.
 - Train LoRAs (diffusers and Kohya).
 - Dataset creation and management.
 - Gallery management.
-- Nodes.
+- Nodes UI (under the hood already uses them).
 
 ## Installation
 
@@ -74,16 +77,9 @@ You can read why [here](https://github.com/ZCode-opensource/image-artisan-xl/blo
 
 Please download the most recent installer from the [releases](https://github.com/ZCode-opensource/image-artisan-xl/releases) section. This version is exclusively for x64 and, while it has only been tested on Windows 11, it should also be compatible with Windows 10.
 
-Before proceeding with the installation, ensure that you have the following prerequisites installed:
-
-- [Git for windows](https://git-scm.com/download/win)
-- [Powershell 7](https://learn.microsoft.com/en-us/powershell/)
-
-The installer will open a separate window to download the required dependencies, this will take some time specially for pytorch which is a 2.8 GB install.
-
 The final installed application without models will take around **6 GB** of space, it will be installed under a directory named ZCode/ImageArtisanXL and you can uninstall later from the `Windows installed apps menu`. It will create a shortcut icon on your desktop named "Image Artisan XL".
 
-The application will have a self contained version of python and environment, it will also have the tiny decoder and fixed VAE for half precision.
+The application will have a self contained version of python and environment so you don't have to worry about installing python or having conflicts with other installations or packages.
 
 Once installed, on the first run you will be asked to choose the directories for the models, you can use the defaults or point them to a place you already have with models. Later you can change them on the fly if you want to use separate model directories.
 
@@ -118,35 +114,6 @@ Then run with the command `python -m iartisanxl`.
 #### Developer
 
 Use this instead `pip install -e .[dev]` to install.
-
-### Additional steps for manual installation
-
-#### intermediate images
-
-If you want to display the images when generating you'll need to create this directory structure inside the project:
-
-> /models  
-> -- /taesd
-
-then download the taesd decoder from here:
-
-https://github.com/madebyollin/taesd/blob/main/taesdxl_decoder.pth
-
-and save it in this location.
-
-#### Vae with half precision fixed
-
-For using less VRAM when decoding the images you'll need to create this directory structure inside the project:
-
-> /models  
-> -- /vae-fp16
-
-then download the vae model files from here:
-
-https://huggingface.co/madebyollin/sdxl-vae-fp16-fix/blob/main/diffusion_pytorch_model.safetensors  
-https://huggingface.co/madebyollin/sdxl-vae-fp16-fix/blob/main/config.json
-
-and save them in this location.
 
 ## License
 
