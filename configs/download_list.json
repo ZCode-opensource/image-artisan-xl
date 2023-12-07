@@ -13,7 +13,7 @@
                 {
                     "file": "scheduler_config.json",
                     "destination_directory": "scheduler", 
-                    "url":"https://huggingface.co/OzzyGT/stable-diffusion-xl-base-1.0/blob/main/scheduler/scheduler_config.json"
+                    "url":"https://huggingface.co/OzzyGT/stable-diffusion-xl-base-1.0/raw/main/scheduler/scheduler_config.json"
                 },
                 {
                     "file": "config.json",
