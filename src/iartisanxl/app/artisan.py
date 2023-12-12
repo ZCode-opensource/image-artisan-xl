@@ -70,6 +70,8 @@ class ArtisanApplication(QApplication):
         models_t2i_adapters = settings.value("models_t2i_adapters", None, type=str)
         models_ip_adapters = settings.value("models_ip_adapters", None, type=str)
         outputs_images = settings.value("outputs_images", None, type=str)
+        outputs_loras = settings.value("outputs_loras", None, type=str)
+        datasets = settings.value("datasets", None, type=str)
 
         self.directories = DirectoriesObject(
             models_diffusers=models_diffusers,
@@ -80,6 +82,8 @@ class ArtisanApplication(QApplication):
             models_t2i_adapters=models_t2i_adapters,
             models_ip_adapters=models_ip_adapters,
             outputs_images=outputs_images,
+            outputs_loras=outputs_loras,
+            datasets=datasets,
         )
 
         if any(
@@ -93,6 +97,8 @@ class ArtisanApplication(QApplication):
                 models_t2i_adapters,
                 models_ip_adapters,
                 outputs_images,
+                outputs_loras,
+                datasets,
             ]
         ):
             return False

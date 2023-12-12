@@ -24,7 +24,7 @@ dependencies = [
     "tomesd",
     "attrs",
     "omegaconf",
-    "peft>=0.6.3.dev0",
+    "peft>=0.7.0",
     "opencv-python>=4.8.1.78",
     "matplotlib",
     "scikit-image",
@@ -32,6 +32,8 @@ dependencies = [
     "vcolorpicker>=1.4.3",
     "einops>=0.7.0",
     "timm==0.9.5",
+    "bitsandbytes==0.41.1",
+    "prodigyopt==1.0",
 ]
 
 [project.optional-dependencies]

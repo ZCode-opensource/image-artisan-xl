@@ -1,17 +1,10 @@
-from PyQt6.QtWidgets import (
-    QLabel,
-    QPushButton,
-    QHBoxLayout,
-    QFileDialog,
-    QWidget,
-    QVBoxLayout,
-)
-from PyQt6.QtCore import Qt, QSettings
+from PyQt6.QtWidgets import QLabel, QPushButton, QHBoxLayout, QFileDialog, QWidget, QFrame, QVBoxLayout
+from PyQt6.QtCore import QSettings
 
 from iartisanxl.configuration.base_setup_panel import BaseSetupPanel
 
 
-class SelectDirectoryWidget(QWidget):
+class SelectDirectoryWidget(QFrame):
     def __init__(
         self,
         text: str,
@@ -22,6 +15,7 @@ class SelectDirectoryWidget(QWidget):
         **kwargs,
     ):
         super().__init__(*args, **kwargs)
+        self.setObjectName("setup_directory_widget")
 
         self.text = text
         self.directory_text = directory_text
@@ -36,31 +30,21 @@ class SelectDirectoryWidget(QWidget):
         main_layout.setSpacing(0)
 
         directory_widget = QWidget(self)
-        directory_widget.setObjectName("setup_directory_widget")
         directory_layout = QVBoxLayout(directory_widget)
+        directory_layout.setContentsMargins(5, 2, 5, 2)
+        directory_layout.setSpacing(3)
 
         explanation_label = QLabel(self.text)
         explanation_label.setWordWrap(True)
         directory_layout.addWidget(explanation_label)
 
-        select_directory_button = QPushButton(
-            f"Select {self.directory_text.lower()} directory"
-        )
-        select_directory_button.clicked.connect(
-            lambda: self.select_function(self.directory_type)
-        )
+        select_directory_button = QPushButton(f"Select {self.directory_text.lower()} directory")
+        select_directory_button.clicked.connect(lambda: self.select_function(self.directory_type))
         select_directory_button.parent_widget = self
         directory_layout.addWidget(select_directory_button)
 
-        path_layout = QHBoxLayout()
-        path_label = QLabel(f"{self.directory_text} path: ")
-        path_label.setFixedWidth(90)
-        path_layout.addWidget(path_label)
         self.directory_label = QLabel("")
-        path_layout.addWidget(
-            self.directory_label, alignment=Qt.AlignmentFlag.AlignLeft
-        )
-        directory_layout.addLayout(path_layout)
+        directory_layout.addWidget(self.directory_label)
 
         main_layout.addWidget(directory_widget)
         self.setLayout(main_layout)
@@ -118,14 +102,28 @@ class DirectoriesPanel(BaseSetupPanel):
         self.main_layout.addWidget(loras_widget)
 
         images_widget = SelectDirectoryWidget(
-            "<html><body>"
-            "The directory where you want to save your generated images by default."
-            "</body></html>",
+            "<html><body>The directory where you want to save your generated images by default.</body></html>",
             "Images",
             5,
             self.select_directory,
         )
         self.main_layout.addWidget(images_widget)
+
+        output_loras_widget = SelectDirectoryWidget(
+            "<html><body>The directory where you want to save your trained loras by default.</body></html>",
+            "Outputs - Loras",
+            6,
+            self.select_directory,
+        )
+        self.main_layout.addWidget(output_loras_widget)
+
+        datasets_widget = SelectDirectoryWidget(
+            "<html><body>The directory where you want to save your training datasets.</body></html>",
+            "Datasets",
+            7,
+            self.select_directory,
+        )
+        self.main_layout.addWidget(datasets_widget)
 
         self.main_layout.addStretch()
 
@@ -166,9 +164,15 @@ class DirectoriesPanel(BaseSetupPanel):
         elif dir_type == 4:
             self.directories.models_loras = selected_path
             settings.setValue("models_loras", selected_path)
-        else:
+        elif dir_type == 5:
             self.directories.outputs_images = selected_path
             settings.setValue("outputs_images", selected_path)
+        elif dir_type == 6:
+            self.directories.outputs_loras = selected_path
+            settings.setValue("outputs_loras", selected_path)
+        elif dir_type == 7:
+            self.directories.datasets = selected_path
+            settings.setValue("datasets", selected_path)
 
         sender_button = self.sender()
         sender_button.parent_widget.directory_label.setText(selected_path)
