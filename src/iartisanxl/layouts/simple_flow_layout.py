@@ -1,5 +1,5 @@
 from PyQt6.QtCore import Qt, QMargins, QPoint, QRect, QSize
-from PyQt6.QtWidgets import QLayout, QSizePolicy
+from PyQt6.QtWidgets import QLayout, QSizePolicy, QWidget
 
 
 class SimpleFlowLayout(QLayout):
@@ -7,6 +7,7 @@ class SimpleFlowLayout(QLayout):
         super().__init__(parent)
         if parent is not None:
             self.setContentsMargins(QMargins(0, 0, 0, 0))
+            self.setSpacing(0)
         self._item_list = []
 
     def __del__(self):
@@ -17,8 +18,18 @@ class SimpleFlowLayout(QLayout):
     def addItem(self, item):
         self._item_list.append(item)
 
+    def remove_item(self, item: QWidget):
+        index = self.index_of(item)
+        if index >= 0:
+            removed_item = self.takeAt(index)
+            removed_item.widget().deleteLater()
+            self.update()
+
     def count(self):
         return len(self._item_list)
+
+    def items(self):
+        return self._item_list
 
     def itemAt(self, index):
         if 0 <= index < len(self._item_list):
@@ -26,11 +37,24 @@ class SimpleFlowLayout(QLayout):
 
         return None
 
+    def itemAtPosition(self, pos: QPoint):
+        for i in range(self.count()):
+            item = self.itemAt(i)
+            if item.widget().geometry().contains(pos):
+                return item
+        return None
+
     def takeAt(self, index):
         if 0 <= index < len(self._item_list):
             return self._item_list.pop(index)
 
         return None
+
+    def index_of(self, item: QWidget):
+        for i in range(self.count()):
+            if self.itemAt(i).widget() == item:
+                return i
+        return -1
 
     def expandingDirections(self):
         return Qt.Orientation(0)
@@ -55,9 +79,7 @@ class SimpleFlowLayout(QLayout):
         for item in self._item_list:
             size = size.expandedTo(item.minimumSize())
 
-        size += QSize(
-            2 * self.contentsMargins().top(), 2 * self.contentsMargins().top()
-        )
+        size += QSize(2 * self.contentsMargins().top(), 2 * self.contentsMargins().top())
         return size
 
     def _do_layout(self, rect, test_only):
@@ -94,3 +116,8 @@ class SimpleFlowLayout(QLayout):
             line_height = max(line_height, item.sizeHint().height())
 
         return y + line_height - rect.y()
+
+    def clear(self):
+        for i in reversed(range(self.count())):
+            self.takeAt(i).widget().setParent(None)
+        self._item_list = []

@@ -86,3 +86,8 @@ class ImageControl(QWidget):
     def reset(self):
         self.value = self.initial_value
         self.mouse_line_edit.setText("{: .{precision}f}".format(self.value, precision=self.precision))
+
+    def set_value(self, value):
+        self.mouse_line_edit.textChanged.disconnect(self.on_value_changed)
+        self.mouse_line_edit.setText("{: .{precision}f}".format(value, precision=self.precision))
+        self.mouse_line_edit.textChanged.connect(self.on_value_changed)
