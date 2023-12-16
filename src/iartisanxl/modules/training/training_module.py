@@ -15,9 +15,11 @@ from iartisanxl.threads.dreambooth_lora_train_thread import DreamboothLoraTrainT
 from iartisanxl.train.lora_train_args import LoraTrainArgs
 
 
-class TrainLoraModule(BaseModule):
+class TrainingModule(BaseModule):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+
+        self.training = False
 
         self.output_dir = ""
         self.model_path = ""
@@ -27,8 +29,10 @@ class TrainLoraModule(BaseModule):
         self.loss_data = []
         self.lr_data = []
         self.max_steps = 0
-        self.optimizer = "adamw8bit"
-        self.lr_scheduler = "constant"
+
+        self.vaes = []
+        if self.directories.vaes and os.path.isdir(self.directories.vaes):
+            self.vaes = next(os.walk(self.directories.vaes))[1]
 
         self.init_ui()
         self.console_stream = ConsoleStream()
@@ -43,6 +47,12 @@ class TrainLoraModule(BaseModule):
 
         top_layout = QGridLayout()
 
+        training_type_layout = QHBoxLayout()
+        self.training_type_combo = QComboBox()
+        self.training_type_combo.addItem("Diffusers - Dreambooth LoRA", "diffusers_dreambooth_lora")
+        training_type_layout.addWidget(self.training_type_combo)
+        top_layout.addLayout(training_type_layout, 0, 0)
+
         output_layout = QHBoxLayout()
         output_layout.setSpacing(10)
         output_dir_button = QPushButton("Select output directory")
@@ -50,7 +60,7 @@ class TrainLoraModule(BaseModule):
         output_layout.addWidget(output_dir_button)
         self.output_dir_label = QLabel()
         output_layout.addWidget(self.output_dir_label)
-        top_layout.addLayout(output_layout, 0, 0)
+        top_layout.addLayout(output_layout, 0, 1)
 
         model_layout = QHBoxLayout()
         model_layout.setSpacing(10)
@@ -59,7 +69,7 @@ class TrainLoraModule(BaseModule):
         model_layout.addWidget(model_select_button)
         self.model_path_label = QLabel()
         model_layout.addWidget(self.model_path_label)
-        top_layout.addLayout(model_layout, 0, 1)
+        top_layout.addLayout(model_layout, 0, 2)
 
         dataset_layout = QHBoxLayout()
         dataset_layout.setSpacing(10)
@@ -68,7 +78,7 @@ class TrainLoraModule(BaseModule):
         dataset_layout.addWidget(dataset_select_button)
         self.dataset_path_label = QLabel()
         dataset_layout.addWidget(self.dataset_path_label)
-        top_layout.addLayout(dataset_layout, 0, 2)
+        top_layout.addLayout(dataset_layout, 0, 3)
 
         parameters_layout = QGridLayout()
         parameters_layout.setSpacing(10)
@@ -109,6 +119,15 @@ class TrainLoraModule(BaseModule):
         self.seed_text_edit.setText("")
         parameters_layout.addWidget(self.seed_text_edit, 0, 11)
 
+        vae_label = QLabel("Vae:")
+        parameters_layout.addWidget(vae_label, 0, 12)
+        self.vae_combobox = QComboBox()
+        self.vae_combobox.addItem("Model default", "")
+        if self.vaes:
+            for vae in self.vaes:
+                self.vae_combobox.addItem(vae, self.directories.vaes + "/" + vae)
+        parameters_layout.addWidget(self.vae_combobox, 0, 13)
+
         workers_label = QLabel("Workers:")
         parameters_layout.addWidget(workers_label, 1, 0)
         self.workers_text_edit = QLineEdit()
@@ -133,7 +152,6 @@ class TrainLoraModule(BaseModule):
         self.optimizer_combo.addItem("AdamW8bit ", "adamw8bit")
         self.optimizer_combo.addItem("AdamW", "adamw")
         self.optimizer_combo.addItem("Prodigy ", "prodigy")
-        self.optimizer_combo.currentIndexChanged.connect(self.on_optimizer_changed)
         parameters_layout.addWidget(self.optimizer_combo, 1, 7)
 
         self.scheduler_label = QLabel("LR Scheduler:")
@@ -145,7 +163,6 @@ class TrainLoraModule(BaseModule):
         self.lr_scheduler_combo.addItem("Constant with warmup", "constant_with_warmup")
         self.lr_scheduler_combo.addItem("Cosine with restarts", "cosine_with_restarts")
         self.lr_scheduler_combo.addItem("Polynomial", "polynomial")
-        self.lr_scheduler_combo.currentIndexChanged.connect(self.on_lr_scheduler_changed)
         parameters_layout.addWidget(self.lr_scheduler_combo, 1, 9)
 
         warmup_steps_label = QLabel("Warmup steps:")
@@ -279,10 +296,30 @@ class TrainLoraModule(BaseModule):
             self.dataset_path_label.setText(os.path.basename(self.dataset_path))
 
     def train_clicked(self):
+        if self.training:
+            if self.train_thread is not None:
+                self.train_thread.abort = True
+            return
+
+        self.training = True
+        self.set_button_abort()
+
+        if self.output_dir is None or len(self.output_dir) == 0:
+            self.show_error("You must select an output directory.")
+            return
+
+        if self.output_dir is None or len(self.model_path) == 0:
+            self.show_error("You must select a model.")
+            return
+
+        if self.output_dir is None or len(self.dataset_path) == 0:
+            self.show_error("You must select a dataset.")
+            return
+
         train_args = LoraTrainArgs(
             output_dir=self.output_dir,
             model_path=self.model_path,
-            vae_path="C:/Users/Ozzy/Documents/Image Artisan XL/models/vae/vae-16fp-fix",
+            vae_path=self.vae_combobox.currentData(),
             rank=int(self.rank_text_edit.text()),
             learning_rate=float(self.learning_rate_text_edit.text()),
             text_encoder_learning_rate=float(self.text_encoder_learning_rate_text_edit.text()),
@@ -294,8 +331,8 @@ class TrainLoraModule(BaseModule):
             save_epochs=int(self.save_epochs_text_edit.text()),
             seed=int(self.seed_text_edit.text()) if len(self.seed_text_edit.text()) > 0 else None,
             validation_prompt=self.validation_prompt_edit.toPlainText(),
-            optimizer=self.optimizer,
-            lr_scheduler=self.lr_scheduler,
+            optimizer=self.optimizer_combo.currentData(),
+            lr_scheduler=self.lr_scheduler_combo.currentData(),
             lr_warmup_steps=int(self.warmup_steps_text_edit.text()),
         )
         self.train_thread = DreamboothLoraTrainThread(train_args)
@@ -308,8 +345,8 @@ class TrainLoraModule(BaseModule):
         self.train_thread.update_epoch.connect(self.update_epoch)
         self.train_thread.training_finished.connect(self.on_training_finished)
         self.train_thread.finished.connect(self.on_thread_finish)
+        self.train_thread.aborted.connect(self.on_training_aborted)
         self.train_thread.start()
-        self.set_button_abort()
 
     def update_output(self, text):
         self.log_window.add_message(text)
@@ -321,6 +358,7 @@ class TrainLoraModule(BaseModule):
         self.log_window.error(text)
         self.show_snackbar("Could not start training since there was an error.")
         self.set_button_train()
+        self.training = False
 
     def show_warning(self, text):
         self.log_window.warning(text)
@@ -337,7 +375,6 @@ class TrainLoraModule(BaseModule):
         self.steps_progress_label.setText(f"Steps {step}/{self.max_steps}")
 
     def update_epoch(self, epoch, learning_rate, loss, image_path):
-        print(f"{learning_rate=}")
         self.epoch_data.append(epoch)
         self.loss_data.append(loss)
         self.lr_data.append(learning_rate)
@@ -363,16 +400,27 @@ class TrainLoraModule(BaseModule):
             self.image_label.setPixmap(pixmap)
 
         self.progress_bar.setValue(self.max_steps)
+        self.training = False
+        self.set_button_train()
         self.log_window.success("Training finished.")
 
     def on_thread_finish(self):
+        self.train_thread.accelerator = None
+        self.train_thread.unet = None
+        self.train_thread.tokenizer_one = None
+        self.train_thread.tokenizer_two = None
+        self.train_thread.text_encoder_one = None
+        self.train_thread.text_encoder_two = None
+        self.train_thread.vae = None
+        self.train_thread.scheduler = None
+        self.train_thread.lora_train_args = None
+
+        self.training = False
         self.train_thread = None
-        self.set_button_train()
         gc.collect()
         torch.cuda.empty_cache()
 
-    def on_optimizer_changed(self):
-        self.optimizer = self.optimizer_combo.currentData()
-
-    def on_lr_scheduler_changed(self):
-        self.lr_scheduler = self.lr_scheduler_combo.currentData()
+    def on_training_aborted(self):
+        self.training = False
+        self.set_button_train()
+        self.update_status_bar("Training aborted.")
