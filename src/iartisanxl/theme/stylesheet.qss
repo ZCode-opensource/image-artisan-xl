@@ -408,3 +408,12 @@ QTabWidget#tab_downloader QTabBar::tab:selected {
 QTabWidget#tab_downloader>QWidget>QWidget {
     background-color: #181b28;
 }
+
+DatasetItemsView QWidget#flow_widget {
+    background: #232325;
+}
+
+ImageCropperWidget ImageCropper {
+    background: #232325;
+     border: 1px solid #c9c9c9;
+}

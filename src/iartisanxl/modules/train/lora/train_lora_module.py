@@ -76,13 +76,13 @@ class TrainLoraModule(BaseModule):
         rank_label = QLabel("Rank:")
         parameters_layout.addWidget(rank_label, 0, 0)
         self.rank_text_edit = QLineEdit()
-        self.rank_text_edit.setText("4")
+        self.rank_text_edit.setText("8")
         parameters_layout.addWidget(self.rank_text_edit, 0, 1)
 
         save_epochs_label = QLabel("Save N° epochs:")
         parameters_layout.addWidget(save_epochs_label, 0, 2)
         self.save_epochs_text_edit = QLineEdit()
-        self.save_epochs_text_edit.setText("1")
+        self.save_epochs_text_edit.setText("10")
         parameters_layout.addWidget(self.save_epochs_text_edit, 0, 3)
 
         accumulation_steps_label = QLabel("Gradient accumulation steps:")
@@ -100,7 +100,7 @@ class TrainLoraModule(BaseModule):
         epochs_label = QLabel("Epochs:")
         parameters_layout.addWidget(epochs_label, 0, 8)
         self.epochs_text_edit = QLineEdit()
-        self.epochs_text_edit.setText("25")
+        self.epochs_text_edit.setText("60")
         parameters_layout.addWidget(self.epochs_text_edit, 0, 9)
 
         seed_label = QLabel("Seed:")
@@ -337,6 +337,7 @@ class TrainLoraModule(BaseModule):
         self.steps_progress_label.setText(f"Steps {step}/{self.max_steps}")
 
     def update_epoch(self, epoch, learning_rate, loss, image_path):
+        print(f"{learning_rate=}")
         self.epoch_data.append(epoch)
         self.loss_data.append(loss)
         self.lr_data.append(learning_rate)

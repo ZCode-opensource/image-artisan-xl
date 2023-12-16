@@ -398,6 +398,7 @@ class DreamboothLoraTrainThread(QThread):
                         global_step += 1
 
                     logs = {"loss": loss.detach().item(), "lr": lr_scheduler.get_last_lr()[0]}
+                    print(f"step lr: {lr_scheduler.get_last_lr()[0]}")
                     self.accelerator.log(logs, step=global_step)
 
                 image_path = ""
