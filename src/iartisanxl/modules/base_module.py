@@ -34,3 +34,8 @@ class BaseModule(QWidget, metaclass=ABCQWidgetMeta):
     @abstractmethod
     def init_ui(self):
         pass
+
+    def closeEvent(self, event):
+        self.event_bus.unsubscribe_all()
+        self.event_bus = None
+        super().closeEvent(event)

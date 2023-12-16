@@ -38,3 +38,6 @@ class EventBus(metaclass=Singleton):
 
     def get_events_for_subscriber(self, callback):
         return [event for event, callbacks in self.subscribers.items() if callback in callbacks]
+
+    def unsubscribe_all(self):
+        self.subscribers = {}
