@@ -1,16 +1,17 @@
 import os
-import io
+
 
 import torch
-from PIL import Image
-from transformers import CLIPTokenizer, BlipProcessor, BlipForConditionalGeneration
-from PyQt6.QtWidgets import QPushButton, QVBoxLayout, QHBoxLayout, QFileDialog, QLabel
-from PyQt6.QtCore import Qt, QBuffer
+
+from transformers import CLIPTokenizer
+from PyQt6.QtWidgets import QPushButton, QVBoxLayout, QHBoxLayout, QFileDialog, QLabel, QProgressBar
+from PyQt6.QtCore import Qt
 
 from iartisanxl.modules.base_module import BaseModule
 from iartisanxl.modules.common.dataset_items_view import DatasetItemsView
 from iartisanxl.modules.common.image_cropper_widget import ImageCropperWidget
 from iartisanxl.modules.common.prompt_input import PromptInput
+from iartisanxl.threads.generate_captions_thread import GenerateCaptionsThread
 
 
 class DatasetModule(BaseModule):
@@ -26,8 +27,7 @@ class DatasetModule(BaseModule):
         self.current_caption_path = None
 
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self.processor = None
-        self.model = None
+        self.generate_captions_thread = None
 
         self.init_ui()
 
@@ -36,14 +36,15 @@ class DatasetModule(BaseModule):
         main_layout = QVBoxLayout()
 
         button_layout = QHBoxLayout()
-        select_dataset_button = QPushButton("Select dataset")
-        select_dataset_button.clicked.connect(self.on_click_select_dataset)
-        button_layout.addWidget(select_dataset_button)
-        mass_caption_button = QPushButton("Mass caption")
-        mass_caption_button.clicked.connect(self.on_mass_caption)
-        button_layout.addWidget(mass_caption_button)
-        ai_mass_caption_button = QPushButton("AI mass caption")
-        button_layout.addWidget(ai_mass_caption_button)
+        self.select_dataset_button = QPushButton("Select dataset")
+        self.select_dataset_button.clicked.connect(self.on_click_select_dataset)
+        button_layout.addWidget(self.select_dataset_button)
+        self.mass_caption_button = QPushButton("Mass caption")
+        self.mass_caption_button.clicked.connect(self.on_mass_caption)
+        button_layout.addWidget(self.mass_caption_button)
+        self.ai_mass_caption_button = QPushButton("AI mass caption")
+        self.ai_mass_caption_button.clicked.connect(self.on_ai_mass_caption)
+        button_layout.addWidget(self.ai_mass_caption_button)
 
         middle_layout = QHBoxLayout()
 
@@ -66,12 +67,12 @@ class DatasetModule(BaseModule):
         self.image_caption_edit.text_changed.connect(self.on_caption_changed)
         image_layout.addWidget(self.image_caption_edit)
         image_buttons_layout = QHBoxLayout()
-        ai_caption_button = QPushButton("AI caption")
-        ai_caption_button.clicked.connect(self.on_ai_caption)
-        image_buttons_layout.addWidget(ai_caption_button)
-        save_caption_button = QPushButton("Save")
-        save_caption_button.clicked.connect(self.on_image_save)
-        image_buttons_layout.addWidget(save_caption_button)
+        self.ai_caption_button = QPushButton("AI caption")
+        self.ai_caption_button.clicked.connect(self.on_ai_caption)
+        image_buttons_layout.addWidget(self.ai_caption_button)
+        self.save_caption_button = QPushButton("Save")
+        self.save_caption_button.clicked.connect(self.on_image_save)
+        image_buttons_layout.addWidget(self.save_caption_button)
         image_layout.addLayout(image_buttons_layout)
 
         image_layout.setStretch(0, 1)
@@ -89,6 +90,12 @@ class DatasetModule(BaseModule):
         main_layout.addWidget(self.dataset_title, alignment=Qt.AlignmentFlag.AlignCenter)
         main_layout.addLayout(middle_layout)
 
+        self.progress_bar = QProgressBar()
+        self.progress_bar.setMinimum(0)
+        self.progress_bar.setMaximum(100)
+        self.progress_bar.setValue(0)
+        main_layout.addWidget(self.progress_bar)
+
         self.setLayout(main_layout)
 
     def on_click_select_dataset(self):
@@ -103,10 +110,10 @@ class DatasetModule(BaseModule):
 
         self.dataset_dir = dialog.getExistingDirectory(None, "Select directory", self.directories.datasets)
 
-        dataset_name = os.path.basename(self.dataset_dir)
-        self.dataset_title.setText(f"Dataset: {dataset_name}")
-
-        self.dataset_items_view.load_items(self.dataset_dir)
+        if len(self.dataset_dir) > 0:
+            dataset_name = os.path.basename(self.dataset_dir)
+            self.dataset_title.setText(f"Dataset: {dataset_name}")
+            self.dataset_items_view.load_items(self.dataset_dir)
 
     def on_finished_loading_dataset(self):
         if self.dataset_items_view.selected_path is not None:
@@ -158,38 +165,130 @@ class DatasetModule(BaseModule):
             with open(self.current_caption_path, "w", encoding="utf-8") as caption_file:
                 caption_file.write(captions_text)
 
+    def disable_ui(self):
+        self.select_dataset_button.setDisabled(True)
+        self.mass_caption_button.setDisabled(True)
+        self.ai_mass_caption_button.setDisabled(True)
+        self.ai_caption_button.setDisabled(True)
+        self.save_caption_button.setDisabled(True)
+        self.image_caption_edit.setDisabled(True)
+
+    def enable_ui(self):
+        self.select_dataset_button.setDisabled(False)
+        self.mass_caption_button.setDisabled(False)
+        self.ai_mass_caption_button.setDisabled(False)
+        self.ai_caption_button.setDisabled(False)
+        self.save_caption_button.setDisabled(False)
+        self.image_caption_edit.setDisabled(False)
+
     def on_ai_caption(self):
-        if self.model is None:
-            self.processor = BlipProcessor.from_pretrained("models/captions/fusecap")
-            self.model = BlipForConditionalGeneration.from_pretrained("models/captions/fusecap").to(self.device)
+        self.disable_ui()
+
+        if self.generate_captions_thread is None:
+            self.generate_captions_thread = GenerateCaptionsThread(self.device)
+            self.generate_captions_thread.status_update.connect(self.update_status_bar)
+            self.generate_captions_thread.caption_done.connect(self.on_ai_caption_done)
+        else:
+            self.generate_captions_thread.caption_done.disconnect(self.generate_item_ai_caption_done)
+            self.generate_captions_thread.caption_done.connect(self.on_ai_caption_done)
 
         text = self.image_caption_edit.toPlainText()
         pixmap = self.dataset_items_view.current_item.pixmap
-        qimage = pixmap.toImage()
-        buffer = QBuffer()
-        buffer.open(QBuffer.ReadWrite)
-        qimage.save(buffer, "PNG")
 
-        raw_image = Image.open(io.BytesIO(buffer.data()))
-        inputs = self.processor(raw_image, text, return_tensors="pt").to(self.device)
+        self.generate_captions_thread.text = text
+        self.generate_captions_thread.pixmap = pixmap
 
-        outputs = self.model.generate(**inputs, num_beams=3)
-        generated_text = self.processor.decode(outputs[0], skip_special_tokens=True)
+        self.generate_captions_thread.start()
 
-        self.image_caption_edit.setPlainText(generated_text)
+    def on_ai_caption_done(self, text):
+        self.image_caption_edit.setPlainText(text)
+        self.enable_ui()
+        self.update_status_bar("Ready")
 
     def on_mass_caption(self):
         captions = self.image_caption_edit.toPlainText()
 
-        print(f"{captions=}")
+        if self.dataset_dir is None or len(self.dataset_dir) == 0:
+            self.show_snackbar("You must select a dataset first.")
+            return
 
-        if self.dataset_dir is not None and len(captions) > 0:
-            if os.path.isdir(self.dataset_dir):
-                for file in os.listdir(self.dataset_dir):
-                    print(f"{file=}")
-                    if file.lower().endswith((".jpg", ".jpeg", ".png", ".bmp")):
-                        captions_file = os.path.splitext(file)[0] + ".txt"
-                        captions_path = os.path.join(self.dataset_dir, captions_file)
+        if len(captions) == 0:
+            self.show_snackbar("You must enter a caption first.")
+            return
 
-                        with open(captions_path, "w", encoding="utf-8") as txt_file:
-                            txt_file.write(captions)
+        self.progress_bar.setMaximum(self.dataset_items_view.item_count)
+        current_item = self.dataset_items_view.get_first_item()
+        self.image_caption_edit.setPlainText(captions)
+        process_count = 0
+
+        while True:
+            path = current_item.path
+
+            captions_file = os.path.splitext(path)[0] + ".txt"
+            captions_path = os.path.join(self.dataset_dir, captions_file)
+            with open(captions_path, "w", encoding="utf-8") as txt_file:
+                txt_file.write(captions)
+
+            process_count += 1
+            self.progress_bar.setValue(process_count)
+
+            current_item = self.dataset_items_view.get_next_item()
+
+            if current_item is None:
+                break
+
+    def on_ai_mass_caption(self):
+        self.disable_ui()
+
+        if self.generate_captions_thread is None:
+            self.generate_captions_thread = GenerateCaptionsThread(self.device)
+            self.generate_captions_thread.status_update.connect(self.update_status_bar)
+            self.generate_captions_thread.caption_done.connect(self.generate_item_ai_caption_done)
+        else:
+            self.generate_captions_thread.caption_done.disconnect(self.on_ai_caption_done)
+            self.generate_captions_thread.caption_done.connect(self.generate_item_ai_caption_done)
+
+        text = self.image_caption_edit.toPlainText()
+
+        self.progress_bar.setMaximum(self.dataset_items_view.item_count)
+        self.dataset_items_view.get_first_item()
+        self.update_status_bar("Generating captions...")
+        self.generate_item_ai_caption(text)
+
+    def generate_item_ai_caption(self, text):
+        item = self.dataset_items_view.current_item
+        self.image_caption_edit.setPlainText(text)
+
+        self.generate_captions_thread.text = text
+        self.generate_captions_thread.pixmap = item.pixmap
+
+        self.generate_captions_thread.start()
+
+    def generate_item_ai_caption_done(self, captions):
+        text = self.generate_captions_thread.text
+        process_count = self.progress_bar.value()
+
+        item = self.dataset_items_view.current_item
+        self.image_caption_edit.setPlainText(captions)
+
+        path = item.path
+        captions_file = os.path.splitext(path)[0] + ".txt"
+        captions_path = os.path.join(self.dataset_dir, captions_file)
+        with open(captions_path, "w", encoding="utf-8") as txt_file:
+            txt_file.write(captions)
+
+        process_count += 1
+        self.progress_bar.setValue(process_count)
+
+        next_item = self.dataset_items_view.get_next_item()
+
+        if next_item is not None:
+            self.generate_item_ai_caption(text)
+        else:
+            self.update_status_bar("Ready")
+
+    def closeEvent(self, event):
+        self.generate_captions_thread = None
+        torch.cuda.empty_cache()
+        torch.cuda.ipc_collect()
+        super().closeEvent(event)

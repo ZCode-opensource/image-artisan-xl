@@ -20,8 +20,8 @@ class DatasetItemsView(QWidget):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self.thumb_width = 70
-        self.thumb_height = 70
+        self.thumb_width = 73
+        self.thumb_height = 73
         self.path = None
         self.dataset_items_loader_thread = None
         self.selected_path = None
@@ -117,6 +117,20 @@ class DatasetItemsView(QWidget):
                 widget.set_selected(False)
 
         self.setFocus()
+
+    def get_first_item(self):
+        self.current_item_index = 0
+        item: DatasetItem = self.flow_layout.itemAt(self.current_item_index).widget()
+
+        if item is not None:
+            self.current_item.set_selected(False)
+            self.current_item = item
+            self.selected_path = item.path
+            item.set_selected(True)
+            self.item_selected.emit()
+            self.scroll_area.ensureWidgetVisible(item)
+
+        return item
 
     def get_prev_item(self):
         if self.current_item_index > 0:

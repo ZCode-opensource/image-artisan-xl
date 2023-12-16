@@ -423,9 +423,6 @@ class TextToImageModule(BaseModule):
         if self.continuous_generation:
             self.generation_clicked(self.auto_save, self.continuous_generation)
 
-    def update_status_bar(self, text):
-        self.status_bar.showMessage(text)
-
     def show_error(self, text, empty_pipeline: bool = False):
         if empty_pipeline:
             self.node_graph = None

@@ -35,6 +35,9 @@ class BaseModule(QWidget, metaclass=ABCQWidgetMeta):
     def init_ui(self):
         pass
 
+    def update_status_bar(self, text):
+        self.status_bar.showMessage(text)
+
     def closeEvent(self, event):
         self.event_bus.unsubscribe_all()
         self.event_bus = None
