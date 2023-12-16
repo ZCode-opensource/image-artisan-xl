@@ -189,7 +189,10 @@ class DatasetModule(BaseModule):
             self.generate_captions_thread.status_update.connect(self.update_status_bar)
             self.generate_captions_thread.caption_done.connect(self.on_ai_caption_done)
         else:
-            self.generate_captions_thread.caption_done.disconnect(self.generate_item_ai_caption_done)
+            try:
+                self.generate_captions_thread.caption_done.disconnect(self.generate_item_ai_caption_done)
+            except TypeError:
+                pass
             self.generate_captions_thread.caption_done.connect(self.on_ai_caption_done)
 
         text = self.image_caption_edit.toPlainText()
@@ -245,7 +248,10 @@ class DatasetModule(BaseModule):
             self.generate_captions_thread.status_update.connect(self.update_status_bar)
             self.generate_captions_thread.caption_done.connect(self.generate_item_ai_caption_done)
         else:
-            self.generate_captions_thread.caption_done.disconnect(self.on_ai_caption_done)
+            try:
+                self.generate_captions_thread.caption_done.disconnect(self.on_ai_caption_done)
+            except TypeError:
+                pass
             self.generate_captions_thread.caption_done.connect(self.generate_item_ai_caption_done)
 
         text = self.image_caption_edit.toPlainText()
