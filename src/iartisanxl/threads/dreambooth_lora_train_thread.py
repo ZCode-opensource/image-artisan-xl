@@ -58,7 +58,7 @@ class DreamboothLoraTrainThread(QThread):
         self.output.emit("Setting up accelerator...")
         accelerator_project_config = ProjectConfiguration(project_dir=self.lora_train_args.output_dir)
         self.accelerator = Accelerator(
-            gradient_accumulation_steps=4,
+            gradient_accumulation_steps=self.lora_train_args.accumulation_steps,
             mixed_precision="bf16",
             project_config=accelerator_project_config,
         )
@@ -146,6 +146,7 @@ class DreamboothLoraTrainThread(QThread):
         # now we will add new LoRA weights to the attention layers
         unet_lora_config = LoraConfig(
             r=self.lora_train_args.rank,
+            lora_alpha=self.lora_train_args.rank,
             init_lora_weights="gaussian",
             target_modules=["to_k", "to_q", "to_v", "to_out.0"],
         )
@@ -156,6 +157,7 @@ class DreamboothLoraTrainThread(QThread):
         # So, instead, we monkey-patch the forward calls of its attention-blocks.
         text_lora_config = LoraConfig(
             r=self.lora_train_args.rank,
+            lora_alpha=self.lora_train_args.rank,
             init_lora_weights="gaussian",
             target_modules=["q_proj", "k_proj", "v_proj", "out_proj"],
         )
@@ -319,6 +321,7 @@ class DreamboothLoraTrainThread(QThread):
         self.output.emit(f"Batch size: {self.lora_train_args.batch_size}")
         self.output.emit(f"Batch size with parallel and accumulation: {total_batch_size}")
         self.output.emit(f"Gradient accumulation steps: {self.lora_train_args.accumulation_steps}")
+        self.output.emit(f"Warmp up steps: {self.lora_train_args.lr_warmup_steps}")
         self.output.emit(f"Total training steps: {max_train_steps}")
 
         self.output.emit("")
@@ -475,7 +478,7 @@ class DreamboothLoraTrainThread(QThread):
                         torch_dtype=self.weight_dtype,
                     )
 
-                    scheduler_args = {}
+                    scheduler_args = {"use_karras_sigmas": True}
 
                     if "variance_type" in pipeline.scheduler.config:
                         variance_type = pipeline.scheduler.config.variance_type
@@ -530,6 +533,7 @@ class DreamboothLoraTrainThread(QThread):
         self.unet = self.accelerator.unwrap_model(self.unet)
         self.unet = self.unet.to(torch.float32)
         unet_lora_layers = get_peft_model_state_dict(self.unet)
+        unet_lora_config = self.unet.peft_config["default"]
 
         self.text_encoder_one = self.accelerator.unwrap_model(self.text_encoder_one)
         text_encoder_lora_layers = get_peft_model_state_dict(self.text_encoder_one.to(torch.float32))
@@ -559,7 +563,7 @@ class DreamboothLoraTrainThread(QThread):
             torch_dtype=self.weight_dtype,
         )
 
-        scheduler_args = {}
+        scheduler_args = {"use_karras_sigmas": True}
 
         if "variance_type" in pipeline.scheduler.config:
             variance_type = pipeline.scheduler.config.variance_type
@@ -655,18 +659,10 @@ class DreamboothLoraTrainThread(QThread):
         LoraLoaderMixin.load_lora_into_unet(lora_state_dict, network_alphas=network_alphas, unet=unet_)
 
         text_encoder_state_dict = {k: v for k, v in lora_state_dict.items() if "text_encoder." in k}
-        LoraLoaderMixin.load_lora_into_text_encoder(
-            text_encoder_state_dict,
-            network_alphas=network_alphas,
-            text_encoder=text_encoder_one_,
-        )
+        LoraLoaderMixin.load_lora_into_text_encoder(text_encoder_state_dict, network_alphas=network_alphas, text_encoder=text_encoder_one_)
 
         text_encoder_2_state_dict = {k: v for k, v in lora_state_dict.items() if "text_encoder_2." in k}
-        LoraLoaderMixin.load_lora_into_text_encoder(
-            text_encoder_2_state_dict,
-            network_alphas=network_alphas,
-            text_encoder=text_encoder_two_,
-        )
+        LoraLoaderMixin.load_lora_into_text_encoder(text_encoder_2_state_dict, network_alphas=network_alphas, text_encoder=text_encoder_two_)
 
     def collate_fn(self, images):
         pixel_values = torch.stack([image["pixel_values"] for image in images])
