@@ -1,6 +1,9 @@
 import os
 import gc
+import math
+import json
 
+import attr
 import torch
 from PyQt6.QtWidgets import QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QGridLayout, QFileDialog, QLineEdit, QProgressBar, QTextEdit, QComboBox
 from PyQt6.QtCore import Qt
@@ -30,6 +33,8 @@ class TrainingModule(BaseModule):
         self.lr_data = []
         self.max_steps = 0
 
+        self.total_dataset_images = 0
+
         self.vaes = []
         if self.directories.vaes and os.path.isdir(self.directories.vaes):
             self.vaes = next(os.walk(self.directories.vaes))[1]
@@ -45,13 +50,13 @@ class TrainingModule(BaseModule):
         main_layout.setContentsMargins(10, 5, 10, 5)
         main_layout.setSpacing(10)
 
-        top_layout = QGridLayout()
+        top_layout = QHBoxLayout()
 
         training_type_layout = QHBoxLayout()
         self.training_type_combo = QComboBox()
         self.training_type_combo.addItem("Diffusers - Dreambooth LoRA", "diffusers_dreambooth_lora")
         training_type_layout.addWidget(self.training_type_combo)
-        top_layout.addLayout(training_type_layout, 0, 0)
+        top_layout.addLayout(training_type_layout)
 
         output_layout = QHBoxLayout()
         output_layout.setSpacing(10)
@@ -60,7 +65,7 @@ class TrainingModule(BaseModule):
         output_layout.addWidget(output_dir_button)
         self.output_dir_label = QLabel()
         output_layout.addWidget(self.output_dir_label)
-        top_layout.addLayout(output_layout, 0, 1)
+        top_layout.addLayout(output_layout)
 
         model_layout = QHBoxLayout()
         model_layout.setSpacing(10)
@@ -69,16 +74,21 @@ class TrainingModule(BaseModule):
         model_layout.addWidget(model_select_button)
         self.model_path_label = QLabel()
         model_layout.addWidget(self.model_path_label)
-        top_layout.addLayout(model_layout, 0, 2)
+        top_layout.addLayout(model_layout)
 
-        dataset_layout = QHBoxLayout()
-        dataset_layout.setSpacing(10)
-        dataset_select_button = QPushButton("Select dataset")
-        dataset_select_button.clicked.connect(lambda: self.select_directory(3))
-        dataset_layout.addWidget(dataset_select_button)
-        self.dataset_path_label = QLabel()
-        dataset_layout.addWidget(self.dataset_path_label)
-        top_layout.addLayout(dataset_layout, 0, 3)
+        vae_layout = QHBoxLayout()
+        self.vae_combobox = QComboBox()
+        self.vae_combobox.addItem("Model Vae", "")
+        if self.vaes:
+            for vae in self.vaes:
+                self.vae_combobox.addItem(vae, os.path.join(self.directories.vaes, vae))
+        vae_layout.addWidget(self.vae_combobox)
+        top_layout.addLayout(vae_layout)
+
+        top_layout.setStretch(0, 0)
+        top_layout.setStretch(1, 1)
+        top_layout.setStretch(2, 1)
+        top_layout.setStretch(3, 0)
 
         parameters_layout = QGridLayout()
         parameters_layout.setSpacing(10)
@@ -86,7 +96,7 @@ class TrainingModule(BaseModule):
         rank_label = QLabel("Rank:")
         parameters_layout.addWidget(rank_label, 0, 0)
         self.rank_text_edit = QLineEdit()
-        self.rank_text_edit.setText("8")
+        self.rank_text_edit.setText("4")
         parameters_layout.addWidget(self.rank_text_edit, 0, 1)
 
         save_epochs_label = QLabel("Save N° epochs:")
@@ -119,15 +129,6 @@ class TrainingModule(BaseModule):
         self.seed_text_edit.setText("")
         parameters_layout.addWidget(self.seed_text_edit, 0, 11)
 
-        vae_label = QLabel("Vae:")
-        parameters_layout.addWidget(vae_label, 0, 12)
-        self.vae_combobox = QComboBox()
-        self.vae_combobox.addItem("Model default", "")
-        if self.vaes:
-            for vae in self.vaes:
-                self.vae_combobox.addItem(vae, self.directories.vaes + "/" + vae)
-        parameters_layout.addWidget(self.vae_combobox, 0, 13)
-
         workers_label = QLabel("Workers:")
         parameters_layout.addWidget(workers_label, 1, 0)
         self.workers_text_edit = QLineEdit()
@@ -137,13 +138,13 @@ class TrainingModule(BaseModule):
         learning_rate_label = QLabel("Learning rate:")
         parameters_layout.addWidget(learning_rate_label, 1, 2)
         self.learning_rate_text_edit = QLineEdit()
-        self.learning_rate_text_edit.setText("1e-4")
+        self.learning_rate_text_edit.setText("1e-06")
         parameters_layout.addWidget(self.learning_rate_text_edit, 1, 3)
 
         text_encoder_learning_rate_label = QLabel("Text encoder learning rate:")
         parameters_layout.addWidget(text_encoder_learning_rate_label, 1, 4)
         self.text_encoder_learning_rate_text_edit = QLineEdit()
-        self.text_encoder_learning_rate_text_edit.setText("1e-4")
+        self.text_encoder_learning_rate_text_edit.setText("5e-6")
         parameters_layout.addWidget(self.text_encoder_learning_rate_text_edit, 1, 5)
 
         self.optimizer_label = QLabel("Optimizer:")
@@ -198,6 +199,20 @@ class TrainingModule(BaseModule):
         info_layout.setStretch(2, 3)
         middle_layout.addLayout(info_layout)
 
+        middle_right_layout = QVBoxLayout()
+
+        dataset_layout = QGridLayout()
+        dataset_select_button = QPushButton("Select dataset")
+        dataset_select_button.clicked.connect(lambda: self.select_directory(3))
+        dataset_layout.addWidget(dataset_select_button, 0, 0)
+        self.dataset_path_label = QLabel()
+        dataset_layout.addWidget(self.dataset_path_label, 0, 1)
+        dataset_image_count_label = QLabel("Total images:")
+        dataset_layout.addWidget(dataset_image_count_label, 0, 2)
+        self.dataset_count_label_value = QLabel("0")
+        dataset_layout.addWidget(self.dataset_count_label_value, 0, 3)
+        middle_right_layout.addLayout(dataset_layout)
+
         image_progress_layout = QVBoxLayout()
         self.image_label = ImageLabel()
         image_progress_layout.addWidget(self.image_label)
@@ -211,6 +226,8 @@ class TrainingModule(BaseModule):
         image_progress_layout.setStretch(1, 0)
         image_progress_layout.setStretch(2, 0)
 
+        middle_right_layout.addLayout(image_progress_layout)
+
         epoch_progress_layout = QHBoxLayout()
         self.epoch_progress_label = QLabel("Epoch 0/0")
         epoch_progress_layout.addWidget(self.epoch_progress_label, alignment=Qt.AlignmentFlag.AlignRight)
@@ -219,7 +236,7 @@ class TrainingModule(BaseModule):
         self.loss_progress_label = QLabel("AVG loss: 0.0")
         epoch_progress_layout.addWidget(self.loss_progress_label, alignment=Qt.AlignmentFlag.AlignLeft)
         image_progress_layout.addLayout(epoch_progress_layout)
-        middle_layout.addLayout(image_progress_layout)
+        middle_layout.addLayout(middle_right_layout)
 
         middle_layout.setStretch(0, 2)
         middle_layout.setStretch(1, 3)
@@ -238,6 +255,10 @@ class TrainingModule(BaseModule):
         main_layout.addLayout(parameters_layout)
         main_layout.addLayout(middle_layout)
         main_layout.addLayout(bottom_layout)
+
+        self.accumulation_steps_text_edit.textChanged.connect(self.calculate_total_steps)
+        self.batch_size_text_edit.textChanged.connect(self.calculate_total_steps)
+        self.epochs_text_edit.textChanged.connect(self.calculate_total_steps)
 
         self.setLayout(main_layout)
 
@@ -286,14 +307,90 @@ class TrainingModule(BaseModule):
         dialog.setOptions(options)
 
         if directory_type == 1:
-            self.output_dir = dialog.getExistingDirectory(None, "Select directory", self.directories.outputs_loras)
-            self.output_dir_label.setText(os.path.basename(self.output_dir))
+            output_dir = dialog.getExistingDirectory(None, "Select directory", self.directories.outputs_loras)
+            if len(output_dir) > 0:
+                self.output_dir = output_dir
+                self.output_dir_label.setText(os.path.basename(self.output_dir))
+                self.log_window.success("Output directory selected.")
+                config_path = os.path.join(self.output_dir, "train_args.json")
+                if os.path.isfile(config_path):
+                    self.log_window.add_message("Configuration file found, restoring configuration...")
+                    self.load_config_file(config_path)
+
         elif directory_type == 2:
-            self.model_path = dialog.getExistingDirectory(None, "Select directory", self.directories.models_diffusers)
-            self.model_path_label.setText(os.path.basename(self.model_path))
+            model_path = dialog.getExistingDirectory(None, "Select directory", self.directories.models_diffusers)
+            if len(model_path) > 0:
+                self.model_path = model_path
+                self.model_path_label.setText(os.path.basename(self.model_path))
+                self.log_window.success("Model selected.")
         elif directory_type == 3:
-            self.dataset_path = dialog.getExistingDirectory(None, "Select directory", self.directories.datasets)
-            self.dataset_path_label.setText(os.path.basename(self.dataset_path))
+            dataset_path = dialog.getExistingDirectory(None, "Select directory", self.directories.datasets)
+            if len(dataset_path) > 0:
+                self.set_dataset(dataset_path)
+
+    def set_dataset(self, dataset_path):
+        self.dataset_path = dataset_path
+        self.dataset_path_label.setText(os.path.basename(self.dataset_path))
+        image_count = self.check_and_count_dataset(dataset_path)
+
+        if image_count > 0:
+            self.dataset_path = dataset_path
+            self.total_dataset_images = image_count
+            self.dataset_count_label_value.setText(str(image_count))
+            self.log_window.success("Dataset selected.")
+            self.calculate_total_steps()
+
+    def load_config_file(self, json_file_path):
+        with open(json_file_path, "r", encoding="utf-8") as json_file:
+            data = json.load(json_file)
+
+        model_path = data.get("model_path", None)
+        if model_path is not None:
+            self.model_path = model_path
+            self.model_path_label.setText(os.path.basename(self.model_path))
+            self.log_window.success("Model selected.")
+
+        dataset_path = data.get("dataset_path", None)
+        if dataset_path is not None:
+            self.set_dataset(dataset_path)
+
+        vae_path = data.get("vae_path", None)
+        vae_index = self.vae_combobox.findData(vae_path)
+        if vae_index != -1:
+            self.vae_combobox.setCurrentIndex(vae_index)
+
+        self.rank_text_edit.setText(str(data.get("rank", 4)))
+        self.workers_text_edit.setText(str(data.get("workers", 8)))
+        self.save_epochs_text_edit.setText(str(data.get("save_epochs", 1)))
+        self.batch_size_text_edit.setText(str(data.get("batch_size", 1)))
+        self.accumulation_steps_text_edit.setText(str(data.get("accumulation_steps", 1)))
+        self.epochs_text_edit.setText(str(data.get("epochs", 15)))
+        self.warmup_steps_text_edit.setText(str(data.get("lr_warmup_steps", 0)))
+        self.validation_prompt_edit.setPlainText(data.get("validation_prompt", ""))
+
+        seed = data.get("seed", None)
+        if seed is not None:
+            self.seed_text_edit.setText(str(seed))
+
+        learning_rate = data.get("learning_rate", None)
+        learning_rate_str = f"{learning_rate:.0e}" if learning_rate is not None else "1e-06"
+        self.learning_rate_text_edit.setText(learning_rate_str)
+
+        text_learning_rate = data.get("text_encoder_learning_rate", None)
+        text_learning_rate_str = f"{text_learning_rate:.0e}" if text_learning_rate is not None else "5e-06"
+        self.text_encoder_learning_rate_text_edit.setText(text_learning_rate_str)
+
+        optimizer = data.get("optimizer", "adamw8bit")
+        optimizer_index = self.optimizer_combo.findData(optimizer)
+        if optimizer_index != -1:
+            self.optimizer_combo.setCurrentIndex(optimizer_index)
+
+        lr_scheduler = data.get("lr_scheduler", "constant")
+        lr_scheduler_index = self.lr_scheduler_combo.findData(lr_scheduler)
+        if lr_scheduler_index != -1:
+            self.lr_scheduler_combo.setCurrentIndex(lr_scheduler_index)
+
+        self.log_window.success("Finished loading configuration from file.")
 
     def train_clicked(self):
         if self.training:
@@ -335,6 +432,12 @@ class TrainingModule(BaseModule):
             lr_scheduler=self.lr_scheduler_combo.currentData(),
             lr_warmup_steps=int(self.warmup_steps_text_edit.text()),
         )
+
+        train_args_dict = attr.asdict(train_args)
+        json_file_path = os.path.join(self.output_dir, "train_args.json")
+        with open(json_file_path, "w", encoding="utf-8") as json_file:
+            json.dump(train_args_dict, json_file, indent=4)
+
         self.train_thread = DreamboothLoraTrainThread(train_args)
         self.train_thread.output.connect(self.update_output)
         self.train_thread.output_done.connect(self.update_output_done)
@@ -354,9 +457,10 @@ class TrainingModule(BaseModule):
     def update_output_done(self):
         self.log_window.append_success("done.")
 
-    def show_error(self, text):
+    def show_error(self, text, show_snackbar=True):
         self.log_window.error(text)
-        self.show_snackbar("Could not start training since there was an error.")
+        if show_snackbar:
+            self.show_snackbar("Could not start training since there was an error.")
         self.set_button_train()
         self.training = False
 
@@ -424,3 +528,23 @@ class TrainingModule(BaseModule):
         self.training = False
         self.set_button_train()
         self.update_status_bar("Training aborted.")
+
+    def calculate_total_steps(self):
+        batch_size = int(self.batch_size_text_edit.text())
+        dataset_length = math.ceil(self.total_dataset_images / batch_size)
+        num_update_steps_per_epoch = math.ceil(dataset_length / int(self.accumulation_steps_text_edit.text()))
+        max_train_steps = int(self.epochs_text_edit.text()) * num_update_steps_per_epoch
+        self.steps_progress_label.setText(f"Steps 0/{max_train_steps}")
+
+    def check_and_count_dataset(self, path):
+        image_count = 0
+        for root, _dirs, files in os.walk(path):
+            for file in files:
+                if file.lower().endswith((".png", ".jpg", ".jpeg")):
+                    image_count += 1
+                    txt_file = os.path.join(root, os.path.splitext(file)[0] + ".txt")
+                    if not os.path.isfile(txt_file) or os.path.getsize(txt_file) == 0:
+                        self.show_snackbar("Not all images have captions, invalid dataset")
+                        self.show_error(f"Stopped at {file} because it doesn't have a caption file or is empty.", show_snackbar=False)
+                        return 0
+        return image_count
