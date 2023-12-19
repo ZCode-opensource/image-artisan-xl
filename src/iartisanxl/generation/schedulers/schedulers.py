@@ -31,9 +31,7 @@ schedulers = [
     Scheduler("DDPM", DDPMScheduler, dict()),
     Scheduler("DEIS", DEISMultistepScheduler, dict()),
     Scheduler("DPM++ 2M", DPMSolverMultistepScheduler, dict(use_karras_sigmas=False)),
-    Scheduler(
-        "DPM++ 2M Karras", DPMSolverMultistepScheduler, dict(use_karras_sigmas=True)
-    ),
+    Scheduler("DPM++ 2M Karras", DPMSolverMultistepScheduler, dict(use_karras_sigmas=True)),
     Scheduler(
         "DPM++ 2M Lu",
         DPMSolverMultistepScheduler,
@@ -73,9 +71,7 @@ schedulers = [
         ),
     ),
     Scheduler("DPM++ 2S", DPMSolverSinglestepScheduler, dict(use_karras_sigmas=False)),
-    Scheduler(
-        "DPM++ 2S Karras", DPMSolverSinglestepScheduler, dict(use_karras_sigmas=True)
-    ),
+    Scheduler("DPM++ 2S Karras", DPMSolverSinglestepScheduler, dict(use_karras_sigmas=True)),
     Scheduler(
         "DPM++ SDE",
         DPMSolverSDEScheduler,
