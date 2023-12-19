@@ -6,7 +6,33 @@ from iartisanxl.generation.image_generation_data import ImageGenerationData
 
 
 class ImageDimensionsWidget(QtWidgets.QWidget):
-    ALLOWED_VALUES = [512, 656, 768, 832, 896, 1024, 1152, 1216, 1344, 1536]
+    ALLOWED_VALUES = [
+        512,
+        576,
+        640,
+        704,
+        768,
+        832,
+        896,
+        960,
+        1024,
+        1088,
+        1152,
+        1216,
+        1280,
+        1344,
+        1408,
+        1472,
+        1536,
+        1600,
+        1664,
+        1728,
+        1792,
+        1856,
+        1920,
+        1984,
+        2048,
+    ]
 
     def __init__(self, image_generation_data: ImageGenerationData, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -26,7 +52,7 @@ class ImageDimensionsWidget(QtWidgets.QWidget):
         image_sliders_layout.addWidget(width_label, 0, 0)
 
         self.width_slider = QtWidgets.QSlider()
-        self.width_slider.setRange(512, 1536)
+        self.width_slider.setRange(512, 2048)
         self.width_slider.setSingleStep(1)
         self.width_slider.setPageStep(1)
         self.width_slider.setOrientation(Qt.Orientation.Horizontal)
@@ -39,7 +65,7 @@ class ImageDimensionsWidget(QtWidgets.QWidget):
         image_sliders_layout.addWidget(height_label, 1, 0)
 
         self.height_slider = QtWidgets.QSlider()
-        self.height_slider.setRange(512, 1536)
+        self.height_slider.setRange(512, 2048)
         self.height_slider.setSingleStep(1)
         self.height_slider.setPageStep(1)
         self.height_slider.setOrientation(Qt.Orientation.Horizontal)
