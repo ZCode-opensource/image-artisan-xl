@@ -41,7 +41,9 @@ class ImageGenerationData:
     previous_state: dict = attr.Factory(dict)
 
     def update_previous_state(self):
-        self.previous_state = copy.deepcopy(attr.asdict(self))
+        current_state = attr.asdict(self)
+        current_state.pop("previous_state", None)
+        self.previous_state = copy.deepcopy(current_state)
 
     def get_changed_attributes(self):
         current_state = attr.asdict(self)
