@@ -41,6 +41,10 @@ class TrainingModule(BaseModule):
 
         self.init_ui()
         self.console_stream = ConsoleStream()
+
+        # This module doesn't share the graph and needs the VRAM for training, so we cleanup the graph
+        self.node_graph.clean_up()
+
         self.set_button_train()
 
     def init_ui(self):

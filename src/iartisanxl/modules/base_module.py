@@ -4,6 +4,7 @@ from PyQt6.QtWidgets import QWidget, QStatusBar
 from iartisanxl.app.event_bus import EventBus
 from iartisanxl.app.directories import DirectoriesObject
 from iartisanxl.app.preferences import PreferencesObject
+from iartisanxl.graph.iartisanxl_node_graph import ImageArtisanNodeGraph
 
 
 class ABCQWidgetMeta(ABCMeta, type(QWidget)):
@@ -17,6 +18,7 @@ class BaseModule(QWidget, metaclass=ABCQWidgetMeta):
         show_snackbar,
         directories: DirectoriesObject,
         preferences: PreferencesObject,
+        node_graph: ImageArtisanNodeGraph,
         *args,
         **kwargs,
     ):
@@ -28,6 +30,7 @@ class BaseModule(QWidget, metaclass=ABCQWidgetMeta):
         self.directories = directories
         self.preferences = preferences
         self.dialogs = {}
+        self.node_graph = node_graph
 
         self.event_bus = EventBus()
 

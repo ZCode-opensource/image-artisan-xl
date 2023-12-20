@@ -36,3 +36,9 @@ class PanelContainer(QWidget):
 
     def on_dialog_closed(self, dialog_name):
         setattr(self, f"{dialog_name}_dialog", None)
+
+    def close_all_dialogs(self):
+        for attr in ["model_dialog", "lora_dialog", "controlnet_dialog", "t2i_dialog", "ip_dialog"]:
+            dialog = getattr(self, attr)
+            if dialog is not None:
+                dialog.close()

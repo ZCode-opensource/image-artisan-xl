@@ -94,9 +94,7 @@ class ImageGenerationData:
 
         return loras
 
-    def create_text_to_image_graph(self) -> ImageArtisanNodeGraph:
-        node_graph = ImageArtisanNodeGraph()
-
+    def create_text_to_image_graph(self, node_graph: ImageArtisanNodeGraph) -> ImageArtisanNodeGraph:
         lora_scale = NumberNode(number=self.lora_scale)
         node_graph.add_node(lora_scale, "lora_scale")
 

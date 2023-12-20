@@ -53,17 +53,8 @@ class NodeGraphThread(QThread):
 
     def run(self):
         self.status_changed.emit("Generating image...")
-
-        if self.node_graph is None:
-            self.node_graph = self.image_generation_data.create_text_to_image_graph()
-
-            # connect the essential callbacks
-            self.node_graph.set_abort_function(self.on_aborted)
-            image_generation = self.node_graph.get_node_by_name("image_generation")
-            image_generation.callback = self.step_progress_update
-
-            send_node = self.node_graph.get_node_by_name("image_send")
-            send_node.image_callback = self.preview_image
+        if self.node_graph.node_counter == 0:
+            self.node_graph = self.image_generation_data.create_text_to_image_graph(self.node_graph)
         else:
             changed = self.image_generation_data.get_changed_attributes()
 
@@ -77,6 +68,13 @@ class NodeGraphThread(QThread):
                         node.update_model(path=new_value["path"], vae_name=new_value["name"])
                     else:
                         node.update_value(new_value)
+
+        # connect the essential callbacks
+        self.node_graph.set_abort_function(self.on_aborted)
+        image_generation = self.node_graph.get_node_by_name("image_generation")
+        image_generation.callback = self.step_progress_update
+        send_node = self.node_graph.get_node_by_name("image_send")
+        send_node.image_callback = self.preview_image
 
         self.image_generation_data.update_previous_state()
 
@@ -397,3 +395,12 @@ class NodeGraphThread(QThread):
 
     def on_aborted(self):
         self.generation_aborted.emit()
+
+    def clean_up(self):
+        self.node_graph = None
+        self.logger = None
+        self.directories = None
+        self.image_generation_data = None
+        self.lora_list = None
+        self.controlnet_list = None
+        self.t2i_adapter_list = None

@@ -12,11 +12,11 @@ from iartisanxl.graph.nodes.controlnet_node import ControlnetNode
 
 
 class ImageArtisanNodeGraph:
-    def __init__(self, abort_function: callable = None):
+    def __init__(self):
         self.node_counter = 0
         self.nodes = []
         self.updated = False
-        self.abort_function = abort_function if abort_function is not None else lambda: None
+        self.abort_function = lambda: None
         self.executing_node = None
 
         self.cpu_offload = False
@@ -263,3 +263,8 @@ class ImageArtisanNodeGraph:
 
     def set_abort_function(self, abort_callable: callable):
         self.abort_function = abort_callable
+
+    def clean_up(self):
+        for i in range(len(self.nodes) - 1, -1, -1):
+            self.delete_node(self.nodes[i])
+        self.node_counter = 0
