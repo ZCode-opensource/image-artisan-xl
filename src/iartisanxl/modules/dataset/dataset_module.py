@@ -57,6 +57,7 @@ class DatasetModule(BaseModule):
         self.dataset_items_view.item_selected.connect(self.on_item_selected)
         self.dataset_items_view.finished_loading.connect(self.on_finished_loading_dataset)
         self.dataset_items_view.items_changed.connect(self.set_item)
+        self.dataset_items_view.error.connect(self.show_snackbar)
         dataset_view_layout.addWidget(self.dataset_items_view)
         middle_layout.addLayout(dataset_view_layout)
 

@@ -16,6 +16,7 @@ class DatasetItemsView(QWidget):
     finished_loading = pyqtSignal()
     item_selected = pyqtSignal()
     items_changed = pyqtSignal()
+    error = pyqtSignal(str)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -252,6 +253,11 @@ class DatasetItemsView(QWidget):
             path = url.toLocalFile()
             file_name = os.path.basename(path)
             new_image_path = os.path.join(self.path, file_name.lower())
+
+            if os.path.isfile(new_image_path):
+                self.error.emit("File already exists in dataset.")
+                return
+
             shutil.copy2(path, new_image_path)
             dataset_item = self.add_item_path(new_image_path)
 
