@@ -8,6 +8,7 @@ from transformers import BlipProcessor, BlipForConditionalGeneration
 class GenerateCaptionsThread(QThread):
     status_update = pyqtSignal(str)
     caption_done = pyqtSignal(str)
+    error = pyqtSignal(str)
 
     def __init__(self, device):
         super().__init__()
@@ -21,8 +22,14 @@ class GenerateCaptionsThread(QThread):
     def run(self):
         if self.model is None:
             self.status_update.emit("Loading FuseCap model...")
-            self.processor = BlipProcessor.from_pretrained("models/captions/fusecap")
-            self.model = BlipForConditionalGeneration.from_pretrained("models/captions/fusecap").to(self.device)
+
+            try:
+                self.processor = BlipProcessor.from_pretrained("models/captions/fusecap")
+                self.model = BlipForConditionalGeneration.from_pretrained("models/captions/fusecap").to(self.device)
+            except OSError:
+                self.error.emit("Need to download the FuseCap model from the downloader menu.")
+                return
+
             self.status_update.emit("FuseCap loaded.")
 
         self.status_update.emit("Generating AI caption...")
@@ -31,8 +38,6 @@ class GenerateCaptionsThread(QThread):
         buffer = QBuffer()
         buffer.open(QBuffer.ReadWrite)
         qimage.save(buffer, "PNG")
-
-        print(f"{self.text=}")
 
         raw_image = Image.open(io.BytesIO(buffer.data()))
         inputs = self.processor(raw_image, self.text, return_tensors="pt").to(self.device)
