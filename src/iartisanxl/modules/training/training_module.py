@@ -266,6 +266,16 @@ class TrainingModule(BaseModule):
 
         self.setLayout(main_layout)
 
+    def closeEvent(self, event):
+        self.train_thread = None
+        self.epoch_data = []
+        self.loss_data = []
+        self.lr_data = []
+
+        torch.cuda.empty_cache()
+        torch.cuda.ipc_collect()
+        super().closeEvent(event)
+
     def set_button_train(self):
         self.train_button.setStyleSheet(
             """
