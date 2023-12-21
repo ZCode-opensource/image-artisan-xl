@@ -105,35 +105,23 @@ class StableDiffusionXLModelNode(Node):
                 ).to(device)
 
                 if self.sequential_offload:
-                    self.values["text_encoder_1"] = accelerate.cpu_offload(
-                        self.values["text_encoder_1"], "cuda:0"
-                    )
+                    self.values["text_encoder_1"] = accelerate.cpu_offload(self.values["text_encoder_1"], "cuda:0")
 
-                self.values[
-                    "text_encoder_2"
-                ] = CLIPTextModelWithProjection.from_pretrained(
+                self.values["text_encoder_2"] = CLIPTextModelWithProjection.from_pretrained(
                     os.path.join(self.path, "text_encoder_2"),
                     use_safetensors=True,
                     variant="fp16",
                     torch_dtype=self.torch_dtype,
                     local_files_only=True,
                     low_cpu_mem_usage=True,
-                ).to(
-                    device
-                )
+                ).to(device)
 
                 if self.sequential_offload:
-                    self.values["text_encoder_2"] = accelerate.cpu_offload(
-                        self.values["text_encoder_2"], "cuda:0"
-                    )
+                    self.values["text_encoder_2"] = accelerate.cpu_offload(self.values["text_encoder_2"], "cuda:0")
 
-                self.values["tokenizer_1"] = CLIPTokenizer.from_pretrained(
-                    os.path.join(self.path, "tokenizer")
-                )
+                self.values["tokenizer_1"] = CLIPTokenizer.from_pretrained(os.path.join(self.path, "tokenizer"))
 
-                self.values["tokenizer_2"] = CLIPTokenizer.from_pretrained(
-                    os.path.join(self.path, "tokenizer_2")
-                )
+                self.values["tokenizer_2"] = CLIPTokenizer.from_pretrained(os.path.join(self.path, "tokenizer_2"))
 
                 self.values["unet"] = UNet2DConditionModel.from_pretrained(
                     os.path.join(self.path, "unet"),
@@ -144,26 +132,18 @@ class StableDiffusionXLModelNode(Node):
                 ).to(device)
 
                 if self.sequential_offload:
-                    self.values["unet"] = accelerate.cpu_offload(
-                        self.values["unet"], "cuda:0"
-                    )
+                    self.values["unet"] = accelerate.cpu_offload(self.values["unet"], "cuda:0")
         else:
             if os.path.isfile(self.path) and self.path.endswith(".safetensors"):
-                original_config = OmegaConf.load(
-                    os.path.join("./configs/", "sd_xl_base.yaml")
-                )
-                unet_config = create_unet_diffusers_config(
-                    original_config, image_size=1024
-                )
+                original_config = OmegaConf.load(os.path.join("./configs/", "sd_xl_base.yaml"))
+                unet_config = create_unet_diffusers_config(original_config, image_size=1024)
 
                 try:
                     checkpoint = safe_load(self.path, device="cpu")
                 except FileNotFoundError as exc:
                     raise FileNotFoundError("Model file not found.") from exc
 
-                converted_unet_checkpoint = convert_ldm_unet_checkpoint(
-                    checkpoint, unet_config
-                )
+                converted_unet_checkpoint = convert_ldm_unet_checkpoint(checkpoint, unet_config)
 
                 ctx = init_empty_weights
                 with ctx():
@@ -174,9 +154,7 @@ class StableDiffusionXLModelNode(Node):
                     local_files_only=True,
                 )
 
-                config = CLIPTextConfig.from_pretrained(
-                    "./configs/clip-vit-large-patch14", local_files_only=True
-                )
+                config = CLIPTextConfig.from_pretrained("./configs/clip-vit-large-patch14", local_files_only=True)
                 ctx = init_empty_weights
                 with ctx():
                     self.values["text_encoder_1"] = CLIPTextModel(config)
@@ -235,14 +213,10 @@ class StableDiffusionXLModelNode(Node):
         set_adapters = {}
 
         if hasattr(self.values["text_encoder_1"], "peft_config"):
-            set_adapters["text_encoder"] = list(
-                self.values["text_encoder_1"].peft_config.keys()
-            )
+            set_adapters["text_encoder"] = list(self.values["text_encoder_1"].peft_config.keys())
 
         if hasattr(self.values["text_encoder_2"], "peft_config"):
-            set_adapters["text_encoder_2"] = list(
-                self.values["text_encoder_2"].peft_config.keys()
-            )
+            set_adapters["text_encoder_2"] = list(self.values["text_encoder_2"].peft_config.keys())
 
         if hasattr(self.values["unet"], "peft_config"):
             set_adapters["unet"] = list(self.values["unet"].peft_config.keys())

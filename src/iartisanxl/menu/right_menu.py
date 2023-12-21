@@ -179,3 +179,6 @@ class RightMenu(QFrame):
 
         self.current_panel = panel
         self.current_panel_text = text
+
+    def close_all_dialogs(self):
+        self.panel_container.close_all_dialogs()

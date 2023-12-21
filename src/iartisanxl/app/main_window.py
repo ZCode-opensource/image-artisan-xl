@@ -19,6 +19,7 @@ from iartisanxl.app.directories import DirectoriesObject
 from iartisanxl.app.preferences import PreferencesObject
 from iartisanxl.configuration.preferences_dialog import PreferencesDialog
 from iartisanxl.app.downloader_dialog import DownloaderDialog
+from iartisanxl.graph.iartisanxl_node_graph import ImageArtisanNodeGraph
 
 
 class MainWindow(QMainWindow):
@@ -33,6 +34,8 @@ class MainWindow(QMainWindow):
         **kwargs,
     ):
         super(MainWindow, self).__init__(*args, **kwargs)
+
+        self.node_graph = ImageArtisanNodeGraph()
 
         splash_timer = QTimer()
         splash_timer.singleShot(splash_timer_duration, self.close_splash)
@@ -172,7 +175,7 @@ class MainWindow(QMainWindow):
             current_module.deleteLater()
 
         try:
-            self.module = module_class(self.status_bar, self.show_snackbar, self.directories, self.preferences)
+            self.module = module_class(self.status_bar, self.show_snackbar, self.directories, self.preferences, self.node_graph)
             self.workspace_layout.addWidget(self.module)
             self.gui_options["current_module"] = label
         except TypeError as module_error:

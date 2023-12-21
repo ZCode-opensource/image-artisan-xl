@@ -1,198 +1,3 @@
-/* Custom widgets */
-LeftMenu QWidget#container {
-    background: #27272b;
-    border-left: 1px solid #ff494949;
-}
-
-BaseDialog QWidget#flow_widget {
-    background: #181b28;
-}
-
-QFrame#workspace {
-    border-right: 1px solid #ff494949;
-}
-
-RightMenu {
-    background: #27272b;
-    border-radius: 10;
-}
-
-PanelContainer {
-    background-color: #2a3541;
-}
-
-PanelContainer QWidget#panel_container QSlider, 
-PanelContainer QWidget#panel_container QLabel, 
-PanelContainer QWidget#panel_container QCheckBox {
-    background-color: #2a3541;
-    border: 0px;
-}
-
-PanelContainer QWidget#panel_container QFrame {
-    background-color: #2a3541;
-    border: 1px solid #fff;
-}
-
-PanelContainer QWidget#panel_container QLabel {
-    border: 0;
-}
-
-VerticalButton {
-    color: #eff0f1;
-    background-color: rgba(100, 100, 100, 0.5);
-    border: 1px solid #ada7c9;
-    border-radius: 5;
-}
-
-VerticalButton:hover {
-    border: 1px solid #6b687a;
-}
-
-QLabel#model_name {
-    color: #dadada;
-    font-size: 20px;
-    font-weight: bold;
-}
-
-QLabel#version_title {
-    color: #dadada;
-    font-weight: bold;
-}
-
-QLabel#tags_title {    
-    color: #dadada;
-    font-weight: bold;
-}
-
-QLabel#tags {    
-    color: #8d8d8d;
-}
-
-QLabel#trigger_words {    
-    color: #afad42;
-    font-weight: bold;
-}
-
-QPushButton#trigger_item {    
-    background-color: #2d334b;
-    padding: 2px 4px; 
-    border-radius: 5px;
-}
-
-QPushButton#trigger_item:hover {    
-    background-color: #434b6e;
-}
-
-QPushButton#trigger_item:pressed {    
-    background-color: #555f8b;
-}
-
-QLabel#prompt_label {    
-    font-weight: bold;
-}
-
-ImageViewerSimple {
-    background: #29292b;
-}
-
-QPushButton#green_button {
-    background-color: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #23923b, stop: 1 #124e1f);
-}
-QPushButton#green_button:hover {
-    background-color: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #2cb349, stop: 1 #176427);
-}
-QPushButton#green_button:pressed {
-    background-color: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #35d457, stop: 1 #1f8834);
-}
-
-QLabel#example_prompt_text_label {
-    background: #29292b;
-    padding: 4px;
-}
-
-QLabel#example_prompt_text_label:hover {
-    background: #424246;
-}
-
-ModelItemsView QPushButton {
-    background-color: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #236092, stop: 1 #122e4e);
-    padding: 3px 5px;
-}
-
-ModelItemsView QPushButton:hover {
-    background-color: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #2971ac, stop: 1 #19406d);
-}
-
-ModelItemsView QPushButton:pressed {
-    background-color: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #2e7dbe, stop: 1 #205592);
-}
-
-ModelItemsView QComboBox {
-    padding: 2px 5px;
-}
-
-ItemSelector QFrame {
-    background: #424246;
-}
-
-ModelImageWidget QLabel#item_name {
-    background-color: rgba(0, 0, 0, 127);
-    color: white;
-    padding: 2px;
-}
-
-ModelImageWidget QLabel#item_version {
-    background-color: rgba(0, 0, 0, 127);
-    color: white;
-    padding: 2px;
-}
-
-ModelImageWidget QLabel#item_type {
-    background-color: rgba(0, 0, 0, 127);
-    color: white;
-    padding: 2px;
-}
-
-ModelInfoWidget QProgressBar:horizontal {
-    background-color: #353636;
-    border: 10px solid #181b28;
-    border-radius: 0.13em;
-    padding: 0em;
-}
-
-OptimizationsPanel SelectDirectoryWidget QWidget#setup_directory_widget {
-    border: 1px solid #3d4466;
-}
-
-OptimizationsPanel QFrame {
-    border: 1px solid #3d4466;
-}
-
-OptimizationsPanel QFrame QLabel {
-    border: 0;
-}
-
-OptimizationsPanel QCheckBox {
-    background-color: #181b28;
-}
-
-PreferencesDialog SelectDirectoryWidget QWidget#setup_directory_widget {
-    border: 1px solid #3d4466;
-}
-
-PreferencesDialog SelectDirectoryWidget QWidget {
-
-}
-
-PreferencesDialog QCheckBox {
-    background-color: #181b28;
-}
-
-QWidget#control_image_widget ImageEditor {
-    background: #181b28;
-    border: 1px solid #2f344e;
-}
-
 /* Base */
 QMainWindow {
     background: #29292b;
@@ -370,6 +175,197 @@ QListView::item:selected {
                             stop: 0 #4a4d63, stop: 1 #3a3e4d);
 }
 
+/* Custom widgets */
+LeftMenu QWidget#container {
+    background: #27272b;
+    border-left: 1px solid #ff494949;
+}
+
+BaseDialog QWidget#flow_widget {
+    background: #181b28;
+}
+
+QFrame#workspace {
+    border-right: 1px solid #ff494949;
+}
+
+RightMenu {
+    background: #27272b;
+    border-radius: 10;
+}
+
+PanelContainer {
+    background-color: #2a3541;
+}
+
+PanelContainer QWidget#panel_container QSlider, 
+PanelContainer QWidget#panel_container QLabel, 
+PanelContainer QWidget#panel_container QCheckBox {
+    background-color: #2a3541;
+    border: 0px;
+}
+
+PanelContainer QWidget#panel_container QFrame {
+    background-color: #2a3541;
+    border: 1px solid #fff;
+}
+
+PanelContainer QWidget#panel_container QLabel {
+    border: 0;
+}
+
+VerticalButton {
+    color: #eff0f1;
+    background-color: rgba(100, 100, 100, 0.5);
+    border: 1px solid #ada7c9;
+    border-radius: 5;
+}
+
+VerticalButton:hover {
+    border: 1px solid #6b687a;
+}
+
+QLabel#model_name {
+    color: #dadada;
+    font-size: 20px;
+    font-weight: bold;
+}
+
+QLabel#version_title {
+    color: #dadada;
+    font-weight: bold;
+}
+
+QLabel#tags_title {    
+    color: #dadada;
+    font-weight: bold;
+}
+
+QLabel#tags {    
+    color: #8d8d8d;
+}
+
+QLabel#trigger_words {    
+    color: #afad42;
+    font-weight: bold;
+}
+
+QPushButton#trigger_item {    
+    background-color: #2d334b;
+    padding: 2px 4px; 
+    border-radius: 5px;
+}
+
+QPushButton#trigger_item:hover {    
+    background-color: #434b6e;
+}
+
+QPushButton#trigger_item:pressed {    
+    background-color: #555f8b;
+}
+
+QLabel#prompt_label {    
+    font-weight: bold;
+}
+
+ImageViewerSimple {
+    background: #29292b;
+}
+
+QPushButton#green_button {
+    background-color: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #23923b, stop: 1 #124e1f);
+}
+QPushButton#green_button:hover {
+    background-color: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #2cb349, stop: 1 #176427);
+}
+QPushButton#green_button:pressed {
+    background-color: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #35d457, stop: 1 #1f8834);
+}
+
+QLabel#example_prompt_text_label {
+    background: #29292b;
+    padding: 4px;
+}
+
+QLabel#example_prompt_text_label:hover {
+    background: #424246;
+}
+
+ModelItemsView QPushButton {
+    background-color: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #236092, stop: 1 #122e4e);
+    padding: 3px 5px;
+}
+
+ModelItemsView QPushButton:hover {
+    background-color: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #2971ac, stop: 1 #19406d);
+}
+
+ModelItemsView QPushButton:pressed {
+    background-color: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #2e7dbe, stop: 1 #205592);
+}
+
+ModelItemsView QComboBox {
+    padding: 2px 5px;
+}
+
+ItemSelector QFrame {
+    background: #424246;
+}
+
+ModelImageWidget QLabel#item_name {
+    background-color: rgba(0, 0, 0, 127);
+    color: white;
+    padding: 2px;
+}
+
+ModelImageWidget QLabel#item_version {
+    background-color: rgba(0, 0, 0, 127);
+    color: white;
+    padding: 2px;
+}
+
+ModelImageWidget QLabel#item_type {
+    background-color: rgba(0, 0, 0, 127);
+    color: white;
+    padding: 2px;
+}
+
+ModelInfoWidget QProgressBar:horizontal {
+    background-color: #353636;
+    border: 10px solid #181b28;
+    border-radius: 0.13em;
+    padding: 0em;
+}
+
+OptimizationsPanel QFrame {
+    border: 1px solid #3d4466;
+}
+
+OptimizationsPanel QFrame QLabel {
+    border: 0;
+}
+
+OptimizationsPanel QCheckBox {
+    background-color: #181b28;
+}
+
+DirectoriesPanel QFrame#setup_directory_widget {
+    border: 1px solid #3d4466;
+}
+
+PreferencesDialog QFrame#setup_directory_widget {
+    border: 1px solid #3d4466;
+}
+
+PreferencesDialog QCheckBox {
+    background-color: #181b28;
+}
+
+QWidget#control_image_widget ImageEditor {
+    background: #181b28;
+    border: 1px solid #2f344e;
+}
+
 DownloaderDialog QProgressBar:horizontal {
     background-color: #353636;
     border: 10px solid #181b28;
@@ -411,4 +407,13 @@ QTabWidget#tab_downloader QTabBar::tab:selected {
 
 QTabWidget#tab_downloader>QWidget>QWidget {
     background-color: #181b28;
+}
+
+DatasetItemsView QWidget#flow_widget {
+    background: #232325;
+}
+
+ImageCropperWidget ImageCropper {
+    background: #232325;
+     border: 1px solid #c9c9c9;
 }

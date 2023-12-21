@@ -41,7 +41,9 @@ class ImageGenerationData:
     previous_state: dict = attr.Factory(dict)
 
     def update_previous_state(self):
-        self.previous_state = copy.deepcopy(attr.asdict(self))
+        current_state = attr.asdict(self)
+        current_state.pop("previous_state", None)
+        self.previous_state = copy.deepcopy(current_state)
 
     def get_changed_attributes(self):
         current_state = attr.asdict(self)
@@ -92,9 +94,7 @@ class ImageGenerationData:
 
         return loras
 
-    def create_text_to_image_graph(self) -> ImageArtisanNodeGraph:
-        node_graph = ImageArtisanNodeGraph()
-
+    def create_text_to_image_graph(self, node_graph: ImageArtisanNodeGraph) -> ImageArtisanNodeGraph:
         lora_scale = NumberNode(number=self.lora_scale)
         node_graph.add_node(lora_scale, "lora_scale")
 

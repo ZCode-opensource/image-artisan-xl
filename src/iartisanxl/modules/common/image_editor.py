@@ -115,6 +115,7 @@ class ImageEditor(QGraphicsView):
     def fit_in_view(self, apply_zoom=True):
         rect = QRectF(self._photo.pixmap().rect())
         if not rect.isNull():
+            rect.adjust(5, 7, 0, 0)
             self.setSceneRect(rect)
             if self.has_photo():
                 unity = self.transform().mapRect(QRectF(0, 0, 1, 1))

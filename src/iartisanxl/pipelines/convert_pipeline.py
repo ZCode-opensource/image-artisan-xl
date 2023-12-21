@@ -1,7 +1,6 @@
 import os
 import sys
 import inspect
-import json
 import logging
 import importlib
 from typing import Optional, Union
@@ -80,9 +79,7 @@ class ImageArtisanConvertPipeline(
         self.logger = logging.getLogger()
 
     @classmethod
-    def from_single_file(
-        cls, pretrained_model_link_or_path, vae: AutoencoderKL = None, **kwargs
-    ):
+    def from_single_file(cls, pretrained_model_link_or_path, vae: AutoencoderKL = None, **kwargs):
         original_config_file = kwargs.pop("original_config_file", None)
         torch_dtype = kwargs.pop("torch_dtype", None)
         pipeline_class = ImageArtisanConvertPipeline
@@ -96,34 +93,36 @@ class ImageArtisanConvertPipeline(
 
         image_size = 1024
 
-        scheduler_config = None
-        with open(
-            "./configs/scheduler_config.json", "r", encoding="utf-8"
-        ) as config_file:
-            scheduler_config = json.load(config_file)
+        scheduler_config_dict = {
+            "beta_end": 0.012,
+            "beta_schedule": "scaled_linear",
+            "beta_start": 0.00085,
+            "clip_sample": False,
+            "num_train_timesteps": 1000,
+            "prediction_type": "epsilon",
+            "sample_max_value": 1.0,
+            "set_alpha_to_one": False,
+            "steps_offset": 1,
+            "timestep_spacing": "leading",
+            "trained_betas": None,
+            "interpolation_type": "linear",
+            "skip_prk_steps": True,
+        }
 
-        scheduler = EulerDiscreteScheduler.from_config(scheduler_config)
+        scheduler = EulerDiscreteScheduler.from_config(scheduler_config_dict)
         scheduler.register_to_config(clip_sample=False)
 
-        unet_config = create_unet_diffusers_config(
-            original_config, image_size=image_size
-        )
+        unet_config = create_unet_diffusers_config(original_config, image_size=image_size)
         path = pretrained_model_link_or_path
-        converted_unet_checkpoint = convert_ldm_unet_checkpoint(
-            checkpoint, unet_config, path=path, extract_ema=False
-        )
+        converted_unet_checkpoint = convert_ldm_unet_checkpoint(checkpoint, unet_config, path=path, extract_ema=False)
 
         ctx = init_empty_weights
         with ctx():
             unet = UNet2DConditionModel(**unet_config)
 
         if vae is None:
-            vae_config = create_vae_diffusers_config(
-                original_config, image_size=image_size
-            )
-            converted_vae_checkpoint = convert_ldm_vae_checkpoint(
-                checkpoint, vae_config
-            )
+            vae_config = create_vae_diffusers_config(original_config, image_size=image_size)
+            converted_vae_checkpoint = convert_ldm_vae_checkpoint(checkpoint, vae_config)
             vae_scaling_factor = original_config.model.params.scale_factor
             vae_config["scaling_factor"] = vae_scaling_factor
             ctx = init_empty_weights
@@ -131,23 +130,17 @@ class ImageArtisanConvertPipeline(
                 vae = AutoencoderKL(**vae_config)
 
             for param_name, param in converted_vae_checkpoint.items():
-                set_module_tensor_to_device(
-                    vae, param_name, "cpu", value=param, dtype=torch.float16
-                )
+                set_module_tensor_to_device(vae, param_name, "cpu", value=param, dtype=torch.float16)
 
         tokenizer = CLIPTokenizer.from_pretrained(
             "./configs/clip-vit-large-patch14",
             local_files_only=True,
         )
-        config = CLIPTextConfig.from_pretrained(
-            "./configs/clip-vit-large-patch14", local_files_only=True
-        )
+        config = CLIPTextConfig.from_pretrained("./configs/clip-vit-large-patch14", local_files_only=True)
         ctx = init_empty_weights
         with ctx():
             text_encoder = CLIPTextModel(config)
-        text_encoder = convert_ldm_clip_checkpoint(
-            checkpoint, local_files_only=True, text_encoder=text_encoder
-        )
+        text_encoder = convert_ldm_clip_checkpoint(checkpoint, local_files_only=True, text_encoder=text_encoder)
 
         tokenizer_2 = CLIPTokenizer.from_pretrained(
             "./configs/CLIP-ViT-bigG-14-laion2B-39B-b160k",
@@ -166,9 +159,7 @@ class ImageArtisanConvertPipeline(
         )
 
         for param_name, param in converted_unet_checkpoint.items():
-            set_module_tensor_to_device(
-                unet, param_name, "cpu", value=param, dtype=torch.float16
-            )
+            set_module_tensor_to_device(unet, param_name, "cpu", value=param, dtype=torch.float16)
 
         pipe = pipeline_class(
             vae=vae,
@@ -206,9 +197,7 @@ class ImageArtisanConvertPipeline(
                 return False
             return True
 
-        model_index_dict = {
-            k: v for k, v in model_index_dict.items() if is_saveable_module(k, v)
-        }
+        model_index_dict = {k: v for k, v in model_index_dict.items() if is_saveable_module(k, v)}
         for pipeline_component_name in model_index_dict.keys():
             sub_model = getattr(self, pipeline_component_name)
             model_cls = sub_model.__class__
@@ -225,9 +214,7 @@ class ImageArtisanConvertPipeline(
             # search for the model's base class in LOADABLE_CLASSES
             for library_name, library_classes in LOADABLE_CLASSES.items():
                 if library_name in sys.modules:
-                    library = (  # pylint: disable=redefined-outer-name
-                        importlib.import_module(library_name)
-                    )
+                    library = importlib.import_module(library_name)  # pylint: disable=redefined-outer-name
                 else:
                     self.logger.error(
                         "%s is not installed. Cannot save %s as %s from %s",
@@ -239,9 +226,7 @@ class ImageArtisanConvertPipeline(
 
                 for base_class, save_load_methods in library_classes.items():
                     class_candidate = getattr(library, base_class, None)
-                    if class_candidate is not None and issubclass(
-                        model_cls, class_candidate
-                    ):
+                    if class_candidate is not None and issubclass(model_cls, class_candidate):
                         # if we found a suitable base class in LOADABLE_CLASSES then grab its save method
                         save_method_name = save_load_methods[0]
                         break
@@ -263,9 +248,7 @@ class ImageArtisanConvertPipeline(
 
             # Call the save method with the argument safe_serialization only if it's supported
             save_method_signature = inspect.signature(save_method)
-            save_method_accept_safe = (
-                "safe_serialization" in save_method_signature.parameters
-            )
+            save_method_accept_safe = "safe_serialization" in save_method_signature.parameters
             save_method_accept_variant = "variant" in save_method_signature.parameters
 
             save_kwargs = {}
@@ -274,9 +257,7 @@ class ImageArtisanConvertPipeline(
             if save_method_accept_variant:
                 save_kwargs["variant"] = variant
 
-            save_method(
-                os.path.join(save_directory, pipeline_component_name), **save_kwargs
-            )
+            save_method(os.path.join(save_directory, pipeline_component_name), **save_kwargs)
 
             steps = steps + 1
             status_update(f"{pipeline_component_name} saved...", steps)

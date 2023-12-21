@@ -4,27 +4,27 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "iartisanxl"
-version = "0.2.0"
+version = "0.3.0"
 authors = [
   { name="Alvaro Somoza", email="somoza.alvaro@gmail.com" },
 ]
 description = "Dekstop application for generating images using Stable Diffusion."
 requires-python = ">=3.11"
 dependencies = [
-    "accelerate>=0.24.1 ",
-    "diffusers>=0.24.0",
+    "accelerate>=0.25.0 ",
+    "diffusers>=0.25.0.dev0",
     "Pillow>=9.3.0",
     "PyQt6>=6.6.0",
     "pyqtgraph",
     "safetensors",
     "scipy",
     "torchsde",
-    "transformers>=4.35.0",
+    "transformers>=4.36.2",
     "toml",
     "tomesd",
     "attrs",
     "omegaconf",
-    "peft>=0.6.3.dev0",
+    "peft>=0.7.0",
     "opencv-python>=4.8.1.78",
     "matplotlib",
     "scikit-image",
@@ -32,6 +32,8 @@ dependencies = [
     "vcolorpicker>=1.4.3",
     "einops>=0.7.0",
     "timm==0.9.5",
+    "bitsandbytes==0.41.1",
+    "prodigyopt==1.0",
 ]
 
 [project.optional-dependencies]

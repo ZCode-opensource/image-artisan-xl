@@ -1,9 +1,12 @@
 import sys
 import os
+import logging
 import logging.config
 
 from iartisanxl.app.artisan import ArtisanApplication
 from iartisanxl.app.logging_conf import logging_config
+
+logging.getLogger("PIL").setLevel(logging.ERROR)
 
 
 def my_exception_hook(exctype, value, traceback):

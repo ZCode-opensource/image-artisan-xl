@@ -29,8 +29,8 @@ class InitialSetupDialog(QDialog):
     ):
         super().__init__(*args, **kwargs)
 
-        self.dialog_width = 600
-        self.dialog_height = 600
+        self.dialog_width = 650
+        self.dialog_height = 650
 
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint)
         self.setFixedSize(self.dialog_width, self.dialog_height)

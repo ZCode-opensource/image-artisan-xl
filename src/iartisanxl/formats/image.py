@@ -82,14 +82,18 @@ class ImageProcessor:
 
         image = Image.open(io.BytesIO(self.image_data))
 
-        if self.serialized_data is None:
-            image.save(output_filepath)
-            return
+        if output_filepath is not None and len(output_filepath) > 0:
+            try:
+                if self.serialized_data is None:
+                    image.save(output_filepath)
+                    return
 
-        metadata = PngInfo()
-        metadata.add_text("iartisan_data", self.serialized_data)
+                metadata = PngInfo()
+                metadata.add_text("iartisan_data", self.serialized_data)
 
-        image.save(output_filepath, pnginfo=metadata)
+                image.save(output_filepath, pnginfo=metadata)
+            except ValueError:
+                pass
 
     def get_pillow_thumbnail(self, target_height: Optional[int] = None, target_width: Optional[int] = None) -> Image:
         image = self.get_pillow_image()

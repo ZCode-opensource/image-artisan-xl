@@ -1,15 +1,4 @@
-from PyQt6.QtWidgets import (
-    QDialog,
-    QVBoxLayout,
-    QHBoxLayout,
-    QWidget,
-    QLabel,
-    QPushButton,
-    QFileDialog,
-    QCheckBox,
-    QGridLayout,
-    QSpacerItem,
-)
+from PyQt6.QtWidgets import QDialog, QVBoxLayout, QHBoxLayout, QWidget, QLabel, QPushButton, QFileDialog, QCheckBox, QGridLayout, QSpacerItem, QFrame
 from PyQt6.QtCore import Qt, QSettings
 from PyQt6.QtGui import QPainter, QPen, QColor
 
@@ -20,7 +9,7 @@ from iartisanxl.configuration.directories_panel import DirectoriesPanel
 from iartisanxl.configuration.optimizations_panel import OptimizationsPanel
 
 
-class SelectDirectoryWidget(QWidget):
+class SelectDirectoryWidget(QFrame):
     def __init__(
         self,
         selected_dir: str,
@@ -31,6 +20,8 @@ class SelectDirectoryWidget(QWidget):
         **kwargs,
     ):
         super().__init__(*args, **kwargs)
+
+        self.setObjectName("setup_directory_widget")
 
         self.selected_dir = selected_dir
         self.directory_text = directory_text
@@ -152,6 +143,24 @@ class PreferencesDialog(QDialog):
         left_layout.addWidget(images_widget, stretch=1)
         left_layout.addStretch()
 
+        output_loras_widget = SelectDirectoryWidget(
+            self.directories.outputs_loras,
+            "Output loras",
+            9,
+            self.on_select_directory,
+        )
+        left_layout.addWidget(output_loras_widget, stretch=1)
+
+        datasets_widget = SelectDirectoryWidget(
+            self.directories.datasets,
+            "Datasets",
+            10,
+            self.on_select_directory,
+        )
+        left_layout.addWidget(datasets_widget, stretch=1)
+
+        left_layout.addStretch()
+
         right_layout = QVBoxLayout()
         right_layout.setContentsMargins(10, 10, 10, 0)
 
@@ -256,32 +265,49 @@ class PreferencesDialog(QDialog):
                 settings.setValue("models_diffusers", selected_path)
         elif dir_type == 2:
             selected_path = dialog.getExistingDirectory(None, "Select a directory", self.directories.models_safetensors)
-            self.directories.models_safetensors = selected_path
-            settings.setValue("models_safetensors", selected_path)
+            if len(selected_path) > 0:
+                self.directories.models_safetensors = selected_path
+                settings.setValue("models_safetensors", selected_path)
         elif dir_type == 3:
             selected_path = dialog.getExistingDirectory(None, "Select a directory", self.directories.vaes)
-            self.directories.vaes = selected_path
-            settings.setValue("vaes", selected_path)
+            if len(selected_path) > 0:
+                self.directories.vaes = selected_path
+                settings.setValue("vaes", selected_path)
         elif dir_type == 4:
             selected_path = dialog.getExistingDirectory(None, "Select a directory", self.directories.models_loras)
-            self.directories.models_loras = selected_path
-            settings.setValue("models_loras", selected_path)
+            if len(selected_path) > 0:
+                self.directories.models_loras = selected_path
+                settings.setValue("models_loras", selected_path)
         elif dir_type == 5:
             selected_path = dialog.getExistingDirectory(None, "Select a directory", self.directories.models_controlnets)
-            self.directories.models_controlnets = selected_path
-            settings.setValue("models_controlnets", selected_path)
+            if len(selected_path) > 0:
+                self.directories.models_controlnets = selected_path
+                settings.setValue("models_controlnets", selected_path)
         elif dir_type == 6:
             selected_path = dialog.getExistingDirectory(None, "Select a directory", self.directories.models_t2i_adapters)
-            self.directories.models_t2i_adapters = selected_path
-            settings.setValue("models_t2i_adapters", selected_path)
+            if len(selected_path) > 0:
+                self.directories.models_t2i_adapters = selected_path
+                settings.setValue("models_t2i_adapters", selected_path)
         elif dir_type == 7:
             selected_path = dialog.getExistingDirectory(None, "Select a directory", self.directories.models_ip_adapters)
-            self.directories.models_ip_adapters = selected_path
-            settings.setValue("models_ip_adapters", selected_path)
-        else:
+            if len(selected_path) > 0:
+                self.directories.models_ip_adapters = selected_path
+                settings.setValue("models_ip_adapters", selected_path)
+        elif dir_type == 8:
             selected_path = dialog.getExistingDirectory(None, "Select a directory", self.directories.outputs_images)
-            self.directories.outputs_images = selected_path
-            settings.setValue("outputs_images", selected_path)
+            if len(selected_path) > 0:
+                self.directories.outputs_images = selected_path
+                settings.setValue("outputs_images", selected_path)
+        elif dir_type == 9:
+            selected_path = dialog.getExistingDirectory(None, "Select a directory", self.directories.outputs_loras)
+            if len(selected_path) > 0:
+                self.directories.outputs_loras = selected_path
+                settings.setValue("outputs_loras", selected_path)
+        elif dir_type == 10:
+            selected_path = dialog.getExistingDirectory(None, "Select a directory", self.directories.datasets)
+            if len(selected_path) > 0:
+                self.directories.datasets = selected_path
+                settings.setValue("datasets", selected_path)
 
         if len(selected_path) > 0:
             sender_button = self.sender()

@@ -47,14 +47,10 @@ class PromptInput(QWidget):
         top_layout.addWidget(self.title_label, alignment=Qt.AlignmentFlag.AlignLeft)
 
         self.token_count_label = QLabel(f"{self.token_count}/{self.max_tokens}", self)
-        top_layout.addWidget(
-            self.token_count_label, alignment=Qt.AlignmentFlag.AlignRight
-        )
+        top_layout.addWidget(self.token_count_label, alignment=Qt.AlignmentFlag.AlignRight)
 
         if self.positive:
-            self.weighted_text_edit.setStyleSheet(
-                "color: #4da460; border: 1px solid #264624; padding: 2px;"
-            )
+            self.weighted_text_edit.setStyleSheet("color: #4da460; border: 1px solid #264624; padding: 2px;")
             self.title_label.setStyleSheet(
                 "color: #4da460; background-color: rgba(100, 100, 100, 50); font-weight: bold; border-radius: 5px; padding: 1px;"
             )
@@ -62,9 +58,7 @@ class PromptInput(QWidget):
                 "color: #4da460; background-color: rgba(100, 100, 100, 50); font-weight: bold; border-radius: 5px; padding: 1px;"
             )
         else:
-            self.weighted_text_edit.setStyleSheet(
-                "color: #c25e5f; border: 1px solid #582d2d;"
-            )
+            self.weighted_text_edit.setStyleSheet("color: #c25e5f; border: 1px solid #582d2d;")
             self.title_label.setStyleSheet(
                 "color: #c25e5f; background-color: rgba(100, 100, 100, 50); font-weight: bold; border-radius: 5px; padding: 1px;"
             )
@@ -94,3 +88,6 @@ class PromptInput(QWidget):
 
     def insertTriggerAtCursor(self, text):
         self.weighted_text_edit.insertTriggerAtCursor(text)
+
+    def clear(self):
+        self.weighted_text_edit.clear()

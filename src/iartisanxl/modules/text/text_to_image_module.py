@@ -34,9 +34,9 @@ from iartisanxl.generation.model_data_object import ModelDataObject
 from iartisanxl.generation.vae_data_object import VaeDataObject
 from iartisanxl.generation.schedulers.schedulers import schedulers
 from iartisanxl.console.console_stream import ConsoleStream
+from iartisanxl.formats.image import ImageProcessor
 from iartisanxl.threads.taesd_loader_thread import TaesdLoaderThread
 from iartisanxl.threads.image_processor_thread import ImageProcesorThread
-from iartisanxl.formats.image import ImageProcessor
 from iartisanxl.threads.node_graph_thread import NodeGraphThread
 
 
@@ -92,11 +92,20 @@ class TextToImageModule(BaseModule):
         self.image_generation_data.update_previous_state()
         self.settings.endGroup()
 
-        self.node_graph = None
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         self.torch_dtype = torch.float16
         self.batch_size = 1
         self.taesd_dec = None
+
+        self.generating = False
+        self.auto_save = False
+        self.continuous_generation = False
+
+        self.event_bus.subscribe("lora", self.on_lora)
+        self.event_bus.subscribe("image_generation_data", self.on_image_generation_data)
+        self.event_bus.subscribe("auto_generate", self.on_auto_generate)
+
+        self.init_ui()
 
         self.taesd_loader_thread = None
         self.image_processor_thread = None
@@ -111,16 +120,6 @@ class TextToImageModule(BaseModule):
             "taesd_loader_thread": self.taesd_loader_thread,
             "image_processor_thread": self.image_processor_thread,
         }
-
-        self.generating = False
-        self.auto_save = False
-        self.continuous_generation = False
-
-        self.event_bus.subscribe("lora", self.on_lora)
-        self.event_bus.subscribe("image_generation_data", self.on_image_generation_data)
-        self.event_bus.subscribe("auto_generate", self.on_auto_generate)
-
-        self.init_ui()
 
         self.console_stream = ConsoleStream()
         # sys.stdout = self.console_stream
@@ -223,10 +222,17 @@ class TextToImageModule(BaseModule):
         self.settings.setValue("clip_skip", self.image_generation_data.clip_skip)
         self.settings.endGroup()
 
+        self.right_menu.close_all_dialogs()
+        self.node_graph_thread.clean_up()
+
+        self.image_generation_data = None
         self.node_graph = None
         self.device = None
         self.torch_dtype = None
         self.taesd_dec = None
+        self.lora_list = None
+        self.controlnet_list = None
+        self.t2i_adapter_list = None
 
         self.taesd_loader_thread = None
         self.node_graph_thread = None
@@ -385,14 +391,7 @@ class TextToImageModule(BaseModule):
             qpixmap = QPixmap.fromImage(qimage)
             self.image_viewer.set_pixmap(qpixmap)
 
-    def update_progress_bar(self, value):
-        self.progress_bar.setValue(value)
-
     def generation_finished(self, image: Image):
-        # if the node graph is None, associate it for the first time
-        if self.node_graph is None:
-            self.node_graph = self.node_graph_thread.node_graph
-
         image_generation_node = self.node_graph.get_node_by_name("image_generation")
         duration = image_generation_node.elapsed_time
 
@@ -423,15 +422,7 @@ class TextToImageModule(BaseModule):
         if self.continuous_generation:
             self.generation_clicked(self.auto_save, self.continuous_generation)
 
-    def update_status_bar(self, text):
-        self.status_bar.showMessage(text)
-
-    def show_error(self, text, empty_pipeline: bool = False):
-        if empty_pipeline:
-            self.node_graph = None
-            torch.cuda.empty_cache()
-            torch.cuda.ipc_collect()
-
+    def show_error(self, text):
         self.show_snackbar(text)
         self.status_bar.showMessage(f"Error: {text}")
         self.progress_bar.setMaximum(100)

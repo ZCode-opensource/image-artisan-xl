@@ -75,9 +75,7 @@ class LoraTrainThread(QThread):
             self.output.emit(f"Dataset: {self.lora_train_args.dataset_path}")
 
             self.output.emit("Setting up accelerator...")
-            accelerator_project_config = ProjectConfiguration(
-                project_dir=self.lora_train_args.output_dir
-            )
+            accelerator_project_config = ProjectConfiguration(project_dir=self.lora_train_args.output_dir)
             self.accelerator = Accelerator(
                 gradient_accumulation_steps=4,
                 mixed_precision="bf16",
@@ -103,34 +101,22 @@ class LoraTrainThread(QThread):
             self.output_done.emit()
 
             self.output.emit("Setting the noise scheduler...")
-            noise_scheduler = DDPMScheduler.from_pretrained(
-                self.lora_train_args.model_path, subfolder="scheduler"
-            )
+            noise_scheduler = DDPMScheduler.from_pretrained(self.lora_train_args.model_path, subfolder="scheduler")
             self.output_done.emit()
 
             self.output.emit("Loading text encoders...")
-            self.text_encoder_one = CLIPTextModel.from_pretrained(
-                self.lora_train_args.model_path,
-                subfolder="text_encoder",
-            )
+            self.text_encoder_one = CLIPTextModel.from_pretrained(self.lora_train_args.model_path, subfolder="text_encoder", variant="fp16")
             self.text_encoder_two = CLIPTextModelWithProjection.from_pretrained(
-                self.lora_train_args.model_path,
-                subfolder="text_encoder_2",
+                self.lora_train_args.model_path, subfolder="text_encoder_2", variant="fp16"
             )
             self.output_done.emit()
 
             self.output.emit("Loading vae...")
-            vae = AutoencoderKL.from_pretrained(
-                self.lora_train_args.model_path,
-                subfolder="vae",
-            )
+            vae = AutoencoderKL.from_pretrained(self.lora_train_args.vae_path, subfolder="vae", variant="fp16")
             self.output_done.emit()
 
             self.output.emit("Loading unet...")
-            self.unet = UNet2DConditionModel.from_pretrained(
-                self.lora_train_args.model_path,
-                subfolder="unet",
-            )
+            self.unet = UNet2DConditionModel.from_pretrained(self.lora_train_args.model_path, subfolder="unet", variant="fp16")
             self.output_done.emit()
 
             # We only train the additional adapter LoRA layers
@@ -159,28 +145,18 @@ class LoraTrainThread(QThread):
             unet_lora_parameters = []
 
             for name, _attn_processor in self.unet.attn_processors.items():
-                cross_attention_dim = (
-                    None
-                    if name.endswith("attn1.processor")
-                    else self.unet.config.cross_attention_dim
-                )
+                cross_attention_dim = None if name.endswith("attn1.processor") else self.unet.config.cross_attention_dim
 
                 if name.startswith("mid_block"):
                     hidden_size = self.unet.config.block_out_channels[-1]
                 elif name.startswith("up_blocks"):
                     block_id = int(name[len("up_blocks.")])
-                    hidden_size = list(reversed(self.unet.config.block_out_channels))[
-                        block_id
-                    ]
+                    hidden_size = list(reversed(self.unet.config.block_out_channels))[block_id]
                 elif name.startswith("down_blocks"):
                     block_id = int(name[len("down_blocks.")])
                     hidden_size = self.unet.config.block_out_channels[block_id]
 
-                lora_attn_processor_class = (
-                    LoRAAttnProcessor2_0
-                    if hasattr(F, "scaled_dot_product_attention")
-                    else LoRAAttnProcessor
-                )
+                lora_attn_processor_class = LoRAAttnProcessor2_0 if hasattr(F, "scaled_dot_product_attention") else LoRAAttnProcessor
 
                 module = lora_attn_processor_class(
                     hidden_size=hidden_size,
@@ -193,9 +169,7 @@ class LoraTrainThread(QThread):
             self.unet.set_attn_processor(unet_lora_attn_procs)
             self.output_done.emit()
 
-            self.output.emit(
-                "Monkey-patching the forward calls of the text encoders attention-blocks..."
-            )
+            self.output.emit("Monkey-patching the forward calls of the text encoders attention-blocks...")
 
             # ensure that dtype is float32, even if rest of the model that isn't trained is loaded in fp16
             # pylint: disable=protected-access
@@ -251,9 +225,7 @@ class LoraTrainThread(QThread):
             )
             self.output_done.emit()
 
-            num_update_steps_per_epoch = math.ceil(
-                len(train_dataloader) / self.lora_train_args.accumulation_steps
-            )
+            num_update_steps_per_epoch = math.ceil(len(train_dataloader) / self.lora_train_args.accumulation_steps)
             max_train_steps = self.lora_train_args.epochs * num_update_steps_per_epoch
             num_warmup_steps = max_train_steps * 0.05
             print(f"Max train steps: {max_train_steps}")
@@ -262,10 +234,8 @@ class LoraTrainThread(QThread):
             lr_scheduler = get_scheduler(
                 "constant_with_warmup",
                 optimizer=optimizer,
-                num_warmup_steps=num_warmup_steps
-                * self.lora_train_args.accumulation_steps,
-                num_training_steps=max_train_steps
-                * self.lora_train_args.accumulation_steps,
+                num_warmup_steps=num_warmup_steps * self.lora_train_args.accumulation_steps,
+                num_training_steps=max_train_steps * self.lora_train_args.accumulation_steps,
             )
 
             (
@@ -284,28 +254,18 @@ class LoraTrainThread(QThread):
                 lr_scheduler,
             )
 
-            num_update_steps_per_epoch = math.ceil(
-                len(train_dataloader) / self.lora_train_args.accumulation_steps
-            )
+            num_update_steps_per_epoch = math.ceil(len(train_dataloader) / self.lora_train_args.accumulation_steps)
             max_train_steps = self.lora_train_args.epochs * num_update_steps_per_epoch
             num_train_epochs = math.ceil(max_train_steps / num_update_steps_per_epoch)
 
-            total_batch_size = (
-                self.lora_train_args.batch_size
-                * self.accelerator.num_processes
-                * self.lora_train_args.accumulation_steps
-            )
+            total_batch_size = self.lora_train_args.batch_size * self.accelerator.num_processes * self.lora_train_args.accumulation_steps
 
             self.output.emit(f"Number of images: {len(dataset)}")
             self.output.emit(f"Number of epochs: {num_train_epochs}")
             self.output.emit(f"Number of steps per epoch: {num_update_steps_per_epoch}")
             self.output.emit(f"Batch size: {self.lora_train_args.batch_size}")
-            self.output.emit(
-                f"Batch size with parallel and accumulation: {total_batch_size}"
-            )
-            self.output.emit(
-                f"Gradient accumulation steps: {self.lora_train_args.accumulation_steps}"
-            )
+            self.output.emit(f"Batch size with parallel and accumulation: {total_batch_size}")
+            self.output.emit(f"Gradient accumulation steps: {self.lora_train_args.accumulation_steps}")
             self.output.emit(f"Total training steps: {max_train_steps}")
 
             global_step = 0
@@ -342,18 +302,9 @@ class LoraTrainThread(QThread):
 
                         # Add noise to the model input according to the noise magnitude at each timestep
                         # (this is the forward diffusion process)
-                        noisy_model_input = noise_scheduler.add_noise(
-                            model_input, noise, timesteps
-                        )
+                        noisy_model_input = noise_scheduler.add_noise(model_input, noise, timesteps)
 
-                        add_time_ids = torch.cat(
-                            [
-                                self.compute_time_ids(s, c)
-                                for s, c in zip(
-                                    batch["original_sizes"], batch["crop_top_lefts"]
-                                )
-                            ]
-                        )
+                        add_time_ids = torch.cat([self.compute_time_ids(s, c) for s, c in zip(batch["original_sizes"], batch["crop_top_lefts"])])
 
                         # Predict the noise residual
                         unet_added_conditions = {"time_ids": add_time_ids}
@@ -369,9 +320,7 @@ class LoraTrainThread(QThread):
                                 batch["input_ids_two"],
                             ],
                         )
-                        unet_added_conditions.update(
-                            {"text_embeds": pooled_prompt_embeds}
-                        )
+                        unet_added_conditions.update({"text_embeds": pooled_prompt_embeds})
                         model_pred = self.unet(
                             noisy_model_input,
                             timesteps,
@@ -382,18 +331,12 @@ class LoraTrainThread(QThread):
                         if noise_scheduler.config.prediction_type == "epsilon":
                             target = noise
                         elif noise_scheduler.config.prediction_type == "v_prediction":
-                            target = noise_scheduler.get_velocity(
-                                model_input, noise, timesteps
-                            )
+                            target = noise_scheduler.get_velocity(model_input, noise, timesteps)
 
-                        loss = F.mse_loss(
-                            model_pred.float(), target.float(), reduction="mean"
-                        )
+                        loss = F.mse_loss(model_pred.float(), target.float(), reduction="mean")
 
                         avg_loss = loss.mean()
-                        train_loss += (
-                            avg_loss.item() / self.lora_train_args.accumulation_steps
-                        )
+                        train_loss += avg_loss.item() / self.lora_train_args.accumulation_steps
                         epoch_loss += avg_loss.item()
 
                         # Backpropagate
@@ -471,21 +414,11 @@ class LoraTrainThread(QThread):
 
             for model in models:
                 if isinstance(model, type(self.accelerator.unwrap_model(self.unet))):
-                    unet_lora_layers_to_save = self.unet_attn_processors_state_dict(
-                        model
-                    )
-                elif isinstance(
-                    model, type(self.accelerator.unwrap_model(self.text_encoder_one))
-                ):
-                    text_encoder_one_lora_layers_to_save = (
-                        self.text_encoder_lora_state_dict(model)
-                    )
-                elif isinstance(
-                    model, type(self.accelerator.unwrap_model(self.text_encoder_two))
-                ):
-                    text_encoder_two_lora_layers_to_save = (
-                        self.text_encoder_lora_state_dict(model)
-                    )
+                    unet_lora_layers_to_save = self.unet_attn_processors_state_dict(model)
+                elif isinstance(model, type(self.accelerator.unwrap_model(self.text_encoder_one))):
+                    text_encoder_one_lora_layers_to_save = self.text_encoder_lora_state_dict(model)
+                elif isinstance(model, type(self.accelerator.unwrap_model(self.text_encoder_two))):
+                    text_encoder_two_lora_layers_to_save = self.text_encoder_lora_state_dict(model)
                 else:
                     raise ValueError(f"unexpected save model: {model.__class__}")
 
@@ -509,34 +442,24 @@ class LoraTrainThread(QThread):
 
             if isinstance(model, type(self.accelerator.unwrap_model(self.unet))):
                 unet = model
-            elif isinstance(
-                model, type(self.accelerator.unwrap_model(self.text_encoder_one))
-            ):
+            elif isinstance(model, type(self.accelerator.unwrap_model(self.text_encoder_one))):
                 text_encoder_one = model
-            elif isinstance(
-                model, type(self.accelerator.unwrap_model(self.text_encoder_two))
-            ):
+            elif isinstance(model, type(self.accelerator.unwrap_model(self.text_encoder_two))):
                 text_encoder_two = model
             else:
                 raise ValueError(f"unexpected save model: {model.__class__}")
 
         lora_state_dict, network_alphas = LoraLoaderMixin.lora_state_dict(input_dir)
-        LoraLoaderMixin.load_lora_into_unet(
-            lora_state_dict, network_alphas=network_alphas, unet=unet
-        )
+        LoraLoaderMixin.load_lora_into_unet(lora_state_dict, network_alphas=network_alphas, unet=unet)
 
-        text_encoder_state_dict = {
-            k: v for k, v in lora_state_dict.items() if "text_encoder." in k
-        }
+        text_encoder_state_dict = {k: v for k, v in lora_state_dict.items() if "text_encoder." in k}
         LoraLoaderMixin.load_lora_into_text_encoder(
             text_encoder_state_dict,
             network_alphas=network_alphas,
             text_encoder=text_encoder_one,
         )
 
-        text_encoder_2_state_dict = {
-            k: v for k, v in lora_state_dict.items() if "text_encoder_2." in k
-        }
+        text_encoder_2_state_dict = {k: v for k, v in lora_state_dict.items() if "text_encoder_2." in k}
         LoraLoaderMixin.load_lora_into_text_encoder(
             text_encoder_2_state_dict,
             network_alphas=network_alphas,
@@ -554,9 +477,7 @@ class LoraTrainThread(QThread):
 
         for attn_processor_key, attn_processor in attn_processors.items():
             for parameter_key, parameter in attn_processor.state_dict().items():
-                attn_processors_state_dict[
-                    f"{attn_processor_key}.{parameter_key}"
-                ] = parameter
+                attn_processors_state_dict[f"{attn_processor_key}.{parameter_key}"] = parameter
 
         return attn_processors_state_dict
 
@@ -594,9 +515,7 @@ class LoraTrainThread(QThread):
         return text_input_ids
 
     # Adapted from pipelines.StableDiffusionXLPipeline.encode_prompt
-    def encode_prompt(
-        self, text_encoders, tokenizers, prompt, text_input_ids_list=None
-    ):
+    def encode_prompt(self, text_encoders, tokenizers, prompt, text_input_ids_list=None):
         prompt_embeds_list = []
 
         for i, text_encoder in enumerate(text_encoders):

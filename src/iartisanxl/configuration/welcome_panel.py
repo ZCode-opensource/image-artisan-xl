@@ -73,6 +73,8 @@ class WelcomePanel(BaseSetupPanel):
             "models_t2i_adapters": os.path.join("models", "t2i-adapter"),
             "models_ip_adapters": os.path.join("models", "ip-adapter"),
             "outputs_images": os.path.join("outputs", "images"),
+            "outputs_loras": os.path.join("outputs", "loras"),
+            "datasets": "datasets",
         }
 
         home_dir = os.path.expanduser("~")
@@ -97,5 +99,7 @@ class WelcomePanel(BaseSetupPanel):
         settings.setValue("models_t2i_adapters", self.directories.models_t2i_adapters)
         settings.setValue("models_ip_adapters", self.directories.models_ip_adapters)
         settings.setValue("outputs_images", self.directories.outputs_images)
+        settings.setValue("outputs_loras", self.directories.outputs_loras)
+        settings.setValue("datasets", self.directories.datasets)
 
         self.finish_setup.emit()

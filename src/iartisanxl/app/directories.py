@@ -11,3 +11,5 @@ class DirectoriesObject:
     models_t2i_adapters = attr.ib(type=str)
     models_ip_adapters = attr.ib(type=str)
     outputs_images = attr.ib(type=str)
+    outputs_loras = attr.ib(type=str)
+    datasets = attr.ib(type=str)
