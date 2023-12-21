@@ -388,5 +388,43 @@
                 }                             
             ]            
         }                                     
+    ], 
+    "captions_items": [
+        {
+            "title": "FuseCap",
+            "description": "A framework designed to enhance image captioning by incorporating detailed visual information into traditional captions.",
+            "destination_directory": "app_models",
+            "destination_subdirectory": "captions/fusecap",
+            "files": [
+                {
+                    "file": "config.json",
+                    "url": "https://huggingface.co/noamrot/FuseCap_Image_Captioning/raw/main/config.json?download=true"
+                },
+                {
+                    "file": "preprocessor_config.json",
+                    "url": "https://huggingface.co/noamrot/FuseCap_Image_Captioning/raw/main/preprocessor_config.json?download=true"
+                },
+                {
+                    "file": "pytorch_model.bin",
+                    "url": "https://huggingface.co/noamrot/FuseCap_Image_Captioning/resolve/main/pytorch_model.bin?download=true"
+                },
+                {
+                    "file": "special_tokens_map.json",
+                    "url": "https://huggingface.co/noamrot/FuseCap_Image_Captioning/raw/main/special_tokens_map.json?download=true"
+                },
+                {
+                    "file": "tokenizer.json",
+                    "url": "https://huggingface.co/noamrot/FuseCap_Image_Captioning/raw/main/tokenizer.json?download=true"
+                },
+                {
+                    "file": "tokenizer_config.json",
+                    "url": "https://huggingface.co/noamrot/FuseCap_Image_Captioning/raw/main/tokenizer_config.json?download=true"
+                },
+                {
+                    "file": "vocab.txt",
+                    "url": "https://huggingface.co/noamrot/FuseCap_Image_Captioning/raw/main/vocab.txt?download=true"
+                }                                                                                           
+            ]
+        }
     ]
 }

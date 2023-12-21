@@ -190,6 +190,7 @@ class DatasetModule(BaseModule):
             self.generate_captions_thread = GenerateCaptionsThread(self.device)
             self.generate_captions_thread.status_update.connect(self.update_status_bar)
             self.generate_captions_thread.caption_done.connect(self.on_ai_caption_done)
+            self.generate_captions_thread.error.connect(self.ai_caption_error)
         else:
             try:
                 self.generate_captions_thread.caption_done.disconnect(self.generate_item_ai_caption_done)
@@ -204,6 +205,11 @@ class DatasetModule(BaseModule):
         self.generate_captions_thread.pixmap = pixmap
 
         self.generate_captions_thread.start()
+
+    def ai_caption_error(self, text):
+        self.enable_ui()
+        self.show_snackbar(text)
+        self.update_status_bar(text)
 
     def on_ai_caption_done(self, text):
         self.image_caption_edit.setPlainText(text)
@@ -243,25 +249,27 @@ class DatasetModule(BaseModule):
                 break
 
     def on_ai_mass_caption(self):
-        self.disable_ui()
+        if self.dataset_dir is not None and len(self.dataset_dir) > 0:
+            self.disable_ui()
 
-        if self.generate_captions_thread is None:
-            self.generate_captions_thread = GenerateCaptionsThread(self.device)
-            self.generate_captions_thread.status_update.connect(self.update_status_bar)
-            self.generate_captions_thread.caption_done.connect(self.generate_item_ai_caption_done)
-        else:
-            try:
-                self.generate_captions_thread.caption_done.disconnect(self.on_ai_caption_done)
-            except TypeError:
-                pass
-            self.generate_captions_thread.caption_done.connect(self.generate_item_ai_caption_done)
+            if self.generate_captions_thread is None:
+                self.generate_captions_thread = GenerateCaptionsThread(self.device)
+                self.generate_captions_thread.status_update.connect(self.update_status_bar)
+                self.generate_captions_thread.caption_done.connect(self.generate_item_ai_caption_done)
+                self.generate_captions_thread.error.connect(self.ai_caption_error)
+            else:
+                try:
+                    self.generate_captions_thread.caption_done.disconnect(self.on_ai_caption_done)
+                except TypeError:
+                    pass
+                self.generate_captions_thread.caption_done.connect(self.generate_item_ai_caption_done)
 
-        text = self.image_caption_edit.toPlainText()
+            text = self.image_caption_edit.toPlainText()
 
-        self.progress_bar.setMaximum(self.dataset_items_view.item_count)
-        self.dataset_items_view.get_first_item()
-        self.update_status_bar("Generating captions...")
-        self.generate_item_ai_caption(text)
+            self.progress_bar.setMaximum(self.dataset_items_view.item_count)
+            self.dataset_items_view.get_first_item()
+            self.update_status_bar("Generating captions...")
+            self.generate_item_ai_caption(text)
 
     def generate_item_ai_caption(self, text):
         item = self.dataset_items_view.current_item
