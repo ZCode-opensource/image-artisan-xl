@@ -111,6 +111,7 @@ class DatasetModule(BaseModule):
         self.dataset_dir = dialog.getExistingDirectory(None, "Select directory", self.directories.datasets)
 
         if len(self.dataset_dir) > 0:
+            self.image_cropper_widget.clear()
             dataset_name = os.path.basename(self.dataset_dir)
             self.dataset_title.setText(f"Dataset: {dataset_name}")
             self.dataset_items_view.load_items(self.dataset_dir)
