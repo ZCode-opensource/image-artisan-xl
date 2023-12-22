@@ -463,6 +463,13 @@ class TrainingModule(BaseModule):
         self.train_thread.training_finished.connect(self.on_training_finished)
         self.train_thread.finished.connect(self.on_thread_finish)
         self.train_thread.aborted.connect(self.on_training_aborted)
+
+        self.epoch_data = []
+        self.lr_data = []
+        self.loss_data = []
+        self.loss_graph_widget.clear()
+        self.learning_rate_graph_widget.clear()
+
         self.train_thread.start()
 
     def update_output(self, text):
