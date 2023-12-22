@@ -5,8 +5,7 @@ from iartisanxl.buttons.expand_right_button import ExpandRightButton
 from iartisanxl.buttons.vertical_button import VerticalButton
 from iartisanxl.generation.image_generation_data import ImageGenerationData
 from iartisanxl.generation.lora_list import LoraList
-from iartisanxl.generation.controlnet_list import ControlNetList
-from iartisanxl.generation.t2i_adapter_list import T2IAdapterList
+from iartisanxl.generation.adapter_list import AdapterList
 from iartisanxl.app.directories import DirectoriesObject
 from iartisanxl.app.preferences import PreferencesObject
 from iartisanxl.modules.common.image_viewer_simple import ImageViewerSimple
@@ -25,8 +24,8 @@ class RightMenu(QFrame):
         directories: DirectoriesObject,
         image_generation_data: ImageGenerationData,
         lora_list: LoraList,
-        controlnet_list: ControlNetList,
-        t2i_adapter_list: T2IAdapterList,
+        controlnet_list: AdapterList,
+        t2i_adapter_list: AdapterList,
         image_viewer: ImageViewerSimple,
         prompt_window: PromptWindow,
         show_error: callable,

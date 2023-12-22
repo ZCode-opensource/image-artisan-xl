@@ -28,8 +28,10 @@ from iartisanxl.menu.right_menu import RightMenu
 from iartisanxl.generation.image_generation_data import ImageGenerationData
 from iartisanxl.generation.lora_list import LoraList
 from iartisanxl.generation.lora_data_object import LoraDataObject
-from iartisanxl.generation.controlnet_list import ControlNetList
-from iartisanxl.generation.t2i_adapter_list import T2IAdapterList
+from iartisanxl.generation.controlnet_data_object import ControlNetDataObject
+from iartisanxl.generation.t2i_adapter_data_object import T2IAdapterDataObject
+from iartisanxl.generation.ip_adapter_data_object import IPAdapterDataObject
+from iartisanxl.generation.adapter_list import AdapterList
 from iartisanxl.generation.model_data_object import ModelDataObject
 from iartisanxl.generation.vae_data_object import VaeDataObject
 from iartisanxl.generation.schedulers.schedulers import schedulers
@@ -70,8 +72,9 @@ class TextToImageModule(BaseModule):
         self.setAcceptDrops(True)
 
         self.lora_list = LoraList()
-        self.controlnet_list = ControlNetList()
-        self.t2i_adapter_list = T2IAdapterList()
+        self.controlnet_list = AdapterList[ControlNetDataObject]()
+        self.t2i_adapter_list = AdapterList[T2IAdapterDataObject]()
+        self.ip_adapter_list = AdapterList[IPAdapterDataObject]()
         self.image_generation_data = ImageGenerationData(
             module="texttoimage",
             seed=0,

@@ -48,7 +48,7 @@ class ControlnetModelNode(Node):
         ).to(device)
 
         if self.sequential_offload:
-            vae = accelerate.cpu_offload(vae, "cuda:0")
+            controlnet_model = accelerate.cpu_offload(controlnet_model, "cuda:0")
 
         self.values["controlnet_model"] = controlnet_model
 

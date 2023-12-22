@@ -9,8 +9,7 @@ from PyQt6.QtCore import QThread, pyqtSignal
 from iartisanxl.app.directories import DirectoriesObject
 from iartisanxl.generation.image_generation_data import ImageGenerationData
 from iartisanxl.generation.lora_list import LoraList
-from iartisanxl.generation.controlnet_list import ControlNetList
-from iartisanxl.generation.t2i_adapter_list import T2IAdapterList
+from iartisanxl.generation.adapter_list import AdapterList
 from iartisanxl.graph.iartisanxl_node_graph import ImageArtisanNodeGraph
 from iartisanxl.graph.nodes.lora_node import LoraNode
 from iartisanxl.graph.nodes.controlnet_model_node import ControlnetModelNode
@@ -33,8 +32,8 @@ class NodeGraphThread(QThread):
         node_graph: ImageArtisanNodeGraph = None,
         image_generation_data: ImageGenerationData = None,
         lora_list: LoraList = None,
-        controlnet_list: ControlNetList = None,
-        t2i_adapter_list: T2IAdapterList = None,
+        controlnet_list: AdapterList = None,
+        t2i_adapter_list: AdapterList = None,
         model_offload: bool = False,
         sequential_offload: bool = False,
         torch_dtype: torch.dtype = torch.float16,
@@ -218,7 +217,7 @@ class NodeGraphThread(QThread):
                     controlnet_pose_model = ControlnetModelNode(path=os.path.join(self.directories.models_controlnets, "controlnet-openpose-sdxl-1.0"))
                     self.node_graph.add_node(controlnet_pose_model, "controlnet_pose_model")
 
-        if len(self.controlnet_list.controlnets) > 0:
+        if len(self.controlnet_list.adapters) > 0:
             added_controlnets = self.controlnet_list.get_added()
 
             if len(added_controlnets) > 0:
@@ -228,20 +227,20 @@ class NodeGraphThread(QThread):
                         conditioning_scale=controlnet.conditioning_scale, guidance_start=controlnet.guidance_start, guidance_end=controlnet.guidance_end
                     )
 
-                    if controlnet.controlnet_type == "Canny":
+                    if controlnet.adapter_type == "Canny":
                         controlnet_node.connect("controlnet_model", controlnet_canny_model, "controlnet_model")
-                    elif controlnet.controlnet_type == "Depth Midas":
+                    elif controlnet.adapter_type == "Depth Midas":
                         controlnet_node.connect("controlnet_model", controlnet_depth_model, "controlnet_model")
-                    elif controlnet.controlnet_type == "Depth Zoe":
+                    elif controlnet.adapter_type == "Depth Zoe":
                         controlnet_node.connect("controlnet_model", controlnet_depth_zoe_model, "controlnet_model")
-                    elif controlnet.controlnet_type == "Pose":
+                    elif controlnet.adapter_type == "Pose":
                         controlnet_node.connect("controlnet_model", controlnet_pose_model, "controlnet_model")
 
                     controlnet_node.connect("image", controlnet_image_node, "image")
                     image_generation.connect("controlnet", controlnet_node, "controlnet")
                     self.node_graph.add_node(controlnet_node)
                     controlnet.id = controlnet_node.id
-                    controlnet_node.name = f"controlnet_{controlnet.controlnet_type}_{controlnet_node.id}"
+                    controlnet_node.name = f"controlnet_{controlnet.adapter_type}_{controlnet_node.id}"
                     self.node_graph.add_node(controlnet_image_node, f"control_image_{controlnet_node.id}")
 
                 image_send.updated = True

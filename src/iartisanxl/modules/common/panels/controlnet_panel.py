@@ -35,8 +35,8 @@ class ControlNetPanel(BasePanel):
         self.setLayout(main_layout)
 
     def update_ui(self):
-        if len(self.controlnet_list.controlnets) > 0:
-            for controlnet in self.controlnet_list.controlnets:
+        if len(self.controlnet_list.adapters) > 0:
+            for controlnet in self.controlnet_list.adapters:
                 controlnet_widget = ControlNetAddedItem(controlnet)
                 controlnet_widget.remove_clicked.connect(self.on_remove_clicked)
                 controlnet_widget.edit_clicked.connect(self.on_edit_clicked)
@@ -73,11 +73,11 @@ class ControlNetPanel(BasePanel):
             self.controlnets_layout.addWidget(controlnet_widget)
         elif data["action"] == "update":
             controlnet = data["controlnet"]
-            self.controlnet_list.update_with_controlnet_data_object(controlnet)
+            self.controlnet_list.update_with_adapter_data_object(controlnet)
             for i in range(self.controlnets_layout.count()):
                 widget = self.controlnets_layout.itemAt(i).widget()
-                if widget.controlnet.controlnet_id == controlnet.controlnet_id:
-                    widget.enabled_checkbox.setText(controlnet.controlnet_type)
+                if widget.controlnet.adapter_id == controlnet.adapter_id:
+                    widget.enabled_checkbox.setText(controlnet.adapter_type)
                     image_processor = ImageProcessor()
                     image_processor.set_pillow_image(controlnet.source_image_thumb)
                     widget.source_thumb.setPixmap(image_processor.get_qpixmap())
@@ -108,4 +108,4 @@ class ControlNetPanel(BasePanel):
         super().clean_up()
 
     def on_controlnet_enabled(self, controlet_id, enabled):
-        self.controlnet_list.update_controlnet(controlet_id, {"enabled": enabled})
+        self.controlnet_list.update_adapter(controlet_id, {"enabled": enabled})
