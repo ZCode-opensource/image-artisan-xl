@@ -41,6 +41,8 @@ class ImageGenerationNode(Node):
         "cross_attention_kwargs",
         "controlnet",
         "t2i_adapter",
+        "image_embeds",
+        "negative_image_embeds",
     ]
     OUTPUTS = ["latents"]
 
@@ -145,6 +147,8 @@ class ImageGenerationNode(Node):
         else:
             negative_add_time_ids = add_time_ids
 
+        image_embeds = self.image_embeds
+
         do_classifier_free_guidance = False
         if self.guidance_scale > 1:
             do_classifier_free_guidance = True
@@ -152,6 +156,10 @@ class ImageGenerationNode(Node):
             prompt_embeds = torch.cat([self.negative_prompt_embeds, prompt_embeds], dim=0)
             add_text_embeds = torch.cat([self.negative_pooled_prompt_embeds, add_text_embeds], dim=0)
             add_time_ids = torch.cat([negative_add_time_ids, add_time_ids], dim=0)
+
+            if image_embeds is not None:
+                image_embeds = torch.cat([self.negative_image_embeds, self.image_embeds])
+                image_embeds = image_embeds.to(self.device)
 
         if t2i_adapter_models is not None:
             adapter_states = t2i_adapter_models(t2i_adapter_images, t2i_conditioning_scale)
@@ -223,6 +231,8 @@ class ImageGenerationNode(Node):
                 "text_embeds": add_text_embeds,
                 "time_ids": add_time_ids,
             }
+            if image_embeds is not None:
+                added_cond_kwargs["image_embeds"] = image_embeds
 
             if self.abort:
                 return
