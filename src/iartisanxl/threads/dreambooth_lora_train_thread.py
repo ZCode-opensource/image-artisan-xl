@@ -206,10 +206,14 @@ class DreamboothLoraTrainThread(QThread):
 
             optimizer_class = prodigyopt.Prodigy
 
+            params_to_optimize[1]["lr"] = self.lora_train_args.learning_rate
+            params_to_optimize[2]["lr"] = self.lora_train_args.learning_rate
+
             optimizer = optimizer_class(
                 params_to_optimize,
                 lr=self.lora_train_args.learning_rate,
                 betas=(self.lora_train_args.adam_beta1, self.lora_train_args.adam_beta2),
+                beta3=self.lora_train_args.prodigy_beta3,
                 weight_decay=self.lora_train_args.adam_weight_decay,
                 eps=self.lora_train_args.adam_epsilon,
                 decouple=self.lora_train_args.prodigy_decouple,
