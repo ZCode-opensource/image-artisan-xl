@@ -5,8 +5,7 @@ from iartisanxl.graph.nodes.node import Node
 
 
 class IPAdapterModelNode(Node):
-    REQUIRED_INPUTS = ["unet"]
-    OUTPUTS = []
+    OUTPUTS = ["ip_adapter_model"]
 
     def __init__(self, path: str = None, **kwargs):
         super().__init__(**kwargs)
@@ -45,4 +44,6 @@ class IPAdapterModelNode(Node):
                 elif key.startswith("ip_adapter."):
                     state_dict["ip_adapter"][key.replace("ip_adapter.", "")] = model_file.get_tensor(key)
 
-        self.unet._load_ip_adapter_weights(state_dict)
+        self.values["ip_adapter_model"] = state_dict
+
+        return self.values

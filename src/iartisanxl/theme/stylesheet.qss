@@ -366,6 +366,11 @@ QWidget#control_image_widget ImageEditor {
     border: 1px solid #2f344e;
 }
 
+QWidget#ip_adapter_image_widget ImageEditor {
+    background: #181b28;
+    border: 1px solid #2f344e;
+}
+
 DownloaderDialog QProgressBar:horizontal {
     background-color: #353636;
     border: 10px solid #181b28;
@@ -415,5 +420,9 @@ DatasetItemsView QWidget#flow_widget {
 
 ImageCropperWidget ImageCropper {
     background: #232325;
-     border: 1px solid #c9c9c9;
+    border: 1px solid #c9c9c9;
+}
+
+LoraPanel LoraAddedItem {
+    border: 1px solid #3a3a3a;
 }

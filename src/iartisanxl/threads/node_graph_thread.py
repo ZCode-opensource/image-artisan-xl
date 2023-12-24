@@ -17,6 +17,9 @@ from iartisanxl.graph.nodes.controlnet_node import ControlnetNode
 from iartisanxl.graph.nodes.t2i_adapter_model_node import T2IAdapterModelNode
 from iartisanxl.graph.nodes.t2i_adapter_node import T2IAdapterNode
 from iartisanxl.graph.nodes.image_load_node import ImageLoadNode
+from iartisanxl.graph.nodes.image_encoder_model_node import ImageEncoderModelNode
+from iartisanxl.graph.nodes.ip_adapter_model_node import IPAdapterModelNode
+from iartisanxl.graph.nodes.ip_adapter_node import IPAdapterNode
 
 
 class NodeGraphThread(QThread):
@@ -34,6 +37,7 @@ class NodeGraphThread(QThread):
         lora_list: LoraList = None,
         controlnet_list: AdapterList = None,
         t2i_adapter_list: AdapterList = None,
+        ip_adapter_list: AdapterList = None,
         model_offload: bool = False,
         sequential_offload: bool = False,
         torch_dtype: torch.dtype = torch.float16,
@@ -46,6 +50,7 @@ class NodeGraphThread(QThread):
         self.lora_list = lora_list
         self.controlnet_list = controlnet_list
         self.t2i_adapter_list = t2i_adapter_list
+        self.ip_adapter_list = ip_adapter_list
         self.model_offload = model_offload
         self.sequential_offload = sequential_offload
         self.torch_dtype = torch_dtype
@@ -216,6 +221,14 @@ class NodeGraphThread(QThread):
                 if controlnet_pose_model is None:
                     controlnet_pose_model = ControlnetModelNode(path=os.path.join(self.directories.models_controlnets, "controlnet-openpose-sdxl-1.0"))
                     self.node_graph.add_node(controlnet_pose_model, "controlnet_pose_model")
+            elif controlnet_type == "Inpaint":
+                controlnet_inpaint_model = self.node_graph.get_node_by_name("controlnet_inpaint_model")
+
+                if controlnet_inpaint_model is None:
+                    controlnet_inpaint_model = ControlnetModelNode(
+                        path=os.path.join(self.directories.models_controlnets, "controlnet-inpaint-dreamer-sdxl")
+                    )
+                    self.node_graph.add_node(controlnet_inpaint_model, "controlnet_inpaint_model")
 
         if len(self.controlnet_list.adapters) > 0:
             added_controlnets = self.controlnet_list.get_added()
@@ -235,6 +248,8 @@ class NodeGraphThread(QThread):
                         controlnet_node.connect("controlnet_model", controlnet_depth_zoe_model, "controlnet_model")
                     elif controlnet.adapter_type == "Pose":
                         controlnet_node.connect("controlnet_model", controlnet_pose_model, "controlnet_model")
+                    elif controlnet.adapter_type == "Inpaint":
+                        controlnet_node.connect("controlnet_model", controlnet_inpaint_model, "controlnet_model")
 
                     controlnet_node.connect("image", controlnet_image_node, "image")
                     image_generation.connect("controlnet", controlnet_node, "controlnet")
@@ -342,7 +357,7 @@ class NodeGraphThread(QThread):
                     t2i_adapter_image_node = self.node_graph.get_node_by_name(f"adapter_image_{t2i_adapter.id}")
                     t2i_adapter_image_node.update_image(t2i_adapter.annotator_image)
                     t2i_adapter_node = self.node_graph.get_node(t2i_adapter.id)
-                    t2i_adapter_node.update_adaptert(t2i_adapter.conditioning_scale, t2i_adapter.conditioning_factor, t2i_adapter.enabled)
+                    t2i_adapter_node.update_adapter(t2i_adapter.conditioning_scale, t2i_adapter.conditioning_factor, t2i_adapter.enabled)
 
                 image_send.updated = True
 
@@ -355,6 +370,109 @@ class NodeGraphThread(QThread):
 
         self.t2i_adapter_list.save_state()
         self.t2i_adapter_list.dropped_image = False
+
+        # Process IP adapters
+        ip_adapter_types = self.ip_adapter_list.get_used_types()
+
+        for ip_adapter_type in ip_adapter_types:
+            if ip_adapter_type == "ip_adapter":
+                image_encoder_g_model_node = self.node_graph.get_node_by_name("ip_image_encoder_g")
+
+                if image_encoder_g_model_node is None:
+                    image_encoder_g_model_node = ImageEncoderModelNode(path=os.path.join(self.directories.models_ip_adapters, "image_encoder_xl"))
+                    self.node_graph.add_node(image_encoder_g_model_node, "ip_image_encoder_g")
+
+                ip_adapter_model_node_g = self.node_graph.get_node_by_name("ip_adapter_model_g")
+
+                if ip_adapter_model_node_g is None:
+                    ip_adapter_model_node_g = IPAdapterModelNode(path=os.path.join(self.directories.models_ip_adapters, "ip-adapter_sdxl.safetensors"))
+                    self.node_graph.add_node(ip_adapter_model_node_g, "ip_adapter_model_g")
+            else:
+                image_encoder_h_model_node = self.node_graph.get_node_by_name("ip_image_encoder_h")
+
+                if image_encoder_h_model_node is None:
+                    image_encoder_h_model_node = ImageEncoderModelNode(path=os.path.join(self.directories.models_ip_adapters, "image_encoder"))
+                    self.node_graph.add_node(image_encoder_h_model_node, "ip_image_encoder_h")
+
+                if ip_adapter_type == "ip_adapter_vit_h":
+                    ip_adapter_model_node_h = self.node_graph.get_node_by_name("ip_adapter_model_h")
+
+                    if ip_adapter_model_node_h is None:
+                        ip_adapter_model_node_h = IPAdapterModelNode(
+                            path=os.path.join(self.directories.models_ip_adapters, "ip-adapter_sdxl_vit-h.safetensors")
+                        )
+                        self.node_graph.add_node(ip_adapter_model_node_h, "ip_adapter_model_h")
+                elif ip_adapter_type == "ip_adapter_plus":
+                    ip_adapter_model_node_plus = self.node_graph.get_node_by_name("ip_adapter_model_plus")
+
+                    if ip_adapter_model_node_plus is None:
+                        ip_adapter_model_node_plus = IPAdapterModelNode(
+                            path=os.path.join(self.directories.models_ip_adapters, "ip-adapter-plus_sdxl_vit-h.safetensors")
+                        )
+                        self.node_graph.add_node(ip_adapter_model_node_plus, "ip_adapter_model_plus")
+                elif ip_adapter_type == "ip_adapter_plus_face":
+                    ip_adapter_model_node_plus_face = self.node_graph.get_node_by_name("ip_adapter_model_plus_face")
+
+                    if ip_adapter_model_node_plus_face is None:
+                        ip_adapter_model_node_plus_face = IPAdapterModelNode(
+                            path=os.path.join(self.directories.models_ip_adapters, "ip-adapter-plus-face_sdxl_vit-h.safetensors")
+                        )
+                        self.node_graph.add_node(ip_adapter_model_node_plus_face, "ip_adapter_model_plus_face")
+
+        if len(self.ip_adapter_list.adapters) > 0:
+            added_ip_adapters = self.ip_adapter_list.get_added()
+
+            if len(added_ip_adapters) > 0:
+                for ip_adapter in added_ip_adapters:
+                    ip_adapter_image_node = ImageLoadNode(image=ip_adapter.image)
+                    ip_adapter_node = IPAdapterNode(adapter_scale=ip_adapter.ip_adapter_scale)
+
+                    if ip_adapter.adapter_type == "ip_adapter":
+                        ip_adapter_node.connect("image_encoder", image_encoder_g_model_node, "image_encoder")
+                        ip_adapter_node.connect("ip_adapter_model", ip_adapter_model_node_g, "ip_adapter_model")
+                    elif ip_adapter.adapter_type == "ip_adapter_vit_h":
+                        ip_adapter_node.connect("image_encoder", image_encoder_h_model_node, "image_encoder")
+                        ip_adapter_node.connect("ip_adapter_model", ip_adapter_model_node_h, "ip_adapter_model")
+                    elif ip_adapter.adapter_type == "ip_adapter_plus":
+                        ip_adapter_node.connect("image_encoder", image_encoder_h_model_node, "image_encoder")
+                        ip_adapter_node.connect("ip_adapter_model", ip_adapter_model_node_plus, "ip_adapter_model")
+                    else:
+                        ip_adapter_node.connect("image_encoder", image_encoder_h_model_node, "image_encoder")
+                        ip_adapter_node.connect("ip_adapter_model", ip_adapter_model_node_plus_face, "ip_adapter_model")
+
+                    ip_adapter_node.connect("image", ip_adapter_image_node, "image")
+                    ip_adapter_node.connect("unet", sdxl_model, "unet")
+                    image_generation.connect("image_embeds", ip_adapter_node, "image_embeds")
+                    image_generation.connect("negative_image_embeds", ip_adapter_node, "negative_image_embeds")
+
+                    self.node_graph.add_node(ip_adapter_node)
+                    ip_adapter.id = ip_adapter_node.id
+                    self.node_graph.add_node(ip_adapter_image_node, f"adapter_image_{ip_adapter_node.id}")
+
+                image_send.updated = True
+
+            modified_ip_adapters = self.ip_adapter_list.get_modified()
+
+            if len(modified_ip_adapters) > 0:
+                for ip_adapter in modified_ip_adapters:
+                    ip_adapter_image_node = self.node_graph.get_node_by_name(f"adapter_image_{ip_adapter.id}")
+                    ip_adapter_image_node.update_image(ip_adapter.image)
+                    ip_adapter_node = self.node_graph.get_node(ip_adapter.id)
+                    ip_adapter_node.update_adapter(ip_adapter.ip_adapter_scale, ip_adapter.enabled)
+
+                image_send.updated = True
+
+        removed_ip_adapters = self.ip_adapter_list.get_removed()
+        if len(removed_ip_adapters) > 0:
+            for ip_adapter in removed_ip_adapters:
+                adapter_image_node = self.node_graph.get_node_by_name(f"adapter_image_{ip_adapter.id}")
+                ip_adapter_node = self.node_graph.get_node(ip_adapter.id)
+                ip_adapter_node.unload()
+                self.node_graph.delete_node_by_id(adapter_image_node.id)
+                self.node_graph.delete_node_by_id(ip_adapter.id)
+
+        self.ip_adapter_list.save_state()
+        self.ip_adapter_list.dropped_image = False
 
         try:
             self.node_graph()

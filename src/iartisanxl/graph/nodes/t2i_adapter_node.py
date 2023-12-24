@@ -15,7 +15,7 @@ class T2IAdapterNode(Node):
         self.conditioning_scale = conditioning_scale
         self.conditioning_factor = conditioning_factor
 
-    def update_adaptert(self, conditioning_scale: float, conditioning_factor: float, enabled: bool):
+    def update_adapter(self, conditioning_scale: float, conditioning_factor: float, enabled: bool):
         self.conditioning_scale = conditioning_scale
         self.conditioning_factor = conditioning_factor
         self.enabled = enabled

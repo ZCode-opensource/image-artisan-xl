@@ -1,15 +1,7 @@
 import numpy as np
 import torch
 
-from PyQt6.QtWidgets import (
-    QVBoxLayout,
-    QHBoxLayout,
-    QLabel,
-    QPushButton,
-    QSlider,
-    QComboBox,
-    QWidget,
-)
+from PyQt6.QtWidgets import QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QSlider, QComboBox, QWidget
 from PyQt6.QtCore import QSettings, Qt
 from PyQt6.QtGui import QImage, QPixmap
 from superqt import QDoubleRangeSlider, QDoubleSlider
@@ -66,6 +58,7 @@ class ControlNetDialog(BaseDialog):
         self.annotator_combo.addItem("Canny", "canny")
         self.annotator_combo.addItem("Depth Midas", "depth")
         self.annotator_combo.addItem("Pose", "pose")
+        self.annotator_combo.addItem("Inpaint", "inpaint")
         self.annotator_combo.currentIndexChanged.connect(self.on_annotator_changed)
         control_layout.addWidget(self.annotator_combo)
 

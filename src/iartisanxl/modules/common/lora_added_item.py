@@ -1,18 +1,12 @@
-from PyQt6.QtWidgets import (
-    QWidget,
-    QVBoxLayout,
-    QHBoxLayout,
-    QLabel,
-    QSlider,
-    QCheckBox,
-)
+from PyQt6.QtWidgets import QFrame, QVBoxLayout, QHBoxLayout, QCheckBox
 from PyQt6.QtCore import Qt, pyqtSignal
+from superqt import QLabeledDoubleSlider
 
 from iartisanxl.generation.lora_data_object import LoraDataObject
 from iartisanxl.buttons.remove_button import RemoveButton
 
 
-class LoraAddedItem(QWidget):
+class LoraAddedItem(QFrame):
     remove_clicked = pyqtSignal()
     weight_changed = pyqtSignal()
     enabled = pyqtSignal()
@@ -21,10 +15,12 @@ class LoraAddedItem(QWidget):
         super().__init__(*args, **kwargs)
         self.lora = lora
         self.init_ui()
+        self.weight_slider.valueChanged.connect(self.on_slider_value_changed)
 
     def init_ui(self):
         main_layout = QVBoxLayout()
-
+        main_layout.setContentsMargins(3, 3, 3, 3)
+        main_layout.setSpacing(1)
         upper_layout = QHBoxLayout()
 
         lora_name = self.lora.name
@@ -47,29 +43,20 @@ class LoraAddedItem(QWidget):
         main_layout.addLayout(upper_layout)
 
         bottom_layout = QHBoxLayout()
-        self.weight_slider = QSlider()
-        self.weight_slider.setRange(-100, 100)
-        self.weight_slider.setSingleStep(1)
-        self.weight_slider.setValue(int(self.lora.weight * 10))
-        self.weight_slider.setOrientation(Qt.Orientation.Horizontal)
+        self.weight_slider = QLabeledDoubleSlider(Qt.Orientation.Horizontal)
+        self.weight_slider.setRange(-8.0, 8.0)
+        self.weight_slider.setValue(self.lora.weight)
+        main_layout.addWidget(self.weight_slider)
         bottom_layout.addWidget(self.weight_slider)
 
-        self.lbl_added_lora_weight = QLabel(f"{self.lora.weight:.1f}")
-        bottom_layout.addWidget(self.lbl_added_lora_weight)
-
-        self.weight_slider.valueChanged.connect(self.on_slider_value_changed)
-
         main_layout.addLayout(bottom_layout)
-
         self.setLayout(main_layout)
 
     def on_slider_value_changed(self, value):
-        float_value = value / 10.0
-        self.lora.weight = float_value
-        self.lbl_added_lora_weight.setText(f"{float_value:.1f}")
+        self.lora.weight = value
 
     def get_slider_value(self):
-        return self.weight_slider.value() / 10.0
+        return self.weight_slider.value()
 
     def on_check_enabled(self):
         self.enabled.emit()

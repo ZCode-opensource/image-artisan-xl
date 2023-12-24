@@ -25,6 +25,7 @@ class BasePanel(QWidget):
         lora_list: LoraList,
         controlnet_list: AdapterList,
         t2i_adapter_list: AdapterList,
+        ip_adapter_list: AdapterList,
         *args,
         **kwargs,
     ):
@@ -38,6 +39,7 @@ class BasePanel(QWidget):
         self.lora_list = lora_list
         self.controlnet_list = controlnet_list
         self.t2i_adapter_list = t2i_adapter_list
+        self.ip_adapter_list = ip_adapter_list
         self.show_error = show_error
 
     def clean_up(self):

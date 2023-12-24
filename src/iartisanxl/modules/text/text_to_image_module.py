@@ -167,6 +167,7 @@ class TextToImageModule(BaseModule):
             self.lora_list,
             self.controlnet_list,
             self.t2i_adapter_list,
+            self.ip_adapter_list,
             self.image_viewer,
             self.prompt_window,
             self.show_error,
@@ -369,6 +370,7 @@ class TextToImageModule(BaseModule):
         self.node_graph_thread.lora_list = self.lora_list
         self.node_graph_thread.controlnet_list = self.controlnet_list
         self.node_graph_thread.t2i_adapter_list = self.t2i_adapter_list
+        self.node_graph_thread.ip_adapter_list = self.ip_adapter_list
         self.node_graph_thread.model_offload = self.preferences.model_offload
         self.node_graph_thread.sequential_offload = self.preferences.sequential_offload
 

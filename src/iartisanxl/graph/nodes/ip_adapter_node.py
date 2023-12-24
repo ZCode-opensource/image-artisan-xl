@@ -1,21 +1,48 @@
 import torch
 from transformers import CLIPImageProcessor
 from diffusers.models import ImageProjection
+from diffusers.models.attention_processor import IPAdapterAttnProcessor, IPAdapterAttnProcessor2_0
 
 from iartisanxl.graph.nodes.node import Node
 
 
 class IPAdapterNode(Node):
-    REQUIRED_INPUTS = ["unet", "image_encoder", "image"]
+    REQUIRED_INPUTS = ["unet", "ip_adapter_model", "image_encoder", "image"]
     OUTPUTS = ["image_embeds", "negative_image_embeds"]
 
-    def __init__(self, **kwargs):
+    def __init__(self, adapter_scale: float = None, **kwargs):
         super().__init__(**kwargs)
 
         self.feature_extractor = CLIPImageProcessor()
+        self.adapter_scale = adapter_scale
+
+    def update_adapter(self, adapter_scale: float, enabled: bool):
+        self.adapter_scale = adapter_scale
+        self.enabled = enabled
+        self.set_updated()
+
+    def to_dict(self):
+        node_dict = super().to_dict()
+        node_dict["adapter_scale"] = self.adapter_scale
+        return node_dict
+
+    @classmethod
+    def from_dict(cls, node_dict, _callbacks=None):
+        node = super(IPAdapterNode, cls).from_dict(node_dict)
+        node.adapter_scale = node_dict["adapter_scale"]
+        return node
+
+    def update_inputs(self, node_dict):
+        self.adapter_scale = node_dict["adapter_scale"]
 
     def __call__(self) -> dict:
         super().__call__()
+
+        self.unet._load_ip_adapter_weights(self.ip_adapter_model)
+
+        for attn_processor in self.unet.attn_processors.values():
+            if isinstance(attn_processor, (IPAdapterAttnProcessor, IPAdapterAttnProcessor2_0)):
+                attn_processor.scale = self.adapter_scale
 
         image_embeds, negative_image_embeds = self.encode_image(self.image)
 
@@ -44,3 +71,7 @@ class IPAdapterNode(Node):
             uncond_image_embeds = torch.zeros_like(image_embeds)
 
             return image_embeds, uncond_image_embeds
+
+    def unload(self):
+        self.unet.encoder_hid_proj = None
+        self.unet.set_default_attn_processor()
