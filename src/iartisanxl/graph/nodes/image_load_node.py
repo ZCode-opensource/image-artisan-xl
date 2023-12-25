@@ -37,6 +37,8 @@ class ImageLoadNode(Node):
         self.image = node_dict["image"]
 
     def __call__(self):
+        super().__call__()
+
         if self.image is None:
             self.values["image"] = Image.open(self.path)
         else:
