@@ -316,10 +316,6 @@ class TextToImageModule(BaseModule):
             self.show_snackbar("You need to first choose a Stable Diffusion XL model.")
             return
 
-        if len(self.image_generation_data.positive_prompt_clipg) == 0:
-            self.show_snackbar("You forgot to write a prompt.")
-            return
-
         if self.image_generation_data.model is None:
             self.show_snackbar("No base model selected.")
             return
