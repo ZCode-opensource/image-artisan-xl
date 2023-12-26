@@ -59,11 +59,13 @@ class ControlImageWidget(QWidget):
 
         main_layout.addLayout(top_layout)
 
+        image_widget = QWidget()
         self.image_editor = ImageEditor()
         self.image_editor.set_original_size(self.editor_width, self.editor_height)
-        editor_layout = AspectRatioLayout(self.aspect_ratio, self.image_editor)
+        editor_layout = AspectRatioLayout(image_widget, self.aspect_ratio)
         editor_layout.addWidget(self.image_editor)
-        main_layout.addLayout(editor_layout)
+        image_widget.setLayout(editor_layout)
+        main_layout.addWidget(image_widget)
 
         image_controls_layout = QHBoxLayout()
         self.image_scale_control = ImageControl("Scale: ", 1.0, 3)
@@ -85,7 +87,6 @@ class ControlImageWidget(QWidget):
         main_layout.setStretch(0, 0)
         main_layout.setStretch(1, 1)
         main_layout.setStretch(2, 0)
-        main_layout.setStretch(3, 1)
 
         self.setLayout(main_layout)
 

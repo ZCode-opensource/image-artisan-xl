@@ -20,10 +20,12 @@ class ImageCropperWidget(QWidget):
         main_layout.setContentsMargins(0, 0, 0, 0)
         main_layout.setSpacing(0)
 
+        cropper_widget = QWidget()
         self.image_cropper = ImageCropper(1024, 1024, 1.0)
         self.image_cropper.imageMoved.connect(self.update_image_position)
-        cropper_layout = AspectRatioLayout(1, self.image_cropper)
+        cropper_layout = AspectRatioLayout(cropper_widget, 1)
         cropper_layout.addWidget(self.image_cropper)
+        cropper_widget.setLayout(cropper_layout)
 
         image_controls_layout = QHBoxLayout()
         self.image_scale_control = ImageControl("Scale: ", 1.000, 3)
@@ -39,7 +41,7 @@ class ImageCropperWidget(QWidget):
         self.image_rotation_control.value_changed.connect(self.image_cropper.rotate_image)
         image_controls_layout.addWidget(self.image_rotation_control)
 
-        main_layout.addLayout(cropper_layout)
+        main_layout.addWidget(cropper_widget)
         main_layout.addLayout(image_controls_layout)
 
         self.setLayout(main_layout)
