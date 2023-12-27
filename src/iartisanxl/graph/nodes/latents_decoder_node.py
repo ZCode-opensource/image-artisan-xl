@@ -14,9 +14,7 @@ class LatentsDecoderNode(Node):
         super().__call__()
         image = None
 
-        needs_upcasting = (
-            self.vae.config.force_upcast and self.vae.dtype == torch.float16
-        )
+        needs_upcasting = self.vae.config.force_upcast and self.vae.dtype == torch.float16
 
         latents = self.latents
 
@@ -27,9 +25,7 @@ class LatentsDecoderNode(Node):
             self.vae.to(dtype=torch.float32)
             latents = latents.to(dtype=torch.float32)
 
-        decoded = self.vae.decode(
-            latents / self.vae.config.scaling_factor, return_dict=False
-        )[0]
+        decoded = self.vae.decode(latents / self.vae.config.scaling_factor, return_dict=False)[0]
 
         if needs_upcasting:
             self.vae.to(dtype=self.torch_dtype)

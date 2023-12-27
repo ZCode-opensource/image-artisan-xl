@@ -56,6 +56,8 @@ class NodeGraphThread(QThread):
         self.torch_dtype = torch_dtype
 
     def run(self):
+        self.node_graph.torch_dtype = self.torch_dtype
+
         self.status_changed.emit("Generating image...")
         if self.node_graph.node_counter == 0:
             self.node_graph = self.image_generation_data.create_text_to_image_graph(self.node_graph)
@@ -149,12 +151,14 @@ class NodeGraphThread(QThread):
                 if len(modified_loras) > 0:
                     for lora in modified_loras:
                         lora_node = self.node_graph.get_node(lora.id)
-                        lora_node.update_lora(lora.weight, lora.enabled)
 
-                        # same as before
-                        prompts_encoder.updated = True
-                        decoder.updated = True
-                        image_send.updated = True
+                        if lora_node is not None:
+                            lora_node.update_lora(lora.weight, lora.enabled)
+
+                            # same as before
+                            prompts_encoder.updated = True
+                            decoder.updated = True
+                            image_send.updated = True
 
                 removed_loras = self.lora_list.get_removed()
 
@@ -456,6 +460,10 @@ class NodeGraphThread(QThread):
             if len(modified_ip_adapters) > 0:
                 for ip_adapter in modified_ip_adapters:
                     ip_adapter_image_node = self.node_graph.get_node_by_name(f"adapter_image_{ip_adapter.id}")
+
+                    print(f"{ip_adapter=}")
+                    print(f"{ip_adapter_image_node=}")
+
                     ip_adapter_image_node.update_image(ip_adapter.image)
                     ip_adapter_node = self.node_graph.get_node(ip_adapter.id)
                     ip_adapter_node.update_adapter(ip_adapter.ip_adapter_scale, ip_adapter.enabled)

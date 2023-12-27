@@ -12,7 +12,7 @@ from iartisanxl.graph.nodes.controlnet_node import ControlnetNode
 
 
 class ImageArtisanNodeGraph:
-    def __init__(self):
+    def __init__(self, torch_dtype=torch.float16):
         self.node_counter = 0
         self.nodes = []
         self.updated = False
@@ -22,7 +22,7 @@ class ImageArtisanNodeGraph:
         self.cpu_offload = False
         self.sequential_offload = False
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-        self.torch_dtype = torch.float16
+        self.torch_dtype = torch_dtype
 
     def add_node(self, node: Node, name: str = None):
         # Check if the name is not None and is unique
