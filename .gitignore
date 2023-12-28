@@ -18,3 +18,4 @@ installer/resources/
 installer/
 wheels/
 wheel/
+tmp/
