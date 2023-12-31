@@ -10,9 +10,7 @@ from iartisanxl.pipelines.convert_pipeline import ImageArtisanConvertPipeline
 class ConvertSafetensorsThread(QThread):
     status_changed = pyqtSignal(str, int)
 
-    def __init__(
-        self, safetensors_filepath: str, root_filename: str, diffusers_directory: str
-    ):
+    def __init__(self, safetensors_filepath: str, root_filename: str, diffusers_directory: str):
         super().__init__()
 
         self.safetensors_filepath = safetensors_filepath
