@@ -3,7 +3,7 @@ from PyQt6.QtCore import pyqtSignal
 
 from iartisanxl.generation.controlnet_data_object import ControlNetDataObject
 from iartisanxl.buttons.remove_button import RemoveButton
-from iartisanxl.formats.image import ImageProcessor
+from iartisanxl.modules.common.image.image_processor import ImageProcessor
 
 
 class ControlNetAddedItem(QWidget):

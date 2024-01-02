@@ -428,8 +428,9 @@ class NodeGraphThread(QThread):
 
             if len(added_ip_adapters) > 0:
                 for ip_adapter in added_ip_adapters:
-                    ip_adapter_image_node = ImageLoadNode(image=ip_adapter.image)
                     ip_adapter_node = IPAdapterNode(adapter_scale=ip_adapter.ip_adapter_scale)
+                    self.node_graph.add_node(ip_adapter_node)
+                    ip_adapter.id = ip_adapter_node.id
 
                     if ip_adapter.adapter_type == "ip_adapter":
                         ip_adapter_node.connect("image_encoder", image_encoder_g_model_node, "image_encoder")
@@ -444,14 +445,17 @@ class NodeGraphThread(QThread):
                         ip_adapter_node.connect("image_encoder", image_encoder_h_model_node, "image_encoder")
                         ip_adapter_node.connect("ip_adapter_model", ip_adapter_model_node_plus_face, "ip_adapter_model")
 
-                    ip_adapter_node.connect("image", ip_adapter_image_node, "image")
                     ip_adapter_node.connect("unet", sdxl_model, "unet")
                     image_generation.connect("image_embeds", ip_adapter_node, "image_embeds")
                     image_generation.connect("negative_image_embeds", ip_adapter_node, "negative_image_embeds")
 
-                    self.node_graph.add_node(ip_adapter_node)
-                    ip_adapter.id = ip_adapter_node.id
-                    self.node_graph.add_node(ip_adapter_image_node, f"adapter_image_{ip_adapter_node.id}")
+                    for image in ip_adapter.images:
+                        ip_adapter_image_node = ImageLoadNode(path=image.image_filename)
+                        self.node_graph.add_node(ip_adapter_image_node, f"adapter_image_{ip_adapter_node.id}_{image.id}")
+                        image.node_id = ip_adapter_image_node.id
+                        ip_adapter_node.connect("image", ip_adapter_image_node, "image")
+
+                    ip_adapter.save_image_state()
 
                 image_send.updated = True
 
@@ -459,14 +463,30 @@ class NodeGraphThread(QThread):
 
             if len(modified_ip_adapters) > 0:
                 for ip_adapter in modified_ip_adapters:
-                    ip_adapter_image_node = self.node_graph.get_node_by_name(f"adapter_image_{ip_adapter.id}")
-
-                    print(f"{ip_adapter=}")
-                    print(f"{ip_adapter_image_node=}")
-
-                    ip_adapter_image_node.update_image(ip_adapter.image)
                     ip_adapter_node = self.node_graph.get_node(ip_adapter.id)
                     ip_adapter_node.update_adapter(ip_adapter.ip_adapter_scale, ip_adapter.enabled)
+
+                    added_images = ip_adapter.get_added_images()
+                    modified_images = ip_adapter.get_modified_images()
+                    deleted_images = ip_adapter.get_removed_images()
+
+                    if len(added_images) > 0:
+                        for image in added_images:
+                            ip_adapter_image_node = ImageLoadNode(path=image.image_filename)
+                            self.node_graph.add_node(ip_adapter_image_node, f"adapter_image_{ip_adapter_node.id}_{image.id}")
+                            image.node_id = ip_adapter_image_node.id
+                            ip_adapter_node.connect("image", ip_adapter_image_node, "image")
+
+                    if len(modified_images) > 0:
+                        for image in modified_images:
+                            ip_adapter_image_node = self.node_graph.get_node(image.node_id)
+                            ip_adapter_image_node.update_path(image.image_filename)
+
+                    if len(deleted_images) > 0:
+                        for image in deleted_images:
+                            self.node_graph.delete_node_by_id(image.node_id)
+
+                    ip_adapter.save_image_state()
 
                 image_send.updated = True
 

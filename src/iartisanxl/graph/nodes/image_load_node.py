@@ -19,6 +19,11 @@ class ImageLoadNode(Node):
         self.image = image
         self.set_updated()
 
+    def update_path(self, path: str):
+        self.path = path
+        Image.open(self.path)
+        self.set_updated()
+
     def to_dict(self):
         node_dict = super().to_dict()
         node_dict["path"] = self.path

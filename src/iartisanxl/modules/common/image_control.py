@@ -80,14 +80,20 @@ class ImageControl(QWidget):
     def on_mouse_released(self, _event):
         self.last_mouse_position = None
 
-    def on_value_changed(self):
-        self.value_changed.emit(self.value)
+    def on_value_changed(self, text):
+        try:
+            number = float(text)
+            self.value = number
+            self.value_changed.emit(self.value)
+        except ValueError:
+            pass
 
     def reset(self):
         self.value = self.initial_value
         self.mouse_line_edit.setText("{: .{precision}f}".format(self.value, precision=self.precision))
 
     def set_value(self, value):
+        self.value = value
         self.mouse_line_edit.textChanged.disconnect(self.on_value_changed)
         self.mouse_line_edit.setText("{: .{precision}f}".format(value, precision=self.precision))
         self.mouse_line_edit.textChanged.connect(self.on_value_changed)

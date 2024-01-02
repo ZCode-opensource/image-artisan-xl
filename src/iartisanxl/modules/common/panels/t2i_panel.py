@@ -5,7 +5,7 @@ from iartisanxl.modules.common.panels.base_panel import BasePanel
 from iartisanxl.modules.common.dialogs.t2i_dialog import T2IDialog
 from iartisanxl.modules.common.adapter_added_item import AdapterAddedItem
 from iartisanxl.generation.t2i_adapter_data_object import T2IAdapterDataObject
-from iartisanxl.formats.image import ImageProcessor
+from iartisanxl.modules.common.image.image_processor import ImageProcessor
 
 
 class T2IPanel(BasePanel):

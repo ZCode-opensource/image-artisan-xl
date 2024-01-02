@@ -3,7 +3,7 @@ from PyQt6.QtCore import pyqtSignal
 
 from iartisanxl.generation.t2i_adapter_data_object import T2IAdapterDataObject
 from iartisanxl.buttons.remove_button import RemoveButton
-from iartisanxl.formats.image import ImageProcessor
+from iartisanxl.modules.common.image.image_processor import ImageProcessor
 
 
 class AdapterAddedItem(QWidget):

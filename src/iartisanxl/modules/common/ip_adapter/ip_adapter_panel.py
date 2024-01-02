@@ -1,10 +1,10 @@
 from PyQt6.QtWidgets import QVBoxLayout, QPushButton, QWidget
+from PyQt6.QtGui import QPixmap
 
 from iartisanxl.app.event_bus import EventBus
 from iartisanxl.modules.common.panels.base_panel import BasePanel
-from iartisanxl.modules.common.dialogs.ip_adapter_dialog import IPAdapterDialog
-from iartisanxl.modules.common.ip_adapter_added_item import IPAdapterAddedItem
-from iartisanxl.formats.image import ImageProcessor
+from iartisanxl.modules.common.ip_adapter.ip_adapter_dialog import IPAdapterDialog
+from iartisanxl.modules.common.ip_adapter.ip_adapter_added_item import IPAdapterAddedItem
 
 
 class IPAdapterPanel(BasePanel):
@@ -68,9 +68,8 @@ class IPAdapterPanel(BasePanel):
                 widget = self.adapters_layout.itemAt(i).widget()
                 if widget.adapter.adapter_id == adapter.adapter_id:
                     widget.enabled_checkbox.setText(adapter.adapter_type)
-                    image_processor = ImageProcessor()
-                    image_processor.set_pillow_image(adapter.image_thumb)
-                    widget.image_thumb.setPixmap(image_processor.get_qpixmap())
+                    pixmap = QPixmap(adapter.images[0].image_thumb)
+                    widget.image_thumb.setPixmap(pixmap)
                     break
 
     def on_remove_clicked(self, adapter_widget: IPAdapterAddedItem):

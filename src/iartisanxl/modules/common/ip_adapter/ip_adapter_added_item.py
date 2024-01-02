@@ -1,10 +1,9 @@
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QCheckBox, QPushButton, QLabel
+from PyQt6.QtGui import QPixmap
 from PyQt6.QtCore import pyqtSignal
 
-
-from iartisanxl.generation.ip_adapter_data_object import IPAdapterDataObject
+from iartisanxl.modules.common.ip_adapter.ip_adapter_data_object import IPAdapterDataObject
 from iartisanxl.buttons.remove_button import RemoveButton
-from iartisanxl.formats.image import ImageProcessor
 
 
 class IPAdapterAddedItem(QWidget):
@@ -35,16 +34,15 @@ class IPAdapterAddedItem(QWidget):
         upper_layout.setStretch(0, 1)
         upper_layout.setStretch(1, 0)
 
-        image_processor = ImageProcessor()
-
         lower_layout = QHBoxLayout()
         edit_button = QPushButton("Edit")
         edit_button.clicked.connect(lambda: self.edit_clicked.emit(self.adapter))
         lower_layout.addWidget(edit_button)
         self.image_thumb = QLabel()
         self.image_thumb.setFixedSize(80, 80)
-        image_processor.set_pillow_image(self.adapter.image_thumb)
-        self.image_thumb.setPixmap(image_processor.get_qpixmap())
+
+        thumb_pixmap = QPixmap(self.adapter.images[0].image_thumb)
+        self.image_thumb.setPixmap(thumb_pixmap)
         lower_layout.addWidget(self.image_thumb)
 
         main_layout.addLayout(upper_layout)

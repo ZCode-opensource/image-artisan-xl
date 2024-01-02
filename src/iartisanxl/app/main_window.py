@@ -1,3 +1,5 @@
+import os
+import shutil
 import logging
 
 from PyQt6.QtWidgets import (
@@ -160,6 +162,15 @@ class MainWindow(QMainWindow):
 
         for child in self.findChildren(QWidget):
             child.deleteLater()
+
+        temp_directory = "tmp/"
+
+        for item in os.listdir(temp_directory):
+            item_path = os.path.join(temp_directory, item)
+            if os.path.isfile(item_path):
+                os.remove(item_path)
+            else:
+                shutil.rmtree(item_path)
 
         super().closeEvent(event)
 

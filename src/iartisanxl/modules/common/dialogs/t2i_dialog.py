@@ -17,7 +17,7 @@ from iartisanxl.annotators.pidinet.pidinet_generator import PidinetGenerator
 from iartisanxl.annotators.depth.depth_estimator import DepthEstimator
 from iartisanxl.annotators.canny.canny_edges_detector import CannyEdgesDetector
 from iartisanxl.generation.t2i_adapter_data_object import T2IAdapterDataObject
-from iartisanxl.formats.image import ImageProcessor
+from iartisanxl.modules.common.image.image_processor import ImageProcessor
 
 
 class T2IDialog(BaseDialog):

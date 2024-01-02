@@ -1,3 +1,5 @@
+import math
+
 from PyQt6.QtWidgets import QLayout
 from PyQt6.QtCore import QRect, QSize
 
@@ -36,8 +38,8 @@ class AspectRatioLayout(QLayout):
             h = w / self.aspect_ratio
 
         # Convert w and h to integers
-        w = int(w)
-        h = int(h)
+        w = math.floor(w)
+        h = math.floor(h)
 
         # Calculate left and top positions to center the item
         left = (rect.width() - w) // 2

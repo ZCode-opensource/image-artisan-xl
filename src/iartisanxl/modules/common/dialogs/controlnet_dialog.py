@@ -11,7 +11,7 @@ from iartisanxl.buttons.color_button import ColorButton
 from iartisanxl.modules.common.dialogs.base_dialog import BaseDialog
 from iartisanxl.modules.common.dialogs.control_image_widget import ControlImageWidget
 from iartisanxl.generation.controlnet_data_object import ControlNetDataObject
-from iartisanxl.formats.image import ImageProcessor
+from iartisanxl.modules.common.image.image_processor import ImageProcessor
 from iartisanxl.annotators.openpose.open_pose_detector import OpenPoseDetector
 from iartisanxl.annotators.depth.depth_estimator import DepthEstimator
 from iartisanxl.annotators.canny.canny_edges_detector import CannyEdgesDetector

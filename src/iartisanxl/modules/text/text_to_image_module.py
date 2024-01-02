@@ -23,20 +23,20 @@ from iartisanxl.modules.common.panels.generation_panel import GenerationPanel
 from iartisanxl.modules.common.panels.lora_panel import LoraPanel
 from iartisanxl.modules.common.panels.controlnet_panel import ControlNetPanel
 from iartisanxl.modules.common.panels.t2i_panel import T2IPanel
-from iartisanxl.modules.common.panels.ip_adapter_panel import IPAdapterPanel
+from iartisanxl.modules.common.ip_adapter.ip_adapter_panel import IPAdapterPanel
 from iartisanxl.menu.right_menu import RightMenu
 from iartisanxl.generation.image_generation_data import ImageGenerationData
 from iartisanxl.generation.lora_list import LoraList
 from iartisanxl.generation.lora_data_object import LoraDataObject
 from iartisanxl.generation.controlnet_data_object import ControlNetDataObject
 from iartisanxl.generation.t2i_adapter_data_object import T2IAdapterDataObject
-from iartisanxl.generation.ip_adapter_data_object import IPAdapterDataObject
+from iartisanxl.modules.common.ip_adapter.ip_adapter_data_object import IPAdapterDataObject
 from iartisanxl.generation.adapter_list import AdapterList
 from iartisanxl.generation.model_data_object import ModelDataObject
 from iartisanxl.generation.vae_data_object import VaeDataObject
 from iartisanxl.generation.schedulers.schedulers import schedulers
 from iartisanxl.console.console_stream import ConsoleStream
-from iartisanxl.formats.image import ImageProcessor
+from iartisanxl.modules.common.image.image_processor import ImageProcessor
 from iartisanxl.threads.taesd_loader_thread import TaesdLoaderThread
 from iartisanxl.threads.image_processor_thread import ImageProcesorThread
 from iartisanxl.threads.node_graph_thread import NodeGraphThread
@@ -96,7 +96,7 @@ class TextToImageModule(BaseModule):
         self.settings.endGroup()
 
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-        self.torch_dtype = torch.float16
+        self.torch_dtype = torch.bfloat16
         self.batch_size = 1
         self.taesd_dec = None
 
@@ -112,7 +112,7 @@ class TextToImageModule(BaseModule):
 
         self.taesd_loader_thread = None
         self.image_processor_thread = None
-        self.node_graph_thread = NodeGraphThread(node_graph=self.node_graph)
+        self.node_graph_thread = NodeGraphThread(node_graph=self.node_graph, torch_dtype=self.torch_dtype)
         self.node_graph_thread.progress_update.connect(self.step_progress_update)
         self.node_graph_thread.status_changed.connect(self.update_status_bar)
         self.node_graph_thread.generation_error.connect(self.show_error)

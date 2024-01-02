@@ -2,6 +2,8 @@ import torch
 from transformers import CLIPImageProcessor
 from diffusers.models import ImageProjection
 from diffusers.models.attention_processor import IPAdapterAttnProcessor, IPAdapterAttnProcessor2_0
+from torchvision import transforms
+import numpy as np
 
 from iartisanxl.graph.nodes.node import Node
 
@@ -52,21 +54,43 @@ class IPAdapterNode(Node):
         return self.values
 
     def encode_image(self, image):
-        if not isinstance(image, torch.Tensor):
-            image = self.feature_extractor(image, return_tensors="pt").pixel_values
+        transform = transforms.Compose(
+            [
+                transforms.ToTensor(),
+            ]
+        )
 
-        image = image.to(device=self.device, dtype=self.torch_dtype)
+        mean = [0.485, 0.456, 0.406]
+        std = [0.229, 0.224, 0.225]
+        normalize = transforms.Normalize(mean=mean, std=std)
+
+        # Apply the transformation
+        tensor_image = transform(image)
+        pil_image = transforms.ToPILImage()(tensor_image)
+
+        if pil_image.mode in ("RGBA", "LA") or (pil_image.mode == "P" and "transparency" in pil_image.info):
+            alpha = torch.from_numpy(np.array(pil_image.convert("RGBA").split()[-1])).float()
+            mask = (alpha != 0).float()
+
+            # Apply the mask to the RGB channels of the tensor
+            tensor_image[:3, :, :] *= mask.unsqueeze(0)
+
+        tensor_image = tensor_image[:3, :, :]
+        tensor_image = tensor_image.unsqueeze(0)
+        tensor_image = normalize(tensor_image)
+
+        tensor_image = tensor_image.to(device=self.device, dtype=self.torch_dtype)
 
         output_hidden_states = False if isinstance(self.unet.encoder_hid_proj, ImageProjection) else True
 
         if output_hidden_states:
-            image_enc_hidden_states = self.image_encoder(image, output_hidden_states=True).hidden_states[-2]
+            image_enc_hidden_states = self.image_encoder(tensor_image, output_hidden_states=True).hidden_states[-2]
             image_enc_hidden_states = image_enc_hidden_states.repeat_interleave(1, dim=0)
-            uncond_image_enc_hidden_states = self.image_encoder(torch.zeros_like(image), output_hidden_states=True).hidden_states[-2]
+            uncond_image_enc_hidden_states = self.image_encoder(torch.zeros_like(tensor_image), output_hidden_states=True).hidden_states[-2]
             uncond_image_enc_hidden_states = uncond_image_enc_hidden_states.repeat_interleave(1, dim=0)
             return image_enc_hidden_states, uncond_image_enc_hidden_states
         else:
-            image_embeds = self.image_encoder(image).image_embeds
+            image_embeds = self.image_encoder(tensor_image).image_embeds
             image_embeds = image_embeds.repeat_interleave(1, dim=0)
             uncond_image_embeds = torch.zeros_like(image_embeds)
 
