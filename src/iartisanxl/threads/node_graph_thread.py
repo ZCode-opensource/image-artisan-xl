@@ -450,7 +450,7 @@ class NodeGraphThread(QThread):
                     image_generation.connect("negative_image_embeds", ip_adapter_node, "negative_image_embeds")
 
                     for image in ip_adapter.images:
-                        ip_adapter_image_node = ImageLoadNode(path=image.image_filename, weight=image.weight)
+                        ip_adapter_image_node = ImageLoadNode(path=image.image_filename, weight=image.weight, noise=image.noise)
                         self.node_graph.add_node(ip_adapter_image_node, f"adapter_image_{ip_adapter_node.id}_{image.id}")
                         image.node_id = ip_adapter_image_node.id
                         ip_adapter_node.connect("image", ip_adapter_image_node, "image")
@@ -472,7 +472,7 @@ class NodeGraphThread(QThread):
 
                     if len(added_images) > 0:
                         for image in added_images:
-                            ip_adapter_image_node = ImageLoadNode(path=image.image_filename, weight=image.weight)
+                            ip_adapter_image_node = ImageLoadNode(path=image.image_filename, weight=image.weight, noise=image.noise)
                             self.node_graph.add_node(ip_adapter_image_node, f"adapter_image_{ip_adapter_node.id}_{image.id}")
                             image.node_id = ip_adapter_image_node.id
                             ip_adapter_node.connect("image", ip_adapter_image_node, "image")
@@ -480,7 +480,7 @@ class NodeGraphThread(QThread):
                     if len(modified_images) > 0:
                         for image in modified_images:
                             ip_adapter_image_node = self.node_graph.get_node(image.node_id)
-                            ip_adapter_image_node.update_path_weight(image.image_filename, weight=image.weight)
+                            ip_adapter_image_node.update_path_weight_noise(image.image_filename, weight=image.weight, noise=image.noise)
 
                     if len(deleted_images) > 0:
                         for image in deleted_images:

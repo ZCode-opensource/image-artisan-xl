@@ -66,7 +66,6 @@ class ImageGenerationNode(Node):
         super().__call__()
 
         crops_coords_top_left = self.crops_coords_top_left if self.crops_coords_top_left is not None else (0, 0)
-
         negative_crops_coords_top_left = self.negative_crops_coords_top_left if self.negative_crops_coords_top_left is not None else (0, 0)
 
         if self.lora:

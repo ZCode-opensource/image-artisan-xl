@@ -84,13 +84,22 @@ class IPAdapterImageWidget(QWidget):
         self.image_weight_slider.setValue(1.0)
         images_actions_layout.addWidget(self.image_weight_slider)
 
+        image_noise_label = QLabel("Noise:")
+        images_actions_layout.addWidget(image_noise_label)
+        self.image_noise_slider = QLabeledDoubleSlider(Qt.Orientation.Horizontal)
+        self.image_noise_slider.setRange(0.0, 1.0)
+        self.image_noise_slider.setValue(0.0)
+        images_actions_layout.addWidget(self.image_noise_slider)
+
         self.add_image_button = QPushButton("Add image")
         self.add_image_button.clicked.connect(self.on_add_image)
         images_actions_layout.addWidget(self.add_image_button)
 
         images_actions_layout.setStretch(0, 0)
         images_actions_layout.setStretch(1, 1)
-        images_actions_layout.setStretch(2, 1)
+        images_actions_layout.setStretch(2, 0)
+        images_actions_layout.setStretch(3, 1)
+        images_actions_layout.setStretch(4, 2)
         main_layout.addLayout(images_actions_layout)
 
         main_layout.setStretch(0, 0)
@@ -109,6 +118,8 @@ class IPAdapterImageWidget(QWidget):
         self.image_x_pos_control.reset()
         self.image_y_pos_control.reset()
         self.image_rotation_control.reset()
+        self.image_weight_slider.setValue(1.0)
+        self.image_noise_slider.setValue(0.0)
 
     def dragEnterEvent(self, event):
         if event.mimeData().hasUrls():
@@ -163,7 +174,7 @@ class IPAdapterImageWidget(QWidget):
     def update_image_scale(self, scale):
         self.image_scale_control.set_value(scale)
 
-    def set_image_parameters(self, image_id, scale, x, y, angle, weight):
+    def set_image_parameters(self, image_id, scale, x, y, angle, weight, noise):
         self.image_id = image_id
         self.add_image_button.setText("Update image")
 
@@ -176,6 +187,7 @@ class IPAdapterImageWidget(QWidget):
         self.image_rotation_control.set_value(angle)
         self.image_editor.rotate_image(angle)
         self.image_weight_slider.setValue(weight)
+        self.image_noise_slider.setValue(noise)
 
     def set_current_image(self):
         if self.image_viewer.pixmap_item is not None:
@@ -189,6 +201,7 @@ class IPAdapterImageWidget(QWidget):
         self.image_y_pos_control.reset()
         self.image_rotation_control.reset()
         self.image_weight_slider.setValue(1.0)
+        self.image_noise_slider.setValue(0.0)
         self.image_editor.clear()
 
     def on_add_image(self):

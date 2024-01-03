@@ -222,6 +222,7 @@ class IPAdapterDialog(BaseDialog):
                 image_y_pos=self.image_widget.image_y_pos_control.value,
                 image_rotation=self.image_widget.image_rotation_control.value,
                 weight=self.image_widget.image_weight_slider.value(),
+                noise=self.image_widget.image_noise_slider.value(),
             )
         else:
             image_data_object = self.adapter.get_image_data_object(image_id)
@@ -232,6 +233,7 @@ class IPAdapterDialog(BaseDialog):
                 image_data_object.image_y_pos = self.image_widget.image_y_pos_control.value
                 image_data_object.image_rotation = self.image_widget.image_rotation_control.value
                 image_data_object.weight = self.image_widget.image_weight_slider.value()
+                image_data_object.noise = self.image_widget.image_noise_slider.value()
             else:
                 self.show_error("Couldn't obtain the information to add the image.")
                 return
@@ -257,7 +259,13 @@ class IPAdapterDialog(BaseDialog):
     def on_item_selected(self, image_data: ImageDataObject):
         self.image_widget.show_image(image_data.image_original)
         self.image_widget.set_image_parameters(
-            image_data.id, image_data.image_scale, image_data.image_x_pos, image_data.image_y_pos, image_data.image_rotation, image_data.weight
+            image_data.id,
+            image_data.image_scale,
+            image_data.image_x_pos,
+            image_data.image_y_pos,
+            image_data.image_rotation,
+            image_data.weight,
+            image_data.noise,
         )
 
     def on_item_deleted(self, image_data: ImageDataObject, clear_view: bool):

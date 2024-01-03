@@ -67,11 +67,13 @@ class IPAdapterNode(Node):
         normalize = transforms.Normalize(mean=mean, std=std)
 
         tensor_images = []
+        neg_tensor_images = []
         weights = []
 
         for image_dict in images:
             image = image_dict.get("image")
             weight = image_dict.get("weight")
+            noise = image_dict.get("noise")
 
             tensor_image = transform(image)
 
@@ -90,22 +92,37 @@ class IPAdapterNode(Node):
             tensor_images.append(tensor_image)
             weights.append(weight)
 
+            if noise == 0:
+                neg_tensor_image = torch.zeros_like(tensor_image)
+            else:
+                neg_tensor_image = self.image_add_noise(tensor_image, noise)
+
+            neg_tensor_image = neg_tensor_image.to(device=self.device, dtype=self.torch_dtype)
+            neg_tensor_images.append(neg_tensor_image)
+
         tensor_images = torch.cat(tensor_images, dim=0)
-        weights = torch.tensor(weights).to(self.device, dtype=self.torch_dtype).view(-1, 1)
+        neg_tensor_images = torch.cat(neg_tensor_images, dim=0)
 
         output_hidden_states = False if isinstance(self.unet.encoder_hid_proj, ImageProjection) else True
 
         if output_hidden_states:
             image_enc_hidden_states = self.image_encoder(tensor_images, output_hidden_states=True).hidden_states[-2]
+            weights = torch.tensor(weights).to(self.device, dtype=self.torch_dtype).view(-1, 1, 1)
+            image_enc_hidden_states = image_enc_hidden_states * weights
             image_enc_hidden_states = image_enc_hidden_states.repeat_interleave(len(images), dim=0)
-            uncond_image_enc_hidden_states = self.image_encoder(torch.zeros_like(tensor_images), output_hidden_states=True).hidden_states[-2]
+
+            uncond_image_enc_hidden_states = self.image_encoder(neg_tensor_images, output_hidden_states=True).hidden_states[-2]
             uncond_image_enc_hidden_states = uncond_image_enc_hidden_states.repeat_interleave(len(images), dim=0)
+
             return image_enc_hidden_states, uncond_image_enc_hidden_states
         else:
             image_embeds = self.image_encoder(tensor_images).image_embeds
+            weights = torch.tensor(weights).to(self.device, dtype=self.torch_dtype).view(-1, 1)
             image_embeds = image_embeds * weights
             image_embeds = image_embeds.repeat_interleave(len(images), dim=0)
-            uncond_image_embeds = torch.zeros_like(image_embeds)
+
+            uncond_image_embeds = self.image_encoder(neg_tensor_images).image_embeds
+            uncond_image_embeds = uncond_image_embeds.repeat_interleave(len(images), dim=0)
 
             return image_embeds, uncond_image_embeds
 
@@ -114,3 +131,17 @@ class IPAdapterNode(Node):
 
         processor = AttnProcessor()
         self.unet.set_attn_processor(processor, _remove_lora=True)
+
+    def image_add_noise(self, source_image, noise):
+        image = source_image.clone()
+        torch.manual_seed(0)
+        transformations = transforms.Compose(
+            [
+                transforms.ElasticTransform(alpha=75.0, sigma=noise * 3.5),
+                transforms.RandomVerticalFlip(p=1.0),
+                transforms.RandomHorizontalFlip(p=1.0),
+            ]
+        )
+        image = transformations(image.cpu())
+        image = image + ((0.25 * (1 - noise) + 0.05) * torch.randn_like(image))
+        return image
