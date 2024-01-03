@@ -1,4 +1,5 @@
 import os
+from types import MethodType
 
 import accelerate
 import torch
@@ -10,23 +11,28 @@ from transformers import (
     CLIPTokenizer,
 )
 from diffusers import UNet2DConditionModel
-
+from diffusers.utils.peft_utils import set_adapter_layers, recurse_remove_peft_layers
 from diffusers.pipelines.stable_diffusion.convert_from_ckpt import (
     create_unet_diffusers_config,
     convert_ldm_unet_checkpoint,
     convert_ldm_clip_checkpoint,
     convert_open_clip_checkpoint,
 )
+import diffusers.models.attention_processor
 from diffusers.utils.peft_utils import delete_adapter_layers
 from omegaconf import OmegaConf
 from accelerate import init_empty_weights
 from accelerate.utils import set_module_tensor_to_device
 from safetensors.torch import load_file as safe_load
 from peft.tuners.tuners_utils import BaseTunerLayer
-from diffusers.utils.peft_utils import set_adapter_layers, recurse_remove_peft_layers
 
 
 from iartisanxl.graph.nodes.node import Node
+from iartisanxl.diffusers.unet import forward
+from iartisanxl.diffusers.ip_adapter_attention_processor import IPAdapterAttnProcessor2_0
+
+
+diffusers.models.attention_processor.IPAdapterAttnProcessor2_0 = IPAdapterAttnProcessor2_0
 
 
 class StableDiffusionXLModelNode(Node):
@@ -192,6 +198,7 @@ class StableDiffusionXLModelNode(Node):
                         dtype=self.torch_dtype,
                     )
 
+        self.values["unet"].forward = MethodType(forward, self.values["unet"])
         self.values["num_channels_latents"] = self.values["unet"].config.in_channels
 
         return self.values

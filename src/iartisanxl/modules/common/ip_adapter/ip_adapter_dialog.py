@@ -148,6 +148,7 @@ class IPAdapterDialog(BaseDialog):
         middle_layout.addWidget(self.images_view)
 
         image_layout = QVBoxLayout()
+        image_layout.setContentsMargins(5, 0, 5, 0)
         self.image_widget = IPAdapterImageWidget("image", self.image_viewer, self.directories.outputs_images)
         self.image_widget.image_added.connect(self.on_image_added)
         self.image_widget.image_dropped.connect(self.image_items_view.clear_selection)
@@ -161,6 +162,7 @@ class IPAdapterDialog(BaseDialog):
         self.main_layout.addLayout(middle_layout)
 
         bottom_layout = QHBoxLayout()
+        bottom_layout.setContentsMargins(5, 0, 5, 0)
         self.add_button = QPushButton("Add IP-Adapter")
         self.add_button.clicked.connect(self.on_ip_adapter_added)
         bottom_layout.addWidget(self.add_button)
@@ -169,6 +171,7 @@ class IPAdapterDialog(BaseDialog):
         self.main_layout.setStretch(0, 0)
         self.main_layout.setStretch(1, 1)
         self.main_layout.setStretch(2, 0)
+        self.main_layout.setSpacing(3)
 
         self.add_button.setStyleSheet(
             """
@@ -218,6 +221,7 @@ class IPAdapterDialog(BaseDialog):
                 image_x_pos=self.image_widget.image_x_pos_control.value,
                 image_y_pos=self.image_widget.image_y_pos_control.value,
                 image_rotation=self.image_widget.image_rotation_control.value,
+                weight=self.image_widget.image_weight_slider.value(),
             )
         else:
             image_data_object = self.adapter.get_image_data_object(image_id)
@@ -227,6 +231,7 @@ class IPAdapterDialog(BaseDialog):
                 image_data_object.image_x_pos = self.image_widget.image_x_pos_control.value
                 image_data_object.image_y_pos = self.image_widget.image_y_pos_control.value
                 image_data_object.image_rotation = self.image_widget.image_rotation_control.value
+                image_data_object.weight = self.image_widget.image_weight_slider.value()
             else:
                 self.show_error("Couldn't obtain the information to add the image.")
                 return
@@ -252,7 +257,7 @@ class IPAdapterDialog(BaseDialog):
     def on_item_selected(self, image_data: ImageDataObject):
         self.image_widget.show_image(image_data.image_original)
         self.image_widget.set_image_parameters(
-            image_data.id, image_data.image_scale, image_data.image_x_pos, image_data.image_y_pos, image_data.image_rotation
+            image_data.id, image_data.image_scale, image_data.image_x_pos, image_data.image_y_pos, image_data.image_rotation, image_data.weight
         )
 
     def on_item_deleted(self, image_data: ImageDataObject, clear_view: bool):

@@ -1,6 +1,7 @@
-from PyQt6.QtWidgets import QVBoxLayout, QHBoxLayout, QWidget, QPushButton, QFileDialog
+from PyQt6.QtWidgets import QVBoxLayout, QHBoxLayout, QWidget, QPushButton, QFileDialog, QLabel
 from PyQt6.QtGui import QImageReader, QPixmap
-from PyQt6.QtCore import pyqtSignal, QTimer
+from PyQt6.QtCore import pyqtSignal, QTimer, Qt
+from superqt import QLabeledDoubleSlider
 
 from iartisanxl.modules.common.image.image_adder_preview import ImageAdderPreview
 from iartisanxl.modules.common.image_viewer_simple import ImageViewerSimple
@@ -38,6 +39,7 @@ class IPAdapterImageWidget(QWidget):
         main_layout.setSpacing(0)
 
         top_layout = QHBoxLayout()
+        top_layout.setContentsMargins(0, 0, 0, 5)
         load_image_button = QPushButton("Load")
         load_image_button.clicked.connect(self.on_load_image)
         top_layout.addWidget(load_image_button)
@@ -74,10 +76,21 @@ class IPAdapterImageWidget(QWidget):
         main_layout.addLayout(image_controls_layout)
 
         images_actions_layout = QHBoxLayout()
+        images_actions_layout.setSpacing(10)
+        image_weight_label = QLabel("Image weight:")
+        images_actions_layout.addWidget(image_weight_label)
+        self.image_weight_slider = QLabeledDoubleSlider(Qt.Orientation.Horizontal)
+        self.image_weight_slider.setRange(0.0, 1.0)
+        self.image_weight_slider.setValue(1.0)
+        images_actions_layout.addWidget(self.image_weight_slider)
+
         self.add_image_button = QPushButton("Add image")
         self.add_image_button.clicked.connect(self.on_add_image)
         images_actions_layout.addWidget(self.add_image_button)
 
+        images_actions_layout.setStretch(0, 0)
+        images_actions_layout.setStretch(1, 1)
+        images_actions_layout.setStretch(2, 1)
         main_layout.addLayout(images_actions_layout)
 
         main_layout.setStretch(0, 0)
@@ -150,7 +163,7 @@ class IPAdapterImageWidget(QWidget):
     def update_image_scale(self, scale):
         self.image_scale_control.set_value(scale)
 
-    def set_image_parameters(self, image_id, scale, x, y, angle):
+    def set_image_parameters(self, image_id, scale, x, y, angle, weight):
         self.image_id = image_id
         self.add_image_button.setText("Update image")
 
@@ -162,6 +175,7 @@ class IPAdapterImageWidget(QWidget):
         self.image_editor.set_image_y(y)
         self.image_rotation_control.set_value(angle)
         self.image_editor.rotate_image(angle)
+        self.image_weight_slider.setValue(weight)
 
     def set_current_image(self):
         if self.image_viewer.pixmap_item is not None:
@@ -174,6 +188,7 @@ class IPAdapterImageWidget(QWidget):
         self.image_x_pos_control.reset()
         self.image_y_pos_control.reset()
         self.image_rotation_control.reset()
+        self.image_weight_slider.setValue(1.0)
         self.image_editor.clear()
 
     def on_add_image(self):
