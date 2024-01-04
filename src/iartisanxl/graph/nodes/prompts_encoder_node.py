@@ -37,42 +37,24 @@ class PromptsEncoderNode(Node):
             self.text_encoder_1.to("cuda:0")
             self.text_encoder_2.to("cuda:0")
 
-        negative_prompt_1 = (
-            self.negative_prompt_1 if self.negative_prompt_1 is not None else ""
-        )
+        negative_prompt_1 = self.negative_prompt_1 if self.negative_prompt_1 is not None else ""
 
         if self.global_lora_scale is not None:
             scale_lora_layers(self.text_encoder_1, self.global_lora_scale)
             scale_lora_layers(self.text_encoder_2, self.global_lora_scale)
 
         # Get tokens with first tokenizer
-        prompt_tokens, prompt_weights = self.get_tokens_and_weights(
-            self.positive_prompt_1, self.tokenizer_1
-        )
+        prompt_tokens, prompt_weights = self.get_tokens_and_weights(self.positive_prompt_1, self.tokenizer_1)
 
-        neg_prompt_tokens, neg_prompt_weights = self.get_tokens_and_weights(
-            negative_prompt_1, self.tokenizer_1
-        )
+        neg_prompt_tokens, neg_prompt_weights = self.get_tokens_and_weights(negative_prompt_1, self.tokenizer_1)
 
-        positive_prompt_2 = (
-            self.positive_prompt_2
-            if self.positive_prompt_2 is not None
-            else self.positive_prompt_1
-        )
-        negative_prompt_2 = (
-            self.negative_prompt_2
-            if self.negative_prompt_2 is not None
-            else negative_prompt_1
-        )
+        positive_prompt_2 = self.positive_prompt_2 if self.positive_prompt_2 is not None else self.positive_prompt_1
+        negative_prompt_2 = self.negative_prompt_2 if self.negative_prompt_2 is not None else negative_prompt_1
 
         # Get tokens with second tokenizer
-        prompt_tokens_2, prompt_weights_2 = self.get_tokens_and_weights(
-            positive_prompt_2, self.tokenizer_2
-        )
+        prompt_tokens_2, prompt_weights_2 = self.get_tokens_and_weights(positive_prompt_2, self.tokenizer_2)
 
-        neg_prompt_tokens_2, neg_prompt_weights_2 = self.get_tokens_and_weights(
-            negative_prompt_2, self.tokenizer_2
-        )
+        neg_prompt_tokens_2, neg_prompt_weights_2 = self.get_tokens_and_weights(negative_prompt_2, self.tokenizer_2)
 
         # pylint: disable=unbalanced-tuple-unpacking
         (
@@ -87,16 +69,10 @@ class PromptsEncoderNode(Node):
             (neg_prompt_tokens_2, neg_prompt_weights_2),
         )
 
-        token_tensor = torch.tensor(
-            [prompt_tokens], dtype=torch.long, device=self.device
-        )
-        weight_tensor = torch.tensor(
-            prompt_weights, dtype=torch.float16, device=self.device
-        )
+        token_tensor = torch.tensor([prompt_tokens], dtype=torch.long, device=self.device)
+        weight_tensor = torch.tensor(prompt_weights, dtype=self.torch_dtype, device=self.device)
 
-        token_tensor_2 = torch.tensor(
-            [prompt_tokens_2], dtype=torch.long, device=self.device
-        )
+        token_tensor_2 = torch.tensor([prompt_tokens_2], dtype=torch.long, device=self.device)
 
         embeds = []
         neg_embeds = []
@@ -107,9 +83,7 @@ class PromptsEncoderNode(Node):
         if self.clip_skip is None:
             prompt_embeds_1_hidden_states = prompt_embeds_1.hidden_states[-2]
         else:
-            prompt_embeds_1_hidden_states = prompt_embeds_1.hidden_states[
-                -(self.clip_skip + 2)
-            ]
+            prompt_embeds_1_hidden_states = prompt_embeds_1.hidden_states[-(self.clip_skip + 2)]
 
         # positive prompts - use second text encoder
         prompt_embeds_2 = self.text_encoder_2(token_tensor_2, output_hidden_states=True)
@@ -124,34 +98,21 @@ class PromptsEncoderNode(Node):
 
         for j, weight in enumerate(weight_tensor):
             if weight != 1.0:
-                token_embedding[j] = (
-                    token_embedding[-1]
-                    + (token_embedding[j] - token_embedding[-1]) * weight
-                )
+                token_embedding[j] = token_embedding[-1] + (token_embedding[j] - token_embedding[-1]) * weight
 
         token_embedding = token_embedding.unsqueeze(0)
         embeds.append(token_embedding)
 
-        neg_token_tensor = torch.tensor(
-            [neg_prompt_tokens], dtype=torch.long, device=self.device
-        )
-        neg_token_tensor_2 = torch.tensor(
-            [neg_prompt_tokens_2], dtype=torch.long, device=self.device
-        )
-        neg_weight_tensor = torch.tensor(
-            neg_prompt_weights, dtype=torch.float16, device=self.device
-        )
+        neg_token_tensor = torch.tensor([neg_prompt_tokens], dtype=torch.long, device=self.device)
+        neg_token_tensor_2 = torch.tensor([neg_prompt_tokens_2], dtype=torch.long, device=self.device)
+        neg_weight_tensor = torch.tensor(neg_prompt_weights, dtype=self.torch_dtype, device=self.device)
 
         # negative prompts - use first text encoder
-        neg_prompt_embeds_1 = self.text_encoder_1(
-            neg_token_tensor.to(self.device), output_hidden_states=True
-        )
+        neg_prompt_embeds_1 = self.text_encoder_1(neg_token_tensor.to(self.device), output_hidden_states=True)
         neg_prompt_embeds_1_hidden_states = neg_prompt_embeds_1.hidden_states[-2]
 
         # negative prompts - use second text encoder
-        neg_prompt_embeds_2 = self.text_encoder_2(
-            neg_token_tensor_2.to(self.device), output_hidden_states=True
-        )
+        neg_prompt_embeds_2 = self.text_encoder_2(neg_token_tensor_2.to(self.device), output_hidden_states=True)
         neg_prompt_embeds_2_hidden_states = neg_prompt_embeds_2.hidden_states[-2]
         negative_pooled_prompt_embeds = neg_prompt_embeds_2[0]
 
@@ -163,10 +124,7 @@ class PromptsEncoderNode(Node):
 
         for z, weight in enumerate(neg_weight_tensor):
             if weight != 1.0:
-                neg_token_embedding[z] = (
-                    neg_token_embedding[-1]
-                    + (neg_token_embedding[z] - neg_token_embedding[-1]) * weight
-                )
+                neg_token_embedding[z] = neg_token_embedding[-1] + (neg_token_embedding[z] - neg_token_embedding[-1]) * weight
 
         neg_token_embedding = neg_token_embedding.unsqueeze(0)
         neg_embeds.append(neg_token_embedding)

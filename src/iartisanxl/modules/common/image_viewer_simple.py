@@ -22,7 +22,7 @@ from PyQt6.QtCore import Qt
 
 from iartisanxl.modules.common.dialogs.full_screen_preview import FullScreenPreview
 from iartisanxl.app.preferences import PreferencesObject
-from iartisanxl.formats.image import ImageProcessor
+from iartisanxl.modules.common.image.image_processor import ImageProcessor
 
 
 class ImageViewerSimple(QGraphicsView):
@@ -59,9 +59,7 @@ class ImageViewerSimple(QGraphicsView):
     def set_pixmap(self, pixmap):
         self.scene().clear()
         self.pixmap_item = self.scene().addPixmap(pixmap)
-        self.pixmap_item.setTransformationMode(
-            Qt.TransformationMode.SmoothTransformation
-        )
+        self.pixmap_item.setTransformationMode(Qt.TransformationMode.SmoothTransformation)
         self.scene().setSceneRect(self.pixmap_item.boundingRect())
         self.fitInView(self.pixmap_item, Qt.AspectRatioMode.KeepAspectRatio)
         self.initial_scale_factor = self.transform().m11()
@@ -98,10 +96,7 @@ class ImageViewerSimple(QGraphicsView):
                 scale_factor /= zoom_factor
 
             # Prevent zooming out beyond the original image size
-            if (
-                self.initial_scale_factor is not None
-                and scale_factor < self.initial_scale_factor
-            ):
+            if self.initial_scale_factor is not None and scale_factor < self.initial_scale_factor:
                 scale_factor = self.initial_scale_factor
 
             # Set the new scale factor of the view
@@ -114,10 +109,7 @@ class ImageViewerSimple(QGraphicsView):
             self.translate(delta.x(), delta.y())
 
     def mousePressEvent(self, event: QMouseEvent):
-        if (
-            event.button() == Qt.MouseButton.LeftButton
-            and event.modifiers() == Qt.KeyboardModifier.ControlModifier
-        ):
+        if event.button() == Qt.MouseButton.LeftButton and event.modifiers() == Qt.KeyboardModifier.ControlModifier:
             # If the left mouse button is pressed, store the initial position of the mouse
             self._drag_pos = event.position().toPoint()
 
@@ -130,11 +122,7 @@ class ImageViewerSimple(QGraphicsView):
             super().mousePressEvent(event)
 
     def mouseMoveEvent(self, event: QMouseEvent):
-        if (
-            event.buttons() == Qt.MouseButton.LeftButton
-            and self._drag_pos is not None
-            and event.modifiers() == Qt.KeyboardModifier.ControlModifier
-        ):
+        if event.buttons() == Qt.MouseButton.LeftButton and self._drag_pos is not None and event.modifiers() == Qt.KeyboardModifier.ControlModifier:
             # If the left mouse button is being held down and the initial drag position is set,
             # move the view
             delta = event.position().toPoint() - self._drag_pos
@@ -168,9 +156,7 @@ class ImageViewerSimple(QGraphicsView):
     def contextMenuEvent(self, event: QContextMenuEvent):
         menu = QMenu(self)
         menu.addAction(self.save_action)
-        full_screen_preview_action: QAction | None = menu.addAction(
-            "Full Screen Preview"
-        )
+        full_screen_preview_action: QAction | None = menu.addAction("Full Screen Preview")
 
         screens = QApplication.screens()
         submenu = QMenu("Submenu", self)
@@ -190,9 +176,7 @@ class ImageViewerSimple(QGraphicsView):
             if screen == current_screen:
                 action.setEnabled(False)
 
-            action.triggered.connect(
-                lambda checked, s=screen: self.on_monitor_selected(s)
-            )
+            action.triggered.connect(lambda checked, s=screen: self.on_monitor_selected(s))
 
         full_screen_preview_action.setMenu(submenu)
         menu.exec(event.globalPos())

@@ -14,8 +14,10 @@ class ImageEditor(QGraphicsView):
     CROSSHAIR_BLACK = files("iartisanxl.theme.cursors").joinpath("crosshair_black.svg")
     CROSSHAIR_WHITE = files("iartisanxl.theme.cursors").joinpath("crosshair_white.svg")
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, save_directory=None):
         super(ImageEditor, self).__init__(parent)
+
+        self.save_directory = save_directory
 
         self.original_width = 300
         self.original_height = 300
@@ -403,7 +405,11 @@ class ImageEditor(QGraphicsView):
     def save_image(self):
         if self._photo is not None:
             file_dialog = QFileDialog()
-            export_path, _ = file_dialog.getSaveFileName()
+            export_path, _ = file_dialog.getSaveFileName(self, "Save image", self.save_directory, "Images (*.png *.jpg)")
+
             if export_path:
+                if "." not in export_path:
+                    export_path += ".png"
+
                 pixmap = self.get_painted_pixmap()
                 pixmap.save(export_path)

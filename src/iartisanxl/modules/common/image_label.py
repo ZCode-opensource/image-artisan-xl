@@ -23,8 +23,6 @@ class ImageLabel(QLabel):
                 Qt.AspectRatioMode.KeepAspectRatio,
                 Qt.TransformationMode.SmoothTransformation,
             )
-            point = int((self.width() - pixmap.width()) / 2), int(
-                (self.height() - pixmap.height()) / 2
-            )
+            point = int((self.width() - pixmap.width()) / 2), int((self.height() - pixmap.height()) / 2)
             painter.drawPixmap(QRect(*point, pixmap.width(), pixmap.height()), pixmap)
             painter.end()

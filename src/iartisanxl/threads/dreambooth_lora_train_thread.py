@@ -5,15 +5,18 @@ import gc
 
 import torch
 import torch.nn.functional as F
-from accelerate.utils import ProjectConfiguration
+from safetensors.torch import load_file, save_file
 from accelerate import Accelerator
+from accelerate.utils import ProjectConfiguration
 from PyQt6.QtCore import QThread, pyqtSignal
 from transformers import CLIPTextModel, CLIPTextModelWithProjection, CLIPTokenizer
 from diffusers import DDPMScheduler, DPMSolverMultistepScheduler, AutoencoderKL, UNet2DConditionModel, StableDiffusionXLPipeline
-from peft import LoraConfig
 from diffusers.loaders import LoraLoaderMixin
 from diffusers.optimization import get_scheduler
+from diffusers.utils import convert_unet_state_dict_to_peft, scale_lora_layers, convert_state_dict_to_kohya, convert_all_state_dict_to_peft
+from peft import LoraConfig, set_peft_model_state_dict
 from peft.utils import get_peft_model_state_dict
+
 
 from iartisanxl.train.lora_train_args import LoraTrainArgs
 from iartisanxl.train.local_image_dataset import LocalImageTextDataset
@@ -30,7 +33,7 @@ class DreamboothLoraTrainThread(QThread):
     training_finished = pyqtSignal(int, float, str)
     aborted = pyqtSignal()
 
-    def __init__(self, lora_train_args: LoraTrainArgs):
+    def __init__(self, lora_train_args: LoraTrainArgs, device):
         super().__init__()
 
         self.lora_train_args = lora_train_args
@@ -49,6 +52,7 @@ class DreamboothLoraTrainThread(QThread):
         self.text_encoder_two = None
         self.vae = None
         self.scheduler = None
+        self.device = device
 
     def run(self):
         self.output.emit(f"Output directory: {self.lora_train_args.output_dir}")
@@ -164,6 +168,12 @@ class DreamboothLoraTrainThread(QThread):
         self.text_encoder_one.add_adapter(text_lora_config)
         self.text_encoder_two.add_adapter(text_lora_config)
 
+        models = [self.unet, self.text_encoder_one, self.text_encoder_two]
+        for model in models:
+            for param in model.parameters():
+                if param.requires_grad:
+                    param.data = param.to(torch.float32)
+
         self.accelerator.register_save_state_pre_hook(self.save_model_hook)
         self.accelerator.register_load_state_pre_hook(self.load_model_hook)
 
@@ -206,10 +216,14 @@ class DreamboothLoraTrainThread(QThread):
 
             optimizer_class = prodigyopt.Prodigy
 
+            params_to_optimize[1]["lr"] = self.lora_train_args.learning_rate
+            params_to_optimize[2]["lr"] = self.lora_train_args.learning_rate
+
             optimizer = optimizer_class(
                 params_to_optimize,
                 lr=self.lora_train_args.learning_rate,
                 betas=(self.lora_train_args.adam_beta1, self.lora_train_args.adam_beta2),
+                beta3=self.lora_train_args.prodigy_beta3,
                 weight_decay=self.lora_train_args.adam_weight_decay,
                 eps=self.lora_train_args.adam_epsilon,
                 decouple=self.lora_train_args.prodigy_decouple,
@@ -305,10 +319,6 @@ class DreamboothLoraTrainThread(QThread):
         # Afterwards we recalculate our number of training epochs
         num_train_epochs = math.ceil(max_train_steps / num_update_steps_per_epoch)
 
-        # We need to initialize the trackers we use, and also store our configuration.
-        # The trackers initializes automatically on the main process.
-        self.accelerator.init_trackers("dreambooth-lora-sd-xl", config=vars(self.lora_train_args))
-
         # Train!
         self.ready_to_start.emit(max_train_steps)
 
@@ -329,6 +339,8 @@ class DreamboothLoraTrainThread(QThread):
 
         global_step = 0
         first_epoch = 0
+        total_avg_loss = 0
+        total_steps = 0
 
         if self.lora_train_args.resume_checkpoint is not None:
             path = os.path.basename(self.lora_train_args.resume_checkpoint)
@@ -336,9 +348,7 @@ class DreamboothLoraTrainThread(QThread):
             self.accelerator.load_state(os.path.join(self.lora_train_args.output_dir, path))
             first_epoch = int(path.split("-")[1])
             global_step = first_epoch * num_update_steps_per_epoch
-
-        total_avg_loss = 0
-        total_steps = 0
+            total_steps = first_epoch * num_update_steps_per_epoch
 
         if self.abort:
             self.aborted.emit()
@@ -454,7 +464,7 @@ class DreamboothLoraTrainThread(QThread):
                 self.aborted.emit()
                 return
 
-            if (epoch + 1) % self.lora_train_args.save_epochs == 0 and (epoch + 1) < self.lora_train_args.epochs:
+            if (epoch + 1) % self.lora_train_args.save_epochs == 0:
                 self.output.emit(f"Saving checkpoint: checkpoint-{epoch + 1}...")
                 save_path = os.path.join(self.lora_train_args.output_dir, f"checkpoint-{epoch + 1}")
                 self.output_done.emit()
@@ -540,6 +550,31 @@ class DreamboothLoraTrainThread(QThread):
         self.text_encoder_two = self.accelerator.unwrap_model(self.text_encoder_two)
         text_encoder_2_lora_layers = get_peft_model_state_dict(self.text_encoder_two.to(torch.float32))
 
+        self.accelerator.end_training()
+        self.accelerator.free_memory()
+
+        # cleanup
+        unet_lora_parameters = None
+        text_lora_parameters_one = None
+        text_lora_parameters_two = None
+        params_to_optimize = None
+        models = None
+        self.unet = None
+        self.tokenizer_one = None
+        self.tokenizer_two = None
+        self.text_encoder_one = None
+        self.text_encoder_two = None
+        self.vae = None
+        self.scheduler = None
+        pipeline = None
+        optimizer = None
+        lr_scheduler = None
+        text_lora_config = None
+        unet_lora_config = None
+        self.accelerator = None
+        gc.collect()
+        torch.cuda.empty_cache()
+
         StableDiffusionXLPipeline.save_lora_weights(
             save_directory=self.lora_train_args.output_dir,
             unet_lora_layers=unet_lora_layers,
@@ -550,6 +585,12 @@ class DreamboothLoraTrainThread(QThread):
         if self.abort:
             self.aborted.emit()
             return
+
+        unet_lora_layers = None
+        text_encoder_lora_layers = None
+        text_encoder_2_lora_layers = None
+        gc.collect()
+        torch.cuda.empty_cache()
 
         vae = AutoencoderKL.from_pretrained(
             self.lora_train_args.vae_path,
@@ -574,16 +615,26 @@ class DreamboothLoraTrainThread(QThread):
             scheduler_args["variance_type"] = variance_type
 
         pipeline.scheduler = DPMSolverMultistepScheduler.from_config(pipeline.scheduler.config, **scheduler_args)
-        pipeline.load_lora_weights(self.lora_train_args.output_dir)
+
+        if self.lora_train_args.save_webui:
+            diffusers_state_dict = load_file(os.path.join(self.lora_train_args.output_dir, "pytorch_lora_weights.safetensors"))
+            peft_state_dict = convert_all_state_dict_to_peft(diffusers_state_dict)
+            kohya_state_dict = convert_state_dict_to_kohya(peft_state_dict)
+            save_file(kohya_state_dict, os.path.join(self.lora_train_args.output_dir, "pytorch_lora_weights_webui.safetensors"))
+            del peft_state_dict
+            del kohya_state_dict
+            pipeline.load_lora_weights(diffusers_state_dict)
+        else:
+            pipeline.load_lora_weights(self.lora_train_args.output_dir)
         self.output_done.emit()
 
         final_image_path = ""
 
         if self.lora_train_args.validation_prompt:
             self.output.emit("Generating final image...")
-            pipeline = pipeline.to(self.accelerator.device)
+            pipeline = pipeline.to(self.device)
             pipeline.set_progress_bar_config(disable=True)
-            generator = torch.Generator(device=self.accelerator.device).manual_seed(self.lora_train_args.seed) if self.lora_train_args.seed else None
+            generator = torch.Generator(device="cpu").manual_seed(self.lora_train_args.seed) if self.lora_train_args.seed else None
 
             if self.abort:
                 self.aborted.emit()
@@ -602,18 +653,15 @@ class DreamboothLoraTrainThread(QThread):
             image.save(final_image_path)
             self.output_done.emit()
 
-        self.accelerator.end_training()
         total_avg_loss /= num_train_epochs
-        self.training_finished.emit(num_train_epochs, total_avg_loss, final_image_path)
-
         gc.collect()
         torch.cuda.empty_cache()
+
+        self.training_finished.emit(num_train_epochs, total_avg_loss, final_image_path)
 
     # create custom saving & loading hooks so that `accelerator.save_state(...)` serializes in a nice format
     def save_model_hook(self, models, weights, output_dir):
         if self.accelerator.is_main_process:
-            # there are only two options here. Either are just the unet attn processor layers
-            # or there are the unet and text encoder atten layers
             unet_lora_layers_to_save = None
             text_encoder_one_lora_layers_to_save = None
             text_encoder_two_lora_layers_to_save = None
@@ -656,13 +704,35 @@ class DreamboothLoraTrainThread(QThread):
                 raise ValueError(f"unexpected save model: {model.__class__}")
 
         lora_state_dict, network_alphas = LoraLoaderMixin.lora_state_dict(input_dir)
-        LoraLoaderMixin.load_lora_into_unet(lora_state_dict, network_alphas=network_alphas, unet=unet_)
+        self.inject_lora_into_unet(lora_state_dict, unet_, network_alphas)
 
         text_encoder_state_dict = {k: v for k, v in lora_state_dict.items() if "text_encoder." in k}
-        LoraLoaderMixin.load_lora_into_text_encoder(text_encoder_state_dict, network_alphas=network_alphas, text_encoder=text_encoder_one_)
+        self.inject_lora_into_text_encoder(text_encoder_state_dict, text_encoder_one_)
 
         text_encoder_2_state_dict = {k: v for k, v in lora_state_dict.items() if "text_encoder_2." in k}
-        LoraLoaderMixin.load_lora_into_text_encoder(text_encoder_2_state_dict, network_alphas=network_alphas, text_encoder=text_encoder_two_)
+        self.inject_lora_into_text_encoder(text_encoder_2_state_dict, text_encoder_two_, prefix="text_encoder_2")
+
+    def inject_lora_into_unet(self, state_dict, unet, network_alphas=None, adapter_name="default"):
+        keys = list(state_dict.keys())
+        unet_keys = [k for k in keys if k.startswith("unet")]
+        state_dict = {k.replace("unet.", ""): v for k, v in state_dict.items() if k in unet_keys}
+        state_dict = convert_unet_state_dict_to_peft(state_dict)
+
+        if network_alphas is not None:
+            alpha_keys = [k for k in network_alphas.keys() if k.startswith("unet")]
+            network_alphas = {k.replace("unet.", ""): v for k, v in network_alphas.items() if k in alpha_keys}
+            network_alphas = convert_unet_state_dict_to_peft(network_alphas)
+
+        set_peft_model_state_dict(unet, state_dict, adapter_name)
+        unet.load_attn_procs(state_dict, network_alphas=network_alphas)
+
+    def inject_lora_into_text_encoder(self, state_dict, text_encoder, prefix="text_encoder", adapter_name="default"):
+        keys = list(state_dict.keys())
+        text_encoder_keys = [k for k in keys if k.startswith(prefix) and k.split(".")[0] == prefix]
+        state_dict = {k.replace(f"{prefix}.", ""): v for k, v in state_dict.items() if k in text_encoder_keys}
+
+        set_peft_model_state_dict(text_encoder, state_dict, adapter_name=adapter_name)
+        scale_lora_layers(text_encoder, weight=1.0)
 
     def collate_fn(self, images):
         pixel_values = torch.stack([image["pixel_values"] for image in images])

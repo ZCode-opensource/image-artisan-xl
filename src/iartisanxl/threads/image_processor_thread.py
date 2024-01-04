@@ -1,7 +1,7 @@
 from PyQt6.QtCore import QThread, pyqtSignal
 from PyQt6.QtGui import QPixmap
 
-from iartisanxl.formats.image import ImageProcessor
+from iartisanxl.modules.common.image.image_processor import ImageProcessor
 
 
 class ImageProcesorThread(QThread):
@@ -21,9 +21,7 @@ class ImageProcesorThread(QThread):
         image = ImageProcessor()
         image.open_image(self.path)
 
-        self.status_changed.emit(
-            "Setting up generation from metada found in the image..."
-        )
+        self.status_changed.emit("Setting up generation from metada found in the image...")
 
         if image.serialized_data is None:
             self.image_error.emit("Image generation data not found.")

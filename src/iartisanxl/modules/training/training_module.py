@@ -5,7 +5,19 @@ import json
 
 import attr
 import torch
-from PyQt6.QtWidgets import QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QGridLayout, QFileDialog, QLineEdit, QProgressBar, QTextEdit, QComboBox
+from PyQt6.QtWidgets import (
+    QVBoxLayout,
+    QHBoxLayout,
+    QLabel,
+    QPushButton,
+    QGridLayout,
+    QFileDialog,
+    QLineEdit,
+    QProgressBar,
+    QTextEdit,
+    QComboBox,
+    QCheckBox,
+)
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QPixmap
 import pyqtgraph as pg
@@ -23,6 +35,7 @@ class TrainingModule(BaseModule):
         super().__init__(*args, **kwargs)
 
         self.training = False
+        self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
         self.output_dir = ""
         self.model_path = ""
@@ -62,15 +75,6 @@ class TrainingModule(BaseModule):
         training_type_layout.addWidget(self.training_type_combo)
         top_layout.addLayout(training_type_layout)
 
-        output_layout = QHBoxLayout()
-        output_layout.setSpacing(10)
-        output_dir_button = QPushButton("Select output directory")
-        output_dir_button.clicked.connect(lambda: self.select_directory(1))
-        output_layout.addWidget(output_dir_button)
-        self.output_dir_label = QLabel()
-        output_layout.addWidget(self.output_dir_label)
-        top_layout.addLayout(output_layout)
-
         model_layout = QHBoxLayout()
         model_layout.setSpacing(10)
         model_select_button = QPushButton("Select model")
@@ -78,6 +82,8 @@ class TrainingModule(BaseModule):
         model_layout.addWidget(model_select_button)
         self.model_path_label = QLabel()
         model_layout.addWidget(self.model_path_label)
+        model_layout.setStretch(0, 2)
+        model_layout.setStretch(1, 8)
         top_layout.addLayout(model_layout)
 
         vae_layout = QHBoxLayout()
@@ -91,8 +97,7 @@ class TrainingModule(BaseModule):
 
         top_layout.setStretch(0, 0)
         top_layout.setStretch(1, 1)
-        top_layout.setStretch(2, 1)
-        top_layout.setStretch(3, 0)
+        top_layout.setStretch(2, 0)
 
         parameters_layout = QGridLayout()
         parameters_layout.setSpacing(10)
@@ -126,12 +131,6 @@ class TrainingModule(BaseModule):
         self.epochs_text_edit = QLineEdit()
         self.epochs_text_edit.setText("60")
         parameters_layout.addWidget(self.epochs_text_edit, 0, 9)
-
-        seed_label = QLabel("Seed:")
-        parameters_layout.addWidget(seed_label, 0, 10)
-        self.seed_text_edit = QLineEdit()
-        self.seed_text_edit.setText("")
-        parameters_layout.addWidget(self.seed_text_edit, 0, 11)
 
         workers_label = QLabel("Workers:")
         parameters_layout.addWidget(workers_label, 1, 0)
@@ -206,6 +205,8 @@ class TrainingModule(BaseModule):
         middle_right_layout = QVBoxLayout()
 
         dataset_layout = QGridLayout()
+        dataset_layout.setContentsMargins(3, 3, 3, 3)
+        dataset_layout.setSpacing(5)
         dataset_select_button = QPushButton("Select dataset")
         dataset_select_button.clicked.connect(lambda: self.select_directory(3))
         dataset_layout.addWidget(dataset_select_button, 0, 0)
@@ -215,20 +216,46 @@ class TrainingModule(BaseModule):
         dataset_layout.addWidget(dataset_image_count_label, 0, 2)
         self.dataset_count_label_value = QLabel("0")
         dataset_layout.addWidget(self.dataset_count_label_value, 0, 3)
+        output_dir_button = QPushButton("Select output directory")
+        output_dir_button.clicked.connect(lambda: self.select_directory(1))
+        dataset_layout.addWidget(output_dir_button, 1, 0)
+        self.output_dir_label = QLabel()
+        dataset_layout.addWidget(self.output_dir_label, 1, 1)
+        resume_checkpoint_label = QLabel("Resume: ")
+        dataset_layout.addWidget(resume_checkpoint_label, 1, 2)
+        self.resume_checkpoint_combobox = QComboBox()
+        dataset_layout.addWidget(self.resume_checkpoint_combobox, 1, 3)
         middle_right_layout.addLayout(dataset_layout)
 
         image_progress_layout = QVBoxLayout()
         self.image_label = ImageLabel()
         image_progress_layout.addWidget(self.image_label)
+
         validation_prompt_label = QLabel("Validation prompt:")
         image_progress_layout.addWidget(validation_prompt_label)
+
+        validation_layout = QHBoxLayout()
         self.validation_prompt_edit = QTextEdit()
         self.validation_prompt_edit.setMaximumHeight(60)
-        image_progress_layout.addWidget(self.validation_prompt_edit)
+        validation_layout.addWidget(self.validation_prompt_edit)
+
+        right_validation_layout = QGridLayout()
+        seed_label = QLabel("Seed:")
+        right_validation_layout.addWidget(seed_label, 0, 0)
+        self.seed_text_edit = QLineEdit()
+        self.seed_text_edit.setText("")
+        right_validation_layout.addWidget(self.seed_text_edit, 0, 1)
+        self.save_webui_format_checkbox = QCheckBox("Also save webui format")
+        right_validation_layout.addWidget(self.save_webui_format_checkbox, 1, 0, 1, 2, alignment=Qt.AlignmentFlag.AlignCenter)
+        validation_layout.addLayout(right_validation_layout)
+        validation_layout.setStretch(0, 7)
+        validation_layout.setStretch(0, 3)
+        image_progress_layout.addLayout(validation_layout)
 
         image_progress_layout.setStretch(0, 1)
         image_progress_layout.setStretch(1, 0)
         image_progress_layout.setStretch(2, 0)
+        image_progress_layout.setStretch(3, 0)
 
         middle_right_layout.addLayout(image_progress_layout)
 
@@ -330,6 +357,7 @@ class TrainingModule(BaseModule):
                 if os.path.isfile(config_path):
                     self.log_window.add_message("Configuration file found, restoring configuration...")
                     self.load_config_file(config_path)
+                    self.load_resume_checkpoints()
 
         elif directory_type == 2:
             model_path = dialog.getExistingDirectory(None, "Select directory", self.directories.models_diffusers)
@@ -406,6 +434,17 @@ class TrainingModule(BaseModule):
 
         self.log_window.success("Finished loading configuration from file.")
 
+    def load_resume_checkpoints(self):
+        self.resume_checkpoint_combobox.clear()
+
+        checkpoints = next(os.walk(self.output_dir))[1]
+        sorted_checkpoints = sorted(checkpoints, key=lambda x: int(x.split("-")[1]), reverse=True)
+
+        for checkpoint in sorted_checkpoints:
+            self.resume_checkpoint_combobox.addItem(checkpoint)
+
+        self.resume_checkpoint_combobox.addItem("start over")
+
     def train_clicked(self):
         if self.training:
             if self.train_thread is not None:
@@ -445,14 +484,18 @@ class TrainingModule(BaseModule):
             optimizer=self.optimizer_combo.currentData(),
             lr_scheduler=self.lr_scheduler_combo.currentData(),
             lr_warmup_steps=int(self.warmup_steps_text_edit.text()),
+            save_webui=self.save_webui_format_checkbox.isChecked(),
         )
+
+        if self.resume_checkpoint_combobox.currentText() != "start over":
+            train_args.resume_checkpoint = self.resume_checkpoint_combobox.currentText()
 
         train_args_dict = attr.asdict(train_args)
         json_file_path = os.path.join(self.output_dir, "train_args.json")
         with open(json_file_path, "w", encoding="utf-8") as json_file:
             json.dump(train_args_dict, json_file, indent=4)
 
-        self.train_thread = DreamboothLoraTrainThread(train_args)
+        self.train_thread = DreamboothLoraTrainThread(train_args, self.device)
         self.train_thread.output.connect(self.update_output)
         self.train_thread.output_done.connect(self.update_output_done)
         self.train_thread.warning.connect(self.show_warning)
@@ -463,6 +506,13 @@ class TrainingModule(BaseModule):
         self.train_thread.training_finished.connect(self.on_training_finished)
         self.train_thread.finished.connect(self.on_thread_finish)
         self.train_thread.aborted.connect(self.on_training_aborted)
+
+        self.epoch_data = []
+        self.lr_data = []
+        self.loss_data = []
+        self.loss_graph_widget.clear()
+        self.learning_rate_graph_widget.clear()
+
         self.train_thread.start()
 
     def update_output(self, text):

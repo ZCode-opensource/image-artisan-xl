@@ -1,42 +1,54 @@
-from PyQt6.QtWidgets import QWidgetItem, QLayout
+import math
+
+from PyQt6.QtWidgets import QLayout
 from PyQt6.QtCore import QRect, QSize
 
 
 class AspectRatioLayout(QLayout):
-    def __init__(self, aspect_ratio, widget):
-        super().__init__()
+    def __init__(self, widget, aspect_ratio):
+        super().__init__(widget)
         self.aspect_ratio = aspect_ratio
-        self.widget = widget
-        self.item = QWidgetItem(widget)
+        self.item_list = []
 
     def addItem(self, item):
-        pass
+        self.item_list.append(item)
 
     def count(self):
-        return 1
+        return len(self.item_list)
 
     def itemAt(self, index):
-        if index == 0:
-            return self.item
+        if 0 <= index < len(self.item_list):
+            return self.item_list[index]
         return None
 
-    def takeAt(self, _index):
+    def takeAt(self, index):
+        if 0 <= index < len(self.item_list):
+            return self.item_list.pop(index)
         return None
 
     def setGeometry(self, rect):
+        super().setGeometry(rect)
+
         w = rect.width()
-        h = int(w / self.aspect_ratio)
-        if h > rect.height():
-            h = rect.height()
-            w = int(h * self.aspect_ratio)
-        x = (rect.width() - w) // 2
-        self.widget.setGeometry(QRect(rect.left() + x, rect.top(), w, h))
+        h = rect.height()
+
+        if w > h * self.aspect_ratio:
+            w = h * self.aspect_ratio
+        else:
+            h = w / self.aspect_ratio
+
+        # Convert w and h to integers
+        w = math.floor(w)
+        h = math.floor(h)
+
+        # Calculate left and top positions to center the item
+        left = (rect.width() - w) // 2
+        top = (rect.height() - h) // 2
+
+        for i in range(self.count()):
+            item = self.itemAt(i)
+            if item:
+                item.setGeometry(QRect(left, top, w, h))
 
     def sizeHint(self):
-        return QSize(1, 1)
-
-    def hasHeightForWidth(self):
-        return True
-
-    def heightForWidth(self, width):
-        return int(width / self.aspect_ratio)
+        return QSize(int(self.aspect_ratio), 1)

@@ -5,9 +5,9 @@ from PIL import Image
 @attr.s
 class ControlNetDataObject:
     enabled = attr.ib(type=bool)
-    controlnet_type = attr.ib(type=str)
+    adapter_type = attr.ib(type=str)
     guess_mode = attr.ib(type=bool)
-    controlnet_id = attr.ib(type=int, default=None)
+    adapter_id = attr.ib(type=int, default=None)
     source_image = attr.ib(type=Image, default=None)
     source_image_thumb = attr.ib(type=Image, default=None)
     source_image_filename = attr.ib(type=Image, default=None)

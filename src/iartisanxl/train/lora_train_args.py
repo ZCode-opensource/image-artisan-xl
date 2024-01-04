@@ -32,3 +32,5 @@ class LoraTrainArgs:
     prodigy_decouple = attr.ib(default=True)
     prodigy_use_bias_correction = attr.ib(default=True)
     prodigy_safeguard_warmup = attr.ib(default=True)
+    prodigy_beta3 = attr.ib(default=None)
+    save_webui = attr.ib(default=False)

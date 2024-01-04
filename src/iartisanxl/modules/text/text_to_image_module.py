@@ -23,18 +23,20 @@ from iartisanxl.modules.common.panels.generation_panel import GenerationPanel
 from iartisanxl.modules.common.panels.lora_panel import LoraPanel
 from iartisanxl.modules.common.panels.controlnet_panel import ControlNetPanel
 from iartisanxl.modules.common.panels.t2i_panel import T2IPanel
-from iartisanxl.modules.common.panels.ip_adapter_panel import IPAdapterPanel
+from iartisanxl.modules.common.ip_adapter.ip_adapter_panel import IPAdapterPanel
 from iartisanxl.menu.right_menu import RightMenu
 from iartisanxl.generation.image_generation_data import ImageGenerationData
 from iartisanxl.generation.lora_list import LoraList
 from iartisanxl.generation.lora_data_object import LoraDataObject
-from iartisanxl.generation.controlnet_list import ControlNetList
-from iartisanxl.generation.t2i_adapter_list import T2IAdapterList
+from iartisanxl.generation.controlnet_data_object import ControlNetDataObject
+from iartisanxl.generation.t2i_adapter_data_object import T2IAdapterDataObject
+from iartisanxl.modules.common.ip_adapter.ip_adapter_data_object import IPAdapterDataObject
+from iartisanxl.generation.adapter_list import AdapterList
 from iartisanxl.generation.model_data_object import ModelDataObject
 from iartisanxl.generation.vae_data_object import VaeDataObject
 from iartisanxl.generation.schedulers.schedulers import schedulers
 from iartisanxl.console.console_stream import ConsoleStream
-from iartisanxl.formats.image import ImageProcessor
+from iartisanxl.modules.common.image.image_processor import ImageProcessor
 from iartisanxl.threads.taesd_loader_thread import TaesdLoaderThread
 from iartisanxl.threads.image_processor_thread import ImageProcesorThread
 from iartisanxl.threads.node_graph_thread import NodeGraphThread
@@ -70,8 +72,9 @@ class TextToImageModule(BaseModule):
         self.setAcceptDrops(True)
 
         self.lora_list = LoraList()
-        self.controlnet_list = ControlNetList()
-        self.t2i_adapter_list = T2IAdapterList()
+        self.controlnet_list = AdapterList[ControlNetDataObject]()
+        self.t2i_adapter_list = AdapterList[T2IAdapterDataObject]()
+        self.ip_adapter_list = AdapterList[IPAdapterDataObject]()
         self.image_generation_data = ImageGenerationData(
             module="texttoimage",
             seed=0,
@@ -93,7 +96,7 @@ class TextToImageModule(BaseModule):
         self.settings.endGroup()
 
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-        self.torch_dtype = torch.float16
+        self.torch_dtype = torch.bfloat16
         self.batch_size = 1
         self.taesd_dec = None
 
@@ -109,7 +112,7 @@ class TextToImageModule(BaseModule):
 
         self.taesd_loader_thread = None
         self.image_processor_thread = None
-        self.node_graph_thread = NodeGraphThread(node_graph=self.node_graph)
+        self.node_graph_thread = NodeGraphThread(node_graph=self.node_graph, torch_dtype=self.torch_dtype)
         self.node_graph_thread.progress_update.connect(self.step_progress_update)
         self.node_graph_thread.status_changed.connect(self.update_status_bar)
         self.node_graph_thread.generation_error.connect(self.show_error)
@@ -164,6 +167,7 @@ class TextToImageModule(BaseModule):
             self.lora_list,
             self.controlnet_list,
             self.t2i_adapter_list,
+            self.ip_adapter_list,
             self.image_viewer,
             self.prompt_window,
             self.show_error,
@@ -312,10 +316,6 @@ class TextToImageModule(BaseModule):
             self.show_snackbar("You need to first choose a Stable Diffusion XL model.")
             return
 
-        if len(self.image_generation_data.positive_prompt_clipg) == 0:
-            self.show_snackbar("You forgot to write a prompt.")
-            return
-
         if self.image_generation_data.model is None:
             self.show_snackbar("No base model selected.")
             return
@@ -366,6 +366,7 @@ class TextToImageModule(BaseModule):
         self.node_graph_thread.lora_list = self.lora_list
         self.node_graph_thread.controlnet_list = self.controlnet_list
         self.node_graph_thread.t2i_adapter_list = self.t2i_adapter_list
+        self.node_graph_thread.ip_adapter_list = self.ip_adapter_list
         self.node_graph_thread.model_offload = self.preferences.model_offload
         self.node_graph_thread.sequential_offload = self.preferences.sequential_offload
 

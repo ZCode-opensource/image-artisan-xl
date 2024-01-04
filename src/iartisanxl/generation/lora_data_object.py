@@ -8,5 +8,5 @@ class LoraDataObject:
     version = attr.ib(type=str)
     path = attr.ib(type=str)
     enabled = attr.ib(type=bool, default=True)
-    weight = attr.ib(type=float, default=1.0)
+    weight = attr.ib(type=float, default=1.00)
     id = attr.ib(default=None)

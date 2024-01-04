@@ -1,4 +1,5 @@
 import ctypes
+import os
 
 from importlib.resources import files
 
@@ -41,6 +42,9 @@ class ArtisanApplication(QApplication):
 
     def check_initial_setup(self):
         settings = QSettings("ZCode", "ImageArtisanXL")
+
+        if not os.path.exists("tmp/"):
+            os.makedirs("tmp/")
 
         intermediate_images = settings.value("intermediate_images", False, type=bool)
         use_tomes = settings.value("use_tomes", False, type=bool)

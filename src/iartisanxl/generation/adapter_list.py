@@ -1,18 +1,18 @@
+from typing import TypeVar, Generic
+import attr
 import copy
 
-import attr
-
-from iartisanxl.generation.t2i_adapter_data_object import T2IAdapterDataObject
+T = TypeVar("T")
 
 
 @attr.s(auto_attribs=True, slots=True)
-class T2IAdapterList:
-    adapters: list[T2IAdapterDataObject] = attr.Factory(list)
-    _original_adapters: list[T2IAdapterDataObject] = attr.Factory(list)
+class AdapterList(Generic[T]):
+    adapters: list[T] = attr.Factory(list)
+    _original_adapters: list[T] = attr.Factory(list)
     dropped_image: bool = attr.ib(default=False)
     _next_id: int = attr.ib(default=0)
 
-    def add(self, adapter: T2IAdapterDataObject):
+    def add(self, adapter: T):
         adapter.adapter_id = self._next_id
         self._next_id += 1
         self.adapters.append(adapter)
@@ -27,7 +27,7 @@ class T2IAdapterList:
                         setattr(adapter, attr_name, new_value)
                 break
 
-    def update_with_adapter_data_object(self, new_adapter: T2IAdapterDataObject):
+    def update_with_adapter_data_object(self, new_adapter: T):
         for i, adapter in enumerate(self.adapters):
             if adapter.adapter_id == new_adapter.adapter_id:
                 self.adapters[i] = new_adapter
@@ -39,15 +39,15 @@ class T2IAdapterList:
                 return adapter
         return None
 
-    def remove(self, controlnet):
-        self.adapters.remove(controlnet)
+    def remove(self, adapter):
+        self.adapters.remove(adapter)
 
     def save_state(self):
         self._original_adapters = copy.deepcopy(self.adapters)
 
     def get_added(self):
-        original_ids = [controlnet.adapter_id for controlnet in self._original_adapters]
-        return [controlnet for controlnet in self.adapters if controlnet.adapter_id not in original_ids]
+        original_ids = [adapter.adapter_id for adapter in self._original_adapters]
+        return [adapter for adapter in self.adapters if adapter.adapter_id not in original_ids]
 
     def get_removed(self):
         current_ids = [adapter.adapter_id for adapter in self.adapters]

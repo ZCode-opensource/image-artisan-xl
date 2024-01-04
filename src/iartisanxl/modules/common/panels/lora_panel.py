@@ -1,12 +1,6 @@
-from PyQt6.QtWidgets import (
-    QWidget,
-    QVBoxLayout,
-    QHBoxLayout,
-    QPushButton,
-    QSlider,
-    QLabel,
-)
+from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel
 from PyQt6.QtCore import Qt
+from superqt import QDoubleSlider
 
 from iartisanxl.app.event_bus import EventBus
 from iartisanxl.modules.common.panels.base_panel import BasePanel
@@ -43,17 +37,15 @@ class LoraPanel(BasePanel):
         lora_scale_layout = QHBoxLayout()
         lbl_lscale_text = QLabel("Lora scale")
         lora_scale_layout.addWidget(lbl_lscale_text, 1, Qt.AlignmentFlag.AlignLeft)
-        self.lbl_lora_scale = QLabel(f"{self.lora_scale:.1f}")
+        self.lbl_lora_scale = QLabel()
         lora_scale_layout.addWidget(self.lbl_lora_scale, 1, Qt.AlignmentFlag.AlignRight)
         main_layout.addLayout(lora_scale_layout)
 
-        self.lora_slider = QSlider()
-        self.lora_slider.setRange(-100, 100)
-        self.lora_slider.setSingleStep(1)
-        self.lora_slider.setValue(int(self.lora_scale * 10))
-        self.lora_slider.setOrientation(Qt.Orientation.Horizontal)
-        self.lora_slider.valueChanged.connect(self.on_lora_scale_changed)
-        main_layout.addWidget(self.lora_slider)
+        self.lora_scale_slider = QDoubleSlider(Qt.Orientation.Horizontal)
+        self.lora_scale_slider.setRange(0.0, 1.0)
+        self.lora_scale_slider.setValue(self.lora_scale)
+        self.lora_scale_slider.valueChanged.connect(self.on_lora_scale_changed)
+        main_layout.addWidget(self.lora_scale_slider)
 
         added_loras_widget = QWidget()
         self.loras_layout = QVBoxLayout(added_loras_widget)
@@ -62,9 +54,9 @@ class LoraPanel(BasePanel):
         main_layout.addStretch()
         self.setLayout(main_layout)
 
-    def on_lora_scale_changed(self):
-        self.lora_scale = self.lora_slider.value() / 10.0
-        self.lbl_lora_scale.setText(f"{self.lora_scale:.1f}")
+    def on_lora_scale_changed(self, value):
+        self.lora_scale = value
+        self.lbl_lora_scale.setText(f"{self.lora_scale:.2f}")
         self.image_generation_data.lora_scale = self.lora_scale
 
     def open_lora_dialog(self):
@@ -94,8 +86,8 @@ class LoraPanel(BasePanel):
 
     def update_ui(self, _data=None):
         self.lora_scale = self.image_generation_data.lora_scale
-        self.lora_slider.setValue(int(self.lora_scale * 10))
-        self.lbl_lora_scale.setText(f"{self.lora_scale:.1f}")
+        self.lora_scale_slider.setValue(self.lora_scale)
+        self.lbl_lora_scale.setText(f"{self.lora_scale:.2f}")
         loras = self.lora_list.loras
         self.clear_loras()
 

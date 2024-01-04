@@ -1,15 +1,7 @@
 import numpy as np
 import torch
 
-from PyQt6.QtWidgets import (
-    QVBoxLayout,
-    QHBoxLayout,
-    QLabel,
-    QPushButton,
-    QSlider,
-    QComboBox,
-    QWidget,
-)
+from PyQt6.QtWidgets import QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QSlider, QComboBox, QWidget
 from PyQt6.QtCore import QSettings, Qt
 from PyQt6.QtGui import QImage, QPixmap
 from superqt import QDoubleRangeSlider, QDoubleSlider
@@ -19,7 +11,7 @@ from iartisanxl.buttons.color_button import ColorButton
 from iartisanxl.modules.common.dialogs.base_dialog import BaseDialog
 from iartisanxl.modules.common.dialogs.control_image_widget import ControlImageWidget
 from iartisanxl.generation.controlnet_data_object import ControlNetDataObject
-from iartisanxl.formats.image import ImageProcessor
+from iartisanxl.modules.common.image.image_processor import ImageProcessor
 from iartisanxl.annotators.openpose.open_pose_detector import OpenPoseDetector
 from iartisanxl.annotators.depth.depth_estimator import DepthEstimator
 from iartisanxl.annotators.canny.canny_edges_detector import CannyEdgesDetector
@@ -66,6 +58,7 @@ class ControlNetDialog(BaseDialog):
         self.annotator_combo.addItem("Canny", "canny")
         self.annotator_combo.addItem("Depth Midas", "depth")
         self.annotator_combo.addItem("Pose", "pose")
+        self.annotator_combo.addItem("Inpaint", "inpaint")
         self.annotator_combo.currentIndexChanged.connect(self.on_annotator_changed)
         control_layout.addWidget(self.annotator_combo)
 
@@ -286,7 +279,7 @@ class ControlNetDialog(BaseDialog):
     def on_controlnet_added(self):
         if self.controlnet is None:
             self.controlnet = ControlNetDataObject(
-                controlnet_type=self.annotator_combo.currentText(),
+                adapter_type=self.annotator_combo.currentText(),
                 enabled=True,
                 guess_mode=False,
                 conditioning_scale=round(self.conditioning_scale, 2),
@@ -297,7 +290,7 @@ class ControlNetDialog(BaseDialog):
                 canny_high=self.canny_high,
             )
         else:
-            self.controlnet.controlnet_type = self.annotator_combo.currentText()
+            self.controlnet.adapter_type = self.annotator_combo.currentText()
             self.controlnet.conditioning_scale = round(self.conditioning_scale, 2)
             self.controlnet.guidance_start = self.control_guidance_start
             self.controlnet.guidance_end = self.control_guidance_end
@@ -314,7 +307,7 @@ class ControlNetDialog(BaseDialog):
         self.controlnet.annotator_image_thumb = annotator_image.get_pillow_thumbnail(target_height=80)
         self.controlnet.annotator_image = annotator_image.get_pillow_image()
 
-        if self.controlnet.controlnet_id is None:
+        if self.controlnet.adapter_id is None:
             self.event_bus.publish("controlnet", {"action": "add", "controlnet": self.controlnet})
             self.add_button.setText("Update")
         else:
@@ -367,7 +360,7 @@ class ControlNetDialog(BaseDialog):
         self.annotator_widget.image_editor.set_pixmap(image_processor.get_qpixmap())
         del image_processor
 
-        if self.controlnet.controlnet_id is not None:
+        if self.controlnet.adapter_id is not None:
             self.add_button.setText("Update")
 
     def reset_ui(self):
