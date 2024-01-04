@@ -62,6 +62,7 @@ class ImageGenerationNode(Node):
         node.callback = callbacks.get(node_dict["callback"]) if callbacks else None
         return node
 
+    @torch.inference_mode()
     def __call__(self):
         super().__call__()
 
