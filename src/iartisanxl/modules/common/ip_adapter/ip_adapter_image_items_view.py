@@ -199,3 +199,7 @@ class IpAdapterImageItemsView(QWidget):
             clear_view = True
 
         self.item_deleted.emit(item.image_data, clear_view)
+
+    def clear(self):
+        self.clear_selection()
+        self.flow_layout.clear()

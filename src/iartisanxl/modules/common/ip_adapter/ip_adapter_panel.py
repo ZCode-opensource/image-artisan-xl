@@ -40,17 +40,20 @@ class IPAdapterPanel(BasePanel):
                 self.adapters_layout.addWidget(adapter_widget)
 
     def open_ip_adapter_dialog(self):
-        self.parent().open_dialog(
-            "ip",
-            IPAdapterDialog,
-            self.directories,
-            self.preferences,
-            "IP adapter",
-            self.show_error,
-            self.image_generation_data,
-            self.image_viewer,
-            self.prompt_window,
-        )
+        if self.parent().ip_dialog is None:
+            self.parent().open_dialog(
+                "ip",
+                IPAdapterDialog,
+                self.directories,
+                self.preferences,
+                "IP adapter",
+                self.show_error,
+                self.image_generation_data,
+                self.image_viewer,
+                self.prompt_window,
+            )
+        else:
+            self.parent().ip_dialog.make_new_adapter()
 
     def on_ip_adapters(self, data):
         if data["action"] == "add":
@@ -73,13 +76,14 @@ class IPAdapterPanel(BasePanel):
                     break
 
     def on_remove_clicked(self, adapter_widget: IPAdapterAddedItem):
+        ip_adapter_id = adapter_widget.adapter.adapter_id
         self.ip_adapter_list.remove(adapter_widget.adapter)
         self.adapters_layout.removeWidget(adapter_widget)
         adapter_widget.deleteLater()
 
         if self.parent().ip_dialog is not None:
-            self.parent().ip_dialog.adapter = None
-            self.parent().ip_dialog.reset_ui()
+            if self.parent().ip_dialog.adapter.adapter_id == ip_adapter_id:
+                self.parent().ip_dialog.make_new_adapter()
 
     def on_edit_clicked(self, adapter: IPAdapterAddedItem):
         if self.parent().ip_dialog is None:
