@@ -72,6 +72,7 @@ class WelcomePanel(BaseSetupPanel):
             "models_controlnets": os.path.join("models", "controlnet"),
             "models_t2i_adapters": os.path.join("models", "t2i-adapter"),
             "models_ip_adapters": os.path.join("models", "ip-adapter"),
+            "models_upscalers": os.path.join("models", "upscalers"),
             "outputs_images": os.path.join("outputs", "images"),
             "outputs_loras": os.path.join("outputs", "loras"),
             "datasets": "datasets",
@@ -93,11 +94,12 @@ class WelcomePanel(BaseSetupPanel):
         settings = QSettings("ZCode", "ImageArtisanXL")
         settings.setValue("models_diffusers", self.directories.models_diffusers)
         settings.setValue("models_safetensors", self.directories.models_safetensors)
-        settings.setValue("vaes", self.directories.vaes)
+        settings.setValue("models_vaes", self.directories.models_vaes)
         settings.setValue("models_loras", self.directories.models_loras)
         settings.setValue("models_controlnets", self.directories.models_controlnets)
         settings.setValue("models_t2i_adapters", self.directories.models_t2i_adapters)
         settings.setValue("models_ip_adapters", self.directories.models_ip_adapters)
+        settings.setValue("models_upscalers", self.directories.models_upscalers)
         settings.setValue("outputs_images", self.directories.outputs_images)
         settings.setValue("outputs_loras", self.directories.outputs_loras)
         settings.setValue("datasets", self.directories.datasets)

@@ -101,65 +101,26 @@ class PreferencesDialog(QDialog):
         left_layout = QVBoxLayout()
         left_layout.setSpacing(1)
         diffusers_widget = SelectDirectoryWidget(self.directories.models_diffusers, "Diffusers", 1, self.on_select_directory)
-        left_layout.addWidget(diffusers_widget, stretch=1)
-        safetensors_widget = SelectDirectoryWidget(
-            self.directories.models_safetensors,
-            "Safetensors",
-            2,
-            self.on_select_directory,
-        )
-        left_layout.addWidget(safetensors_widget, stretch=1)
-        vaes_widget = SelectDirectoryWidget(self.directories.vaes, "Vaes", 3, self.on_select_directory)
-        left_layout.addWidget(vaes_widget, stretch=1)
+        left_layout.addWidget(diffusers_widget, stretch=0)
+        safetensors_widget = SelectDirectoryWidget(self.directories.models_safetensors, "Safetensors", 2, self.on_select_directory)
+        left_layout.addWidget(safetensors_widget, stretch=0)
+        vaes_widget = SelectDirectoryWidget(self.directories.models_vaes, "Vaes", 3, self.on_select_directory)
+        left_layout.addWidget(vaes_widget, stretch=0)
         loras_widget = SelectDirectoryWidget(self.directories.models_loras, "LoRAs", 4, self.on_select_directory)
-        left_layout.addWidget(loras_widget, stretch=1)
-        controlnets_widget = SelectDirectoryWidget(
-            self.directories.models_controlnets,
-            "ControlNets",
-            5,
-            self.on_select_directory,
-        )
-        left_layout.addWidget(controlnets_widget, stretch=1)
-        t2i_adapters_widget = SelectDirectoryWidget(
-            self.directories.models_t2i_adapters,
-            "T2I Adapters",
-            6,
-            self.on_select_directory,
-        )
-        left_layout.addWidget(t2i_adapters_widget, stretch=1)
-        ip_adapters_widget = SelectDirectoryWidget(
-            self.directories.models_ip_adapters,
-            "IP Adapters",
-            7,
-            self.on_select_directory,
-        )
-        left_layout.addWidget(ip_adapters_widget, stretch=1)
-        images_widget = SelectDirectoryWidget(
-            self.directories.outputs_images,
-            "Output images",
-            8,
-            self.on_select_directory,
-        )
-        left_layout.addWidget(images_widget, stretch=1)
-        left_layout.addStretch()
-
-        output_loras_widget = SelectDirectoryWidget(
-            self.directories.outputs_loras,
-            "Output loras",
-            9,
-            self.on_select_directory,
-        )
-        left_layout.addWidget(output_loras_widget, stretch=1)
-
-        datasets_widget = SelectDirectoryWidget(
-            self.directories.datasets,
-            "Datasets",
-            10,
-            self.on_select_directory,
-        )
-        left_layout.addWidget(datasets_widget, stretch=1)
-
-        left_layout.addStretch()
+        left_layout.addWidget(loras_widget, stretch=0)
+        controlnets_widget = SelectDirectoryWidget(self.directories.models_controlnets, "ControlNets", 5, self.on_select_directory)
+        left_layout.addWidget(controlnets_widget, stretch=0)
+        t2i_adapters_widget = SelectDirectoryWidget(self.directories.models_t2i_adapters, "T2I Adapters", 6, self.on_select_directory)
+        left_layout.addWidget(t2i_adapters_widget, stretch=0)
+        ip_adapters_widget = SelectDirectoryWidget(self.directories.models_ip_adapters, "IP Adapters", 7, self.on_select_directory)
+        left_layout.addWidget(ip_adapters_widget, stretch=0)
+        upscalers_widget = SelectDirectoryWidget(self.directories.models_upscalers, "Upscalers", 11, self.on_select_directory)
+        left_layout.addWidget(upscalers_widget, stretch=0)
+        output_loras_widget = SelectDirectoryWidget(self.directories.outputs_loras, "Output loras", 9, self.on_select_directory)
+        left_layout.addWidget(output_loras_widget, stretch=0)
+        datasets_widget = SelectDirectoryWidget(self.directories.datasets, "Datasets", 10, self.on_select_directory)
+        left_layout.addWidget(datasets_widget, stretch=0)
+        # left_layout.addStretch()
 
         right_layout = QVBoxLayout()
         right_layout.setContentsMargins(10, 10, 10, 0)
@@ -204,8 +165,12 @@ class PreferencesDialog(QDialog):
         self.hide_nsfw_checkbox.setChecked(self.preferences.hide_nsfw)
         self.hide_nsfw_checkbox.stateChanged.connect(self.on_checkbox_state_changed)
         image_options_layout.addWidget(self.hide_nsfw_checkbox, 1, 1)
-        right_layout.addLayout(image_options_layout)
+        right_layout.addLayout(image_options_layout, stretch=1)
 
+        right_layout.addSpacerItem(QSpacerItem(0, 10))
+
+        images_widget = SelectDirectoryWidget(self.directories.outputs_images, "Output images", 8, self.on_select_directory)
+        right_layout.addWidget(images_widget, stretch=0)
         right_layout.addStretch()
 
         self.main_layout.addLayout(left_layout)
@@ -269,9 +234,9 @@ class PreferencesDialog(QDialog):
                 self.directories.models_safetensors = selected_path
                 settings.setValue("models_safetensors", selected_path)
         elif dir_type == 3:
-            selected_path = dialog.getExistingDirectory(None, "Select a directory", self.directories.vaes)
+            selected_path = dialog.getExistingDirectory(None, "Select a directory", self.directories.models_vaes)
             if len(selected_path) > 0:
-                self.directories.vaes = selected_path
+                self.directories.models_vaes = selected_path
                 settings.setValue("vaes", selected_path)
         elif dir_type == 4:
             selected_path = dialog.getExistingDirectory(None, "Select a directory", self.directories.models_loras)
@@ -306,8 +271,13 @@ class PreferencesDialog(QDialog):
         elif dir_type == 10:
             selected_path = dialog.getExistingDirectory(None, "Select a directory", self.directories.datasets)
             if len(selected_path) > 0:
-                self.directories.datasets = selected_path
+                self.directories.models_upscalers = selected_path
                 settings.setValue("datasets", selected_path)
+        elif dir_type == 11:
+            selected_path = dialog.getExistingDirectory(None, "Select a directory", self.directories.models_upscalers)
+            if len(selected_path) > 0:
+                self.directories.datasets = selected_path
+                settings.setValue("models_upscalers", selected_path)
 
         if len(selected_path) > 0:
             sender_button = self.sender()

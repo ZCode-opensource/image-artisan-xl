@@ -34,8 +34,8 @@ class GenerationPanel(BasePanel):
         self.event_bus.subscribe("selected_model", self.on_model_selected)
 
         self.vaes = []
-        if self.directories.vaes and os.path.isdir(self.directories.vaes):
-            self.vaes = next(os.walk(self.directories.vaes))[1]
+        if self.directories.models_vaes and os.path.isdir(self.directories.models_vaes):
+            self.vaes = next(os.walk(self.directories.models_vaes))[1]
 
         self.init_ui()
         self.update_ui()
@@ -122,7 +122,7 @@ class GenerationPanel(BasePanel):
         self.vae_combobox.addItem("Model default", "")
         if self.vaes:
             for vae in self.vaes:
-                self.vae_combobox.addItem(vae, self.directories.vaes + "/" + vae)
+                self.vae_combobox.addItem(vae, self.directories.models_vaes + "/" + vae)
         self.vae_combobox.currentIndexChanged.connect(self.on_vae_selected)
         main_layout.addWidget(self.vae_combobox)
 

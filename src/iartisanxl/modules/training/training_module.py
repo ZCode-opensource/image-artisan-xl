@@ -49,8 +49,8 @@ class TrainingModule(BaseModule):
         self.total_dataset_images = 0
 
         self.vaes = []
-        if self.directories.vaes and os.path.isdir(self.directories.vaes):
-            self.vaes = next(os.walk(self.directories.vaes))[1]
+        if self.directories.models_vaes and os.path.isdir(self.directories.models_vaes):
+            self.vaes = next(os.walk(self.directories.models_vaes))[1]
 
         self.init_ui()
         self.console_stream = ConsoleStream()
@@ -91,7 +91,7 @@ class TrainingModule(BaseModule):
         self.vae_combobox.addItem("Model Vae", "")
         if self.vaes:
             for vae in self.vaes:
-                self.vae_combobox.addItem(vae, os.path.join(self.directories.vaes, vae))
+                self.vae_combobox.addItem(vae, os.path.join(self.directories.models_vaes, vae))
         vae_layout.addWidget(self.vae_combobox)
         top_layout.addLayout(vae_layout)
 

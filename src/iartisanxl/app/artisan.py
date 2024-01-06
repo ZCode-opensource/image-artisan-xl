@@ -68,11 +68,12 @@ class ArtisanApplication(QApplication):
 
         models_diffusers = settings.value("models_diffusers", None, type=str)
         models_safetensors = settings.value("models_safetensors", None, type=str)
-        vaes = settings.value("vaes", None, type=str)
+        models_vaes = settings.value("models_vaes", None, type=str)
         models_loras = settings.value("models_loras", None, type=str)
         models_controlnets = settings.value("models_controlnets", None, type=str)
         models_t2i_adapters = settings.value("models_t2i_adapters", None, type=str)
         models_ip_adapters = settings.value("models_ip_adapters", None, type=str)
+        models_upscalers = settings.value("models_upscalers", None, type=str)
         outputs_images = settings.value("outputs_images", None, type=str)
         outputs_loras = settings.value("outputs_loras", None, type=str)
         datasets = settings.value("datasets", None, type=str)
@@ -80,11 +81,12 @@ class ArtisanApplication(QApplication):
         self.directories = DirectoriesObject(
             models_diffusers=models_diffusers,
             models_safetensors=models_safetensors,
-            vaes=vaes,
+            models_vaes=models_vaes,
             models_loras=models_loras,
             models_controlnets=models_controlnets,
             models_t2i_adapters=models_t2i_adapters,
             models_ip_adapters=models_ip_adapters,
+            models_upscalers=models_upscalers,
             outputs_images=outputs_images,
             outputs_loras=outputs_loras,
             datasets=datasets,
@@ -95,11 +97,12 @@ class ArtisanApplication(QApplication):
             for v in [
                 models_diffusers,
                 models_safetensors,
-                vaes,
+                models_vaes,
                 models_loras,
                 models_controlnets,
                 models_t2i_adapters,
                 models_ip_adapters,
+                models_upscalers,
                 outputs_images,
                 outputs_loras,
                 datasets,

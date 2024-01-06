@@ -159,7 +159,7 @@ class DirectoriesPanel(BaseSetupPanel):
             self.directories.models_safetensors = selected_path
             settings.setValue("models_safetensors", selected_path)
         elif dir_type == 3:
-            self.directories.vaes = selected_path
+            self.directories.models_vaes = selected_path
             settings.setValue("vaes", selected_path)
         elif dir_type == 4:
             self.directories.models_loras = selected_path

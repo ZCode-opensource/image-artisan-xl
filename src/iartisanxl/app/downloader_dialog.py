@@ -148,7 +148,7 @@ class DownloaderDialog(QDialog):
         if destination_directory == "app_models":
             root_directory = "models"
         elif destination_directory == "vae":
-            root_directory = self.directories.vaes
+            root_directory = self.directories.models_vaes
         elif destination_directory == "diffusers":
             root_directory = self.directories.models_diffusers
         elif destination_directory == "controlnets":
