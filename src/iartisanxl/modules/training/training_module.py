@@ -602,11 +602,12 @@ class TrainingModule(BaseModule):
 
     def check_and_count_dataset(self, path):
         image_count = 0
-        for root, _dirs, files in os.walk(path):
-            for file in files:
+        for entry in os.scandir(path):
+            if entry.is_file():
+                file = entry.name
                 if file.lower().endswith((".png", ".jpg", ".jpeg")):
                     image_count += 1
-                    txt_file = os.path.join(root, os.path.splitext(file)[0] + ".txt")
+                    txt_file = os.path.join(path, os.path.splitext(file)[0] + ".txt")
                     if not os.path.isfile(txt_file) or os.path.getsize(txt_file) == 0:
                         self.show_snackbar("Not all images have captions, invalid dataset")
                         self.show_error(f"Stopped at {file} because it doesn't have a caption file or is empty.", show_snackbar=False)
