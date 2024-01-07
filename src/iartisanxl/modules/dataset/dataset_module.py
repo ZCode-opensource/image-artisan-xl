@@ -11,7 +11,7 @@ from PyQt6.QtGui import QPixmap
 from PIL import Image
 
 from iartisanxl.modules.base_module import BaseModule
-from iartisanxl.modules.common.dataset_items_view import DatasetItemsView
+from iartisanxl.modules.dataset.dataset_items_view import DatasetItemsView
 from iartisanxl.modules.dataset.image_cropper_widget import ImageCropperWidget
 from iartisanxl.modules.common.prompt_input import PromptInput
 from iartisanxl.threads.generate_captions_thread import GenerateCaptionsThread

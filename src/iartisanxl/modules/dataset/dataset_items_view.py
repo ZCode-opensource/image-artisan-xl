@@ -7,7 +7,7 @@ from PyQt6.QtCore import pyqtSignal, Qt
 
 from iartisanxl.layouts.simple_flow_layout import SimpleFlowLayout
 from iartisanxl.threads.dataset_items_loader_thread import DatasetItemsLoaderThread
-from iartisanxl.modules.common.dataset_item import DatasetItem
+from iartisanxl.modules.dataset.dataset_item import DatasetItem
 from iartisanxl.modules.common.drop_lightbox import DropLightBox
 
 
@@ -176,8 +176,12 @@ class DatasetItemsView(QWidget):
         json_path = os.path.join(self.originals_dir, f"{name}.json")
 
         os.remove(item.path)
-        os.remove(original_path)
-        os.remove(json_path)
+
+        if os.path.isfile(original_path):
+            os.remove(original_path)
+
+        if os.path.isfile(json_path):
+            os.remove(json_path)
 
         if os.path.isfile(captions_file):
             os.remove(captions_file)
@@ -200,22 +204,31 @@ class DatasetItemsView(QWidget):
 
         self.items_changed.emit()
 
-    def on_duplicate_item(self, item):
+    def on_duplicate_item(self, item: DatasetItem):
         index = self.flow_layout.index_of(item)
+
         path = item.path
-        file_name = os.path.basename(path)
-        name, extension = os.path.splitext(file_name)
-        new_image_path = os.path.join(self.path, f"{name}_{index + 1}.{extension}")
+        filename = os.path.basename(path)
+        name, extension = os.path.splitext(filename)
+        new_name = f"{name}_{index + 1}"
+
+        # copy the original if it has one
+        original_path = os.path.join(self.originals_dir, filename)
+        new_original_path = os.path.join(self.originals_dir, f"{new_name}.{extension}")
+        shutil.copy2(original_path, new_original_path)
+
+        # copy the dataset image
+        new_image_path = os.path.join(self.path, f"{new_name}.{extension}")
         shutil.copy2(path, new_image_path)
-        dataset_item = self.add_item_path(new_image_path)
 
         if self.current_item is not None:
             self.current_item.set_selected(False)
+            self.current_item = None
+            self.selected_path = None
+            self.current_item_index = None
 
-        self.selected_path = path
-        self.current_item = dataset_item
-        self.current_item_index = self.flow_layout.index_of(dataset_item)
-        dataset_item.set_selected(True)
+        self.add_item(new_image_path, item.pixmap)
+
         self.item_count = self.flow_layout.count()
         self.items_changed.emit()
 
