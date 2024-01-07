@@ -32,6 +32,7 @@ from iartisanxl.diffusers_patch.unet import forward
 from iartisanxl.diffusers_patch.ip_adapter_attention_processor import IPAdapterAttnProcessor2_0
 
 
+# monkey patch the ip adapter attention processor
 diffusers.models.attention_processor.IPAdapterAttnProcessor2_0 = IPAdapterAttnProcessor2_0
 
 
@@ -198,7 +199,9 @@ class StableDiffusionXLModelNode(Node):
                         dtype=self.torch_dtype,
                     )
 
+        # monkey path the unet forward method
         self.values["unet"].forward = MethodType(forward, self.values["unet"])
+
         self.values["num_channels_latents"] = self.values["unet"].config.in_channels
 
         return self.values
