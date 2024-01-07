@@ -1,9 +1,8 @@
 import os
 import shutil
-from io import BytesIO
 
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QScrollArea, QMenu
-from PyQt6.QtGui import QPixmap, QImage, QAction
+from PyQt6.QtGui import QPixmap, QAction
 from PyQt6.QtCore import pyqtSignal, Qt
 
 from iartisanxl.layouts.simple_flow_layout import SimpleFlowLayout
@@ -18,17 +17,18 @@ class DatasetItemsView(QWidget):
     items_changed = pyqtSignal()
     error = pyqtSignal(str)
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, thumb_width: int, thumb_height: int, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self.thumb_width = 73
-        self.thumb_height = 73
+        self.thumb_width = thumb_width
+        self.thumb_height = thumb_height
         self.path = None
         self.dataset_items_loader_thread = None
         self.selected_path = None
         self.current_item = None
         self.current_item_index = None
         self.item_count = None
+        self.originals_dir = None
 
         self.setAcceptDrops(True)
         self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
@@ -71,35 +71,17 @@ class DatasetItemsView(QWidget):
         self.dataset_items_loader_thread.finished.connect(self.on_loading_finished)
         self.dataset_items_loader_thread.start()
 
-    def add_item(self, buffer: BytesIO, path):
-        qimage = QImage.fromData(buffer.getvalue())
-        pixmap = QPixmap.fromImage(qimage)
-
-        dataset_item = DatasetItem(path, pixmap)
+    def add_item(self, path: str, thumbnail: QPixmap):
+        dataset_item = DatasetItem(self.thumb_width, self.thumb_height, path, thumbnail)
         dataset_item.clicked.connect(self.on_item_selected)
         self.flow_layout.addWidget(dataset_item)
+        self.item_count = self.flow_layout.count()
 
         if self.selected_path is None:
             self.selected_path = path
             self.current_item_index = 0
             self.current_item = dataset_item
             dataset_item.set_selected(True)
-
-    def add_item_path(self, path: str):
-        pixmap = QPixmap(path)
-        scaled_pixmap = pixmap.scaled(
-            self.thumb_width,
-            self.thumb_height,
-            Qt.AspectRatioMode.KeepAspectRatio,
-            Qt.TransformationMode.SmoothTransformation,
-        )
-
-        dataset_item = DatasetItem(path, scaled_pixmap)
-        dataset_item.clicked.connect(self.on_item_selected)
-
-        self.flow_layout.addWidget(dataset_item)
-
-        return dataset_item
 
     def on_loading_finished(self):
         self.item_count = self.flow_layout.count()
@@ -169,14 +151,8 @@ class DatasetItemsView(QWidget):
         elif event.key() == Qt.Key.Key_Right:
             self.get_next_item()
 
-    def update_current_item_image(self, pixmap):
-        scaled_pixmap = pixmap.scaled(
-            self.thumb_width,
-            self.thumb_height,
-            Qt.AspectRatioMode.KeepAspectRatio,
-            Qt.TransformationMode.SmoothTransformation,
-        )
-        self.current_item.set_image(scaled_pixmap)
+    def update_current_item(self, path: str, thumbnail: QPixmap):
+        self.current_item.set_image(path, thumbnail)
 
     def contextMenuEvent(self, event):
         pos = self.flow_widget.mapFrom(self, event.pos())
@@ -194,7 +170,15 @@ class DatasetItemsView(QWidget):
         delete_index = self.flow_layout.index_of(item)
         captions_file = os.path.splitext(item.path)[0] + ".txt"
 
+        filename = os.path.basename(item.path)
+        name = os.path.splitext(filename)[0]
+        original_path = os.path.join(self.originals_dir, filename)
+        json_path = os.path.join(self.originals_dir, f"{name}.json")
+
         os.remove(item.path)
+        os.remove(original_path)
+        os.remove(json_path)
+
         if os.path.isfile(captions_file):
             os.remove(captions_file)
 
@@ -235,38 +219,9 @@ class DatasetItemsView(QWidget):
         self.item_count = self.flow_layout.count()
         self.items_changed.emit()
 
-    def dragEnterEvent(self, event):
-        if event.mimeData().hasUrls():
-            event.acceptProposedAction()
-            self.drop_lightbox.show()
-        else:
-            event.ignore()
-
-    def dragLeaveEvent(self, event):
-        self.drop_lightbox.hide()
-        event.accept()
-
-    def dropEvent(self, event):
-        self.drop_lightbox.hide()
-
-        for url in event.mimeData().urls():
-            path = url.toLocalFile()
-            file_name = os.path.basename(path)
-            new_image_path = os.path.join(self.path, file_name.lower())
-
-            if os.path.isfile(new_image_path):
-                self.error.emit("File already exists in dataset.")
-                return
-
-            shutil.copy2(path, new_image_path)
-            dataset_item = self.add_item_path(new_image_path)
-
-            if self.current_item is not None:
-                self.current_item.set_selected(False)
-
-            self.selected_path = new_image_path
-            self.current_item = dataset_item
-            self.current_item_index = self.flow_layout.index_of(dataset_item)
-            dataset_item.set_selected(True)
-            self.item_count = self.flow_layout.count()
-            self.items_changed.emit()
+    def clear_selection(self):
+        if self.current_item is not None:
+            self.current_item.set_selected(False)
+            self.current_item = None
+            self.selected_path = None
+            self.current_item_index = None

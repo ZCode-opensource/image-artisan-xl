@@ -60,36 +60,20 @@ class SelectDirectoryWidget(QWidget):
         self.setLayout(main_layout)
 
 
-class ControlAdaptersPanel(BaseSetupPanel):
+class UtilitiesPanel(BaseSetupPanel):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
         self.init_ui()
 
     def init_ui(self):
-        controlnets_widget = SelectDirectoryWidget(
-            "<html><body>Directory for the Control Net adapters, they're used to have precise control over the generations.</body></html>",
-            "ControlNet",
+        upscaler_widget = SelectDirectoryWidget(
+            "<html><body>Directory for the upscalers models.</body></html>",
+            "Upscalers",
             1,
             self.select_directory,
         )
-        self.main_layout.addWidget(controlnets_widget)
-
-        t2i_adapters_widget = SelectDirectoryWidget(
-            "<html><body>Directory for the T2i adapters, they're used to have precise control over the generations but are smaller.</body></html>",
-            "T2I Adapters",
-            2,
-            self.select_directory,
-        )
-        self.main_layout.addWidget(t2i_adapters_widget)
-
-        ip_adapters_widget = SelectDirectoryWidget(
-            "<html><body>Directory for the IP adapters, they're used to control the style of the generations.</body></html>",
-            "IP Adapters",
-            3,
-            self.select_directory,
-        )
-        self.main_layout.addWidget(ip_adapters_widget)
+        self.main_layout.addWidget(upscaler_widget)
 
         self.main_layout.addStretch()
 
@@ -97,7 +81,7 @@ class ControlAdaptersPanel(BaseSetupPanel):
         finish_button = QPushButton("Back")
         finish_button.clicked.connect(self.on_back_step)
         button_layout.addWidget(finish_button)
-        next_step_button = QPushButton("Utilities")
+        next_step_button = QPushButton("Optimizations")
         next_step_button.clicked.connect(self.on_next_step)
         button_layout.addWidget(next_step_button)
 
@@ -119,14 +103,8 @@ class ControlAdaptersPanel(BaseSetupPanel):
         settings = QSettings("ZCode", "ImageArtisanXL")
 
         if dir_type == 1:
-            self.directories.models_controlnets = selected_path
-            settings.setValue("models_controlnets", selected_path)
-        elif dir_type == 2:
-            self.directories.models_t2i_adapters = selected_path
-            settings.setValue("models_t2i_adapters", selected_path)
-        elif dir_type == 3:
-            self.directories.models_ip_adapters = selected_path
-            settings.setValue("models_ip_adapters", selected_path)
+            self.directories.models_upscalers = selected_path
+            settings.setValue("models_upscalers", selected_path)
 
         sender_button = self.sender()
         sender_button.parent_widget.directory_label.setText(selected_path)

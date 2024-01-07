@@ -28,8 +28,8 @@ from peft.tuners.tuners_utils import BaseTunerLayer
 
 
 from iartisanxl.graph.nodes.node import Node
-from iartisanxl.diffusers.unet import forward
-from iartisanxl.diffusers.ip_adapter_attention_processor import IPAdapterAttnProcessor2_0
+from iartisanxl.diffusers_patch.unet import forward
+from iartisanxl.diffusers_patch.ip_adapter_attention_processor import IPAdapterAttnProcessor2_0
 
 
 diffusers.models.attention_processor.IPAdapterAttnProcessor2_0 = IPAdapterAttnProcessor2_0

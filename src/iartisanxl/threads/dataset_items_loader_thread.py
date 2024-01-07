@@ -1,12 +1,11 @@
 import os
-from io import BytesIO
 
-from PIL import Image
-from PyQt6.QtCore import QThread, pyqtSignal
+from PyQt6.QtCore import QThread, pyqtSignal, Qt
+from PyQt6.QtGui import QPixmap
 
 
 class DatasetItemsLoaderThread(QThread):
-    image_loaded = pyqtSignal(BytesIO, str)
+    image_loaded = pyqtSignal(str, QPixmap)
     finished_loading = pyqtSignal()
 
     def __init__(self, images: list, path, item_width: int, item_height: int, *args, **kwargs):
@@ -21,17 +20,11 @@ class DatasetItemsLoaderThread(QThread):
         for image in self.images:
             image_path = os.path.join(self.path, image)
 
-            pil_image = Image.open(image_path)
-            pil_image.thumbnail((self.item_width, self.item_height), Image.Resampling.LANCZOS)
+            pixmap = QPixmap(image_path)
+            scaled_pixmap = pixmap.scaled(
+                self.item_width, self.item_height, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation
+            )
 
-            _, ext = os.path.splitext(image)
-            ext = ext[1:]
-            ext = ext.upper()
-            if ext == "JPG":
-                ext = "JPEG"
-
-            buffer = BytesIO()
-            pil_image.save(buffer, format=ext)
-            self.image_loaded.emit(buffer, image_path)
+            self.image_loaded.emit(image_path, scaled_pixmap)
 
         self.finished_loading.emit()

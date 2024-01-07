@@ -24,8 +24,8 @@ from diffusers.models.attention_processor import LoRAAttnProcessor, LoRAAttnProc
 from diffusers.loaders.lora import LoraLoaderMixin
 from diffusers.optimization import get_scheduler
 
-from iartisanxl.train.local_image_dataset import LocalImageTextDataset
-from iartisanxl.train.lora_train_args import LoraTrainArgs
+from iartisanxl.modules.training.local_image_dataset import LocalImageTextDataset
+from iartisanxl.modules.training.lora_train_args import LoraTrainArgs
 
 
 # pylint: disable=no-member

@@ -282,6 +282,36 @@ QPushButton#green_button:pressed {
     background-color: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #35d457, stop: 1 #1f8834);
 }
 
+QPushButton#red_button {
+    background-color: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #c42b2b, stop: 1 #861e1e);
+}
+QPushButton#red_button:hover {
+    background-color: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #db2f2f, stop: 1 #9b2222);
+}
+QPushButton#red_button:pressed {
+    background-color: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #fa3333, stop: 1 #b62828);
+}
+
+QPushButton#yellow_button {
+    background-color: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #939b22, stop: 1 #77761a);
+}
+QPushButton#yellow_button:hover {
+    background-color: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #a1aa25, stop: 1 #8b8a1e);
+}
+QPushButton#yellow_button:pressed {
+    background-color: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #b1bb28, stop: 1 #a09e23);
+}
+
+QPushButton#blue_button {
+    background-color: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #22569b, stop: 1 #1a4577);
+}
+QPushButton#blue_button:hover {
+    background-color: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #284cc2, stop: 1 #22579c);
+}
+QPushButton#blue_button:pressed {
+    background-color: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #2a73d3, stop: 1 #2561af);
+}
+
 QLabel#example_prompt_text_label {
     background: #29292b;
     padding: 4px;
@@ -418,7 +448,7 @@ DatasetItemsView QWidget#flow_widget {
     background: #232325;
 }
 
-ImageCropperWidget ImageCropper {
+ImageCropperWidget ImageAdderPreview {
     background: #232325;
     border: 1px solid #c9c9c9;
 }

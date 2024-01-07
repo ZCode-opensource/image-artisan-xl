@@ -7,6 +7,7 @@ from iartisanxl.app.preferences import PreferencesObject
 from iartisanxl.configuration.welcome_panel import WelcomePanel
 from iartisanxl.configuration.directories_panel import DirectoriesPanel
 from iartisanxl.configuration.control_adapters_panel import ControlAdaptersPanel
+from iartisanxl.configuration.utilities_panel import UtilitiesPanel
 from iartisanxl.configuration.optimizations_panel import OptimizationsPanel
 
 
@@ -17,6 +18,7 @@ class InitialSetupDialog(QDialog):
         WelcomePanel,
         DirectoriesPanel,
         ControlAdaptersPanel,
+        UtilitiesPanel,
         OptimizationsPanel,
     ]
 

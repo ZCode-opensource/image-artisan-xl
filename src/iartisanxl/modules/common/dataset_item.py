@@ -8,8 +8,11 @@ class DatasetItem(QFrame):
 
     COLORS = ["#252629", "#374344", "#56585f"]
 
-    def __init__(self, path: str, pixmap: QPixmap, *args, **kwargs):
+    def __init__(self, width: int, height: int, path: str, pixmap: QPixmap, *args, **kwargs):
         super().__init__(*args, **kwargs)
+
+        self.setFixedWidth(width)
+        self.setFixedHeight(height)
 
         self.path = path
         self.pixmap = pixmap
@@ -24,7 +27,7 @@ class DatasetItem(QFrame):
 
         self.image_label = QLabel()
         self.image_label.setPixmap(self.pixmap)
-        main_layout.addWidget(self.image_label)
+        main_layout.addWidget(self.image_label, alignment=Qt.AlignmentFlag.AlignVCenter)
 
         self.setLayout(main_layout)
         self.set_background_color(0)
@@ -55,5 +58,6 @@ class DatasetItem(QFrame):
         self.selected = selected
         self.set_background_color()
 
-    def set_image(self, pixmap):
+    def set_image(self, path: str, pixmap: QPixmap):
+        self.path = path
         self.image_label.setPixmap(pixmap)

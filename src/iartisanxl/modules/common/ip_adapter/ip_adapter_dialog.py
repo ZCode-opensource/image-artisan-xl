@@ -117,7 +117,6 @@ class IPAdapterDialog(BaseDialog):
         self.type_combo.addItem("IP Adapter", "ip_adapter_vit_h")
         self.type_combo.addItem("IP¨Adapter Plus", "ip_adapter_plus")
         self.type_combo.addItem("IP¨Adapter Plus Face", "ip_adapter_plus_face")
-        self.type_combo.addItem("IP Adapter ViT-bigG", "ip_adapter")
         top_layout.addWidget(self.type_combo)
 
         adapter_scale_label = QLabel("Adapter scale:")
@@ -277,4 +276,22 @@ class IPAdapterDialog(BaseDialog):
     def reset_ui(self):
         self.adapter = IPAdapterDataObject()
         self.image_widget.clear_image()
-        self.image_items_view.clear_selection()
+        self.image_items_view.clear()
+        self.add_button.setText("Add IP-Adapter")
+
+    def update_ui(self):
+        self.image_widget.clear_image()
+        self.image_items_view.clear()
+
+        self.image_items_view.ip_adapter_data = self.adapter
+        self.image_items_view.load_items()
+
+        self.on_adapter_scale_changed(self.adapter.ip_adapter_scale)
+        self.adapter_scale_slider.setValue(self.adapter_scale)
+
+    def make_new_adapter(self):
+        self.reset_ui()
+        self.adapter = IPAdapterDataObject()
+        self.image_items_view.ip_adapter_data = self.adapter
+        self.on_adapter_scale_changed(1.0)
+        self.adapter_scale_slider.setValue(1.0)

@@ -18,8 +18,8 @@ from peft import LoraConfig, set_peft_model_state_dict
 from peft.utils import get_peft_model_state_dict
 
 
-from iartisanxl.train.lora_train_args import LoraTrainArgs
-from iartisanxl.train.local_image_dataset import LocalImageTextDataset
+from iartisanxl.modules.training.lora_train_args import LoraTrainArgs
+from iartisanxl.modules.training.local_image_dataset import LocalImageTextDataset
 
 
 class DreamboothLoraTrainThread(QThread):
@@ -428,7 +428,21 @@ class DreamboothLoraTrainThread(QThread):
                     else:
                         raise ValueError(f"Unknown prediction type {self.scheduler.config.prediction_type}")  # pylint: disable=no-member
 
-                    loss = F.mse_loss(model_pred.float(), target.float(), reduction="mean")
+                    if self.lora_train_args.snr_gamma is not None and int(self.lora_train_args.snr_gamma) > 0:
+                        snr = self.compute_snr(self.scheduler, timesteps)
+                        base_weight = torch.stack([snr, int(self.lora_train_args.snr_gamma) * torch.ones_like(timesteps)], dim=1).min(dim=1)[0] / snr
+
+                        if self.scheduler.config.prediction_type == "v_prediction":  # pylint: disable=no-member
+                            mse_loss_weights = base_weight + 1
+                        else:
+                            mse_loss_weights = base_weight
+
+                        loss = F.mse_loss(model_pred.float(), target.float(), reduction="none")
+                        loss = loss.mean(dim=list(range(1, len(loss.shape)))) * mse_loss_weights
+                        loss = loss.mean()
+                    else:
+                        loss = F.mse_loss(model_pred.float(), target.float(), reduction="mean")
+
                     avg_epoch_loss += loss.item()
                     epoch_steps += 1
                     total_steps += 1
@@ -796,3 +810,28 @@ class DreamboothLoraTrainThread(QThread):
         prompt_embeds = torch.concat(prompt_embeds_list, dim=-1)
         pooled_prompt_embeds = pooled_prompt_embeds.view(bs_embed, -1)
         return prompt_embeds, pooled_prompt_embeds
+
+    def compute_snr(self, noise_scheduler, timesteps):
+        """
+        Computes SNR as per
+        https://github.com/TiankaiHang/Min-SNR-Diffusion-Training/blob/521b624bd70c67cee4bdf49225915f5945a872e3/guided_diffusion/gaussian_diffusion.py#L847-L849
+        """
+        alphas_cumprod = noise_scheduler.alphas_cumprod
+        sqrt_alphas_cumprod = alphas_cumprod**0.5
+        sqrt_one_minus_alphas_cumprod = (1.0 - alphas_cumprod) ** 0.5
+
+        # Expand the tensors.
+        # Adapted from https://github.com/TiankaiHang/Min-SNR-Diffusion-Training/blob/521b624bd70c67cee4bdf49225915f5945a872e3/guided_diffusion/gaussian_diffusion.py#L1026
+        sqrt_alphas_cumprod = sqrt_alphas_cumprod.to(device=timesteps.device)[timesteps].float()
+        while len(sqrt_alphas_cumprod.shape) < len(timesteps.shape):
+            sqrt_alphas_cumprod = sqrt_alphas_cumprod[..., None]
+        alpha = sqrt_alphas_cumprod.expand(timesteps.shape)
+
+        sqrt_one_minus_alphas_cumprod = sqrt_one_minus_alphas_cumprod.to(device=timesteps.device)[timesteps].float()
+        while len(sqrt_one_minus_alphas_cumprod.shape) < len(timesteps.shape):
+            sqrt_one_minus_alphas_cumprod = sqrt_one_minus_alphas_cumprod[..., None]
+        sigma = sqrt_one_minus_alphas_cumprod.expand(timesteps.shape)
+
+        # Compute SNR.
+        snr = (alpha / sigma) ** 2
+        return snr

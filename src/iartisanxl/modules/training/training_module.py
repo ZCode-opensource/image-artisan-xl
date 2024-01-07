@@ -27,7 +27,7 @@ from iartisanxl.modules.common.image_label import ImageLabel
 from iartisanxl.console.console_stream import ConsoleStream
 from iartisanxl.windows.log_window import LogWindow
 from iartisanxl.threads.dreambooth_lora_train_thread import DreamboothLoraTrainThread
-from iartisanxl.train.lora_train_args import LoraTrainArgs
+from iartisanxl.modules.training.lora_train_args import LoraTrainArgs
 
 
 class TrainingModule(BaseModule):
@@ -49,8 +49,8 @@ class TrainingModule(BaseModule):
         self.total_dataset_images = 0
 
         self.vaes = []
-        if self.directories.vaes and os.path.isdir(self.directories.vaes):
-            self.vaes = next(os.walk(self.directories.vaes))[1]
+        if self.directories.models_vaes and os.path.isdir(self.directories.models_vaes):
+            self.vaes = next(os.walk(self.directories.models_vaes))[1]
 
         self.init_ui()
         self.console_stream = ConsoleStream()
@@ -91,7 +91,7 @@ class TrainingModule(BaseModule):
         self.vae_combobox.addItem("Model Vae", "")
         if self.vaes:
             for vae in self.vaes:
-                self.vae_combobox.addItem(vae, os.path.join(self.directories.vaes, vae))
+                self.vae_combobox.addItem(vae, os.path.join(self.directories.models_vaes, vae))
         vae_layout.addWidget(self.vae_combobox)
         top_layout.addLayout(vae_layout)
 
@@ -105,16 +105,18 @@ class TrainingModule(BaseModule):
         rank_label = QLabel("Rank:")
         parameters_layout.addWidget(rank_label, 0, 0)
         self.rank_text_edit = QLineEdit()
-        self.rank_text_edit.setText("4")
+        self.rank_text_edit.setText("32")
         parameters_layout.addWidget(self.rank_text_edit, 0, 1)
 
-        save_epochs_label = QLabel("Save N° epochs:")
+        save_epochs_label = QLabel("Save # epochs:")
+        save_epochs_label.setToolTip("Save a model and optimizer state every every number of epochs")
         parameters_layout.addWidget(save_epochs_label, 0, 2)
         self.save_epochs_text_edit = QLineEdit()
         self.save_epochs_text_edit.setText("10")
         parameters_layout.addWidget(self.save_epochs_text_edit, 0, 3)
 
-        accumulation_steps_label = QLabel("Gradient accumulation steps:")
+        accumulation_steps_label = QLabel("G. Acc. steps:")
+        accumulation_steps_label.setToolTip("Gradient accumulation steps")
         parameters_layout.addWidget(accumulation_steps_label, 0, 4)
         self.accumulation_steps_text_edit = QLineEdit()
         self.accumulation_steps_text_edit.setText("1")
@@ -129,8 +131,19 @@ class TrainingModule(BaseModule):
         epochs_label = QLabel("Epochs:")
         parameters_layout.addWidget(epochs_label, 0, 8)
         self.epochs_text_edit = QLineEdit()
-        self.epochs_text_edit.setText("60")
+        self.epochs_text_edit.setText("120")
         parameters_layout.addWidget(self.epochs_text_edit, 0, 9)
+
+        self.scheduler_label = QLabel("LR Scheduler:")
+        parameters_layout.addWidget(self.scheduler_label, 0, 10)
+        self.lr_scheduler_combo = QComboBox()
+        self.lr_scheduler_combo.addItem("Constant", "constant")
+        self.lr_scheduler_combo.addItem("Cosine", "cosine")
+        self.lr_scheduler_combo.addItem("Linear", "linear")
+        self.lr_scheduler_combo.addItem("Constant with warmup", "constant_with_warmup")
+        self.lr_scheduler_combo.addItem("Cosine with restarts", "cosine_with_restarts")
+        self.lr_scheduler_combo.addItem("Polynomial", "polynomial")
+        parameters_layout.addWidget(self.lr_scheduler_combo, 0, 11)
 
         workers_label = QLabel("Workers:")
         parameters_layout.addWidget(workers_label, 1, 0)
@@ -141,13 +154,14 @@ class TrainingModule(BaseModule):
         learning_rate_label = QLabel("Learning rate:")
         parameters_layout.addWidget(learning_rate_label, 1, 2)
         self.learning_rate_text_edit = QLineEdit()
-        self.learning_rate_text_edit.setText("1e-06")
+        self.learning_rate_text_edit.setText("1e-4")
         parameters_layout.addWidget(self.learning_rate_text_edit, 1, 3)
 
-        text_encoder_learning_rate_label = QLabel("Text encoder learning rate:")
+        text_encoder_learning_rate_label = QLabel("Text encoder LR:")
+        text_encoder_learning_rate_label.setToolTip("Text encoder learning rate")
         parameters_layout.addWidget(text_encoder_learning_rate_label, 1, 4)
         self.text_encoder_learning_rate_text_edit = QLineEdit()
-        self.text_encoder_learning_rate_text_edit.setText("5e-6")
+        self.text_encoder_learning_rate_text_edit.setText("1e-5")
         parameters_layout.addWidget(self.text_encoder_learning_rate_text_edit, 1, 5)
 
         self.optimizer_label = QLabel("Optimizer:")
@@ -158,16 +172,11 @@ class TrainingModule(BaseModule):
         self.optimizer_combo.addItem("Prodigy ", "prodigy")
         parameters_layout.addWidget(self.optimizer_combo, 1, 7)
 
-        self.scheduler_label = QLabel("LR Scheduler:")
-        parameters_layout.addWidget(self.scheduler_label, 1, 8)
-        self.lr_scheduler_combo = QComboBox()
-        self.lr_scheduler_combo.addItem("Constant", "constant")
-        self.lr_scheduler_combo.addItem("Cosine", "cosine")
-        self.lr_scheduler_combo.addItem("Linear", "linear")
-        self.lr_scheduler_combo.addItem("Constant with warmup", "constant_with_warmup")
-        self.lr_scheduler_combo.addItem("Cosine with restarts", "cosine_with_restarts")
-        self.lr_scheduler_combo.addItem("Polynomial", "polynomial")
-        parameters_layout.addWidget(self.lr_scheduler_combo, 1, 9)
+        snr_label = QLabel("SNR Gamma:")
+        parameters_layout.addWidget(snr_label, 1, 8)
+        self.snr_text_edit = QLineEdit()
+        self.snr_text_edit.setText("5")
+        parameters_layout.addWidget(self.snr_text_edit, 1, 9)
 
         warmup_steps_label = QLabel("Warmup steps:")
         parameters_layout.addWidget(warmup_steps_label, 1, 10)
@@ -401,7 +410,7 @@ class TrainingModule(BaseModule):
         if vae_index != -1:
             self.vae_combobox.setCurrentIndex(vae_index)
 
-        self.rank_text_edit.setText(str(data.get("rank", 4)))
+        self.rank_text_edit.setText(str(data.get("rank", 32)))
         self.workers_text_edit.setText(str(data.get("workers", 8)))
         self.save_epochs_text_edit.setText(str(data.get("save_epochs", 1)))
         self.batch_size_text_edit.setText(str(data.get("batch_size", 1)))
@@ -409,17 +418,18 @@ class TrainingModule(BaseModule):
         self.epochs_text_edit.setText(str(data.get("epochs", 15)))
         self.warmup_steps_text_edit.setText(str(data.get("lr_warmup_steps", 0)))
         self.validation_prompt_edit.setPlainText(data.get("validation_prompt", ""))
+        self.save_webui_format_checkbox.setChecked(data.get("save_webui", False))
 
         seed = data.get("seed", None)
         if seed is not None:
             self.seed_text_edit.setText(str(seed))
 
         learning_rate = data.get("learning_rate", None)
-        learning_rate_str = f"{learning_rate:.0e}" if learning_rate is not None else "1e-06"
+        learning_rate_str = f"{learning_rate:.0e}" if learning_rate is not None else "1e-04"
         self.learning_rate_text_edit.setText(learning_rate_str)
 
         text_learning_rate = data.get("text_encoder_learning_rate", None)
-        text_learning_rate_str = f"{text_learning_rate:.0e}" if text_learning_rate is not None else "5e-06"
+        text_learning_rate_str = f"{text_learning_rate:.0e}" if text_learning_rate is not None else "1e-05"
         self.text_encoder_learning_rate_text_edit.setText(text_learning_rate_str)
 
         optimizer = data.get("optimizer", "adamw8bit")
@@ -485,6 +495,7 @@ class TrainingModule(BaseModule):
             lr_scheduler=self.lr_scheduler_combo.currentData(),
             lr_warmup_steps=int(self.warmup_steps_text_edit.text()),
             save_webui=self.save_webui_format_checkbox.isChecked(),
+            snr_gamma=self.snr_text_edit.text(),
         )
 
         if self.resume_checkpoint_combobox.currentText() != "start over":
@@ -602,11 +613,12 @@ class TrainingModule(BaseModule):
 
     def check_and_count_dataset(self, path):
         image_count = 0
-        for root, _dirs, files in os.walk(path):
-            for file in files:
+        for entry in os.scandir(path):
+            if entry.is_file():
+                file = entry.name
                 if file.lower().endswith((".png", ".jpg", ".jpeg")):
                     image_count += 1
-                    txt_file = os.path.join(root, os.path.splitext(file)[0] + ".txt")
+                    txt_file = os.path.join(path, os.path.splitext(file)[0] + ".txt")
                     if not os.path.isfile(txt_file) or os.path.getsize(txt_file) == 0:
                         self.show_snackbar("Not all images have captions, invalid dataset")
                         self.show_error(f"Stopped at {file} because it doesn't have a caption file or is empty.", show_snackbar=False)

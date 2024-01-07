@@ -34,3 +34,4 @@ class LoraTrainArgs:
     prodigy_safeguard_warmup = attr.ib(default=True)
     prodigy_beta3 = attr.ib(default=None)
     save_webui = attr.ib(default=False)
+    snr_gamma = attr.ib(default=None)

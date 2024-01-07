@@ -44,6 +44,13 @@ class ImageAdderPreview(QGraphicsView):
         self.drop_lightbox = DropLightBox(self)
         self.drop_lightbox.setText("Drop file here")
 
+    def set_aspect(self, width: int, height: int, ratio: float):
+        self.target_width = width
+        self.target_height = height
+        self.aspect_ratio = ratio
+
+        self.setSceneRect(0, 0, self.target_width, self.target_height)
+
     def sizeHint(self):
         return QSize(self.target_width, self.target_height)
 

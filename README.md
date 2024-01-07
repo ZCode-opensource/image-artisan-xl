@@ -27,7 +27,7 @@ Another cool thing about this software is that it has a simple installation proc
 
 **Image Artisan XL** is a desktop application that uses PyQt6 as its graphical user interface. It mostly relies on the Diffusers library for generating images, using node graphs under the hood that are designed to meet the requirements of multithreading and real-time user interface updates.
 
-All the models used in **Image Artisan XL** are loaded in half-point precision (FP16) whenever possible. This allows for faster inference and memory savings, since using them at full precision makes no difference to most people. When using Stable Diffusion XL models, it is possible to use under 10 Video RAM, although there may be some specific cases with VAE decoding where it goes over this limit.
+All the models used in **Image Artisan XL** are loaded in half-point precision (FP16) whenever possible. This allows for faster inference and memory savings, since using them at full precision makes no difference to most people. When using Stable Diffusion XL models, it is possible to use under 10GB of Video RAM, although there may be some specific cases with VAE decoding where it goes over this limit.
 
 It is highly recommended to use the included VAE with the FP16 fix, since the VAE in the base model and most of the shared ones need to be used in full precision to avoid generating black images.
 
@@ -39,10 +39,15 @@ It is highly recommended to use the included VAE with the FP16 fix, since the VA
 - Powerfull features only avalaible as a desktop application.
 - Easy sharing of models and Lora's metadata since the information its stored in each model, including sample image, sample generation, triggers and tags for filtering.
 - Latent Consistency Models (LCM) and LoRAs for fast inference.
-- Segmind Stable Diffusion (SSD-1B) models for VRAM savings.
+- Segmind Stable Diffusion (SSD-1B and Vega) models for VRAM savings.
 - SDXL Turbo supported
 - ControlNet
 - T2I Adapters
+- IP Adapters (just one at a time for now) with multiple images.
+- Dataset creation and management
+- Dreambooth LoRA Training (more to come)
+- Resume training
+- Image bucketing for training
 
 ## Limitations
 
@@ -63,12 +68,11 @@ You can read why [here](https://github.com/ZCode-opensource/image-artisan-xl/blo
 - Image to image.
 - Inpainting.
 - Outpainting.
-- IP-Adapter.
 - Upscaling.
 - Fine tune your own model.
+- Train dreambooth LoRAs (Kohya)
 - Train LoRAs (diffusers and Kohya).
 - Dataset creation and management.
-- Gallery management.
 - Nodes UI (under the hood already uses them).
 
 ## Installation
