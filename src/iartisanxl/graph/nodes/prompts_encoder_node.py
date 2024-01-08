@@ -2,33 +2,16 @@ import re
 
 import torch
 from transformers import CLIPTokenizer
-from diffusers.utils.peft_utils import scale_lora_layers, unscale_lora_layers
+from diffusers.utils.peft_utils import scale_lora_layers, unscale_lora_layers, set_weights_and_activate_adapters
 
 from iartisanxl.graph.nodes.node import Node
 
 
 class PromptsEncoderNode(Node):
     PRIORITY = 0
-    REQUIRED_INPUTS = [
-        "tokenizer_1",
-        "tokenizer_2",
-        "text_encoder_1",
-        "text_encoder_2",
-        "positive_prompt_1",
-    ]
-    OPTIONAL_INPUTS = [
-        "positive_prompt_2",
-        "negative_prompt_1",
-        "negative_prompt_2",
-        "clip_skip",
-        "global_lora_scale",
-    ]
-    OUTPUTS = [
-        "prompt_embeds",
-        "negative_prompt_embeds",
-        "pooled_prompt_embeds",
-        "negative_pooled_prompt_embeds",
-    ]
+    REQUIRED_INPUTS = ["tokenizer_1", "tokenizer_2", "text_encoder_1", "text_encoder_2", "positive_prompt_1"]
+    OPTIONAL_INPUTS = ["positive_prompt_2", "negative_prompt_1", "negative_prompt_2", "clip_skip", "global_lora_scale", "lora"]
+    OUTPUTS = ["prompt_embeds", "negative_prompt_embeds", "pooled_prompt_embeds", "negative_pooled_prompt_embeds"]
 
     def __call__(self):
         super().__call__()
@@ -38,6 +21,16 @@ class PromptsEncoderNode(Node):
             self.text_encoder_2.to("cuda:0")
 
         negative_prompt_1 = self.negative_prompt_1 if self.negative_prompt_1 is not None else ""
+
+        if self.lora:
+            if isinstance(self.lora, list):
+                unzipped_list = zip(*self.lora)
+                reordered_list = [list(item) for item in unzipped_list]
+                set_weights_and_activate_adapters(self.text_encoder_1, *reordered_list)
+                set_weights_and_activate_adapters(self.text_encoder_2, *reordered_list)
+            else:
+                set_weights_and_activate_adapters(self.text_encoder_1, [self.lora[0]], [self.lora[1]])
+                set_weights_and_activate_adapters(self.text_encoder_2, [self.lora[0]], [self.lora[1]])
 
         if self.global_lora_scale is not None:
             scale_lora_layers(self.text_encoder_1, self.global_lora_scale)

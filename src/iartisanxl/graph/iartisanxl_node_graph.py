@@ -63,10 +63,14 @@ class ImageArtisanNodeGraph:
             self.delete_node(node)
 
     def delete_node(self, node):
+        # let the node do cleanup before its deletion if needed
+        node.before_delete()
+
         # Disconnect the node from its dependencies and dependents
         for other_node in node.dependencies + node.dependents:
             other_node.disconnect_from_node(node)
             node.disconnect_from_node(other_node)
+
         # Call the node's delete method
         node.delete()
         # Remove the node from the graph

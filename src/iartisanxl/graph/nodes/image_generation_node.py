@@ -69,6 +69,10 @@ class ImageGenerationNode(Node):
         crops_coords_top_left = self.crops_coords_top_left if self.crops_coords_top_left is not None else (0, 0)
         negative_crops_coords_top_left = self.negative_crops_coords_top_left if self.negative_crops_coords_top_left is not None else (0, 0)
 
+        if hasattr(self.unet, "peft_config"):
+            if len(self.unet.peft_config) == 0:
+                del self.unet.peft_config
+
         if self.lora:
             if isinstance(self.lora, list):
                 unzipped_list = zip(*self.lora)

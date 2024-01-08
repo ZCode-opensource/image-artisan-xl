@@ -106,6 +106,9 @@ class Node:
     def update_inputs(self, node_dict):
         pass
 
+    def before_delete(self):
+        pass
+
     def delete(self):
         # Clean up the node's data
         self.dependencies.clear()

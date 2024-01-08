@@ -2,16 +2,8 @@ import re
 
 from peft import LoraConfig, inject_adapter_in_model, set_peft_model_state_dict
 from safetensors.torch import load_file
-from diffusers.utils.state_dict_utils import (
-    convert_unet_state_dict_to_peft,
-    convert_state_dict_to_diffusers,
-    convert_state_dict_to_peft,
-)
-from diffusers.utils.peft_utils import (
-    get_peft_kwargs,
-    get_adapter_name,
-    scale_lora_layers,
-)
+from diffusers.utils.state_dict_utils import convert_unet_state_dict_to_peft, convert_state_dict_to_diffusers, convert_state_dict_to_peft
+from diffusers.utils.peft_utils import get_peft_kwargs, get_adapter_name, scale_lora_layers, delete_adapter_layers
 from diffusers.models.lora import text_encoder_attn_modules, text_encoder_mlp_modules
 
 from iartisanxl.graph.nodes.node import Node
@@ -80,12 +72,7 @@ class LoraNode(Node):
             if not is_correct_format:
                 raise ValueError("Invalid LoRA checkpoint.")
 
-            self.load_lora_into_unet(
-                state_dict,
-                network_alphas=network_alphas,
-                unet=self.unet,
-                adapter_name=self.adapter_name,
-            )
+            self.load_lora_into_unet(state_dict, network_alphas=network_alphas, unet=self.unet, adapter_name=self.adapter_name)
 
             text_encoder_state_dict = {k: v for k, v in state_dict.items() if "text_encoder." in k}
             if len(text_encoder_state_dict) > 0:
@@ -117,6 +104,17 @@ class LoraNode(Node):
 
         return self.values
 
+    def before_delete(self):
+        if self.unet is not None:
+            delete_adapter_layers(self.unet, self.adapter_name)
+            self.unet.peft_config.pop(self.adapter_name, None)
+
+        if self.text_encoder_1 is not None:
+            delete_adapter_layers(self.text_encoder_1, self.adapter_name)
+
+        if self.text_encoder_2 is not None:
+            delete_adapter_layers(self.text_encoder_2, self.adapter_name)
+
     def lora_state_dict(self, lora_path, **kwargs):
         unet_config = kwargs.pop("unet_config", None)
 
@@ -131,20 +129,12 @@ class LoraNode(Node):
             if unet_config is not None:
                 # use unet config to remap block numbers
                 state_dict = self._maybe_map_sgm_blocks_to_diffusers(state_dict, unet_config)
-            (
-                state_dict,
-                network_alphas,
-            ) = self._convert_kohya_lora_to_diffusers(state_dict)
+
+            (state_dict, network_alphas) = self._convert_kohya_lora_to_diffusers(state_dict)
 
         return state_dict, network_alphas
 
-    def load_lora_into_unet(
-        self,
-        state_dict,
-        network_alphas,
-        unet,
-        adapter_name=None,
-    ):
+    def load_lora_into_unet(self, state_dict, network_alphas, unet, adapter_name=None):
         keys = list(state_dict.keys())
 
         if all(key.startswith("unet") or key.startswith("text_encoder") for key in keys):
@@ -181,20 +171,9 @@ class LoraNode(Node):
             inject_adapter_in_model(lora_config, unet, adapter_name=adapter_name)
             set_peft_model_state_dict(unet, state_dict, adapter_name)
 
-        unet.load_attn_procs(
-            state_dict,
-            network_alphas=network_alphas,
-        )
+        unet.load_attn_procs(state_dict, network_alphas=network_alphas)
 
-    def load_lora_into_text_encoder(
-        self,
-        state_dict,
-        network_alphas,
-        text_encoder,
-        prefix=None,
-        lora_scale=1.0,
-        adapter_name=None,
-    ):
+    def load_lora_into_text_encoder(self, state_dict, network_alphas, text_encoder, prefix=None, lora_scale=1.0, adapter_name=None):
         # If the serialization format is new (introduced in https://github.com/huggingface/diffusers/pull/2918),
         # then the `state_dict` keys should have `self.unet_name` and/or `self.text_encoder_name` as
         # their prefixes.

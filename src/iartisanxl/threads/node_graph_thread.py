@@ -106,7 +106,6 @@ class NodeGraphThread(QThread):
 
         # if there's a image dropped to generate, reset all the loras since its impossible to keep track of the ids for the nodes
         if self.lora_list.dropped_image:
-            sdxl_model.unload_lora_weights()
             lora_nodes = self.node_graph.get_all_nodes_class(LoraNode)
             for lora_node in lora_nodes:
                 self.node_graph.delete_node_by_id(lora_node.id)
@@ -122,9 +121,7 @@ class NodeGraphThread(QThread):
                 self.node_graph.add_node(lora_node, lora.filename)
                 lora.id = lora_node.id
                 image_generation.connect("lora", lora_node, "lora")
-
-                # this is manually updated since it doesn't have a relation with the node (add a system for this)
-                prompts_encoder.updated = True
+                prompts_encoder.connect("lora", lora_node, "lora")
 
                 # ugly patch while I find why they dont get flagged as updated
                 decoder.updated = True
@@ -134,16 +131,10 @@ class NodeGraphThread(QThread):
             removed_loras = self.lora_list.get_removed()
 
             if len(removed_loras) > 0:
-                adapter_names = []
                 for lora in removed_loras:
                     self.node_graph.delete_node_by_id(lora.id)
-                    adapter_names.append(lora.filename)
-
-                if len(adapter_names) > 0:
-                    sdxl_model.delete_adapters(adapter_names)
 
                 # same as before
-                prompts_encoder.updated = True
                 decoder.updated = True
                 image_send.updated = True
 
@@ -159,9 +150,7 @@ class NodeGraphThread(QThread):
                     self.node_graph.add_node(lora_node, lora.filename)
                     lora.id = lora_node.id
                     image_generation.connect("lora", lora_node, "lora")
-
-                    # this is manually updated since it doesn't have a relation with the node (add a system for this)
-                    prompts_encoder.updated = True
+                    prompts_encoder.connect("lora", lora_node, "lora")
 
                     # ugly patch while I find why they dont get flagged as updated
                     decoder.updated = True
@@ -177,7 +166,6 @@ class NodeGraphThread(QThread):
                         lora_node.update_lora(lora.weight, lora.enabled)
 
                         # same as before
-                        prompts_encoder.updated = True
                         decoder.updated = True
                         image_send.updated = True
 
