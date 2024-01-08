@@ -80,10 +80,10 @@ class ImageEditor(QGraphicsView):
         self.update_cursor()
         self.fit_in_view()
 
-    def set_white_pixmap(self, width, height):
+    def set_color_pixmap(self, width, height):
         # Create a white QPixmap
         white_pixmap = QPixmap(width, height)
-        white_pixmap.fill(Qt.GlobalColor.white)
+        white_pixmap.fill(self.brush_color)
 
         # Set the QPixmap as the photo
         self.original_pixmap = white_pixmap

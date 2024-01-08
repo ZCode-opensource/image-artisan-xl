@@ -44,19 +44,17 @@ class ControlImageWidget(QWidget):
         top_layout.addWidget(source_text_label, alignment=Qt.AlignmentFlag.AlignCenter)
 
         reset_image_button = QPushButton("Reset")
+        reset_image_button.setToolTip("Reset all modifications of the image including zoom, position and drawing.")
         top_layout.addWidget(reset_image_button)
-        undo_button = QPushButton("Undo")
-
-        top_layout.addWidget(undo_button)
-        redo_button = QPushButton("Redo")
-        top_layout.addWidget(redo_button)
         blank_image_button = QPushButton("Blank")
+        blank_image_button.setToolTip("Create a new empty image with the selected color as background.")
         top_layout.addWidget(blank_image_button)
         current_image_button = QPushButton("Current")
+        current_image_button.setToolTip("Copy the current generated image an set it as an image.")
         top_layout.addWidget(current_image_button)
         load_image_button = QPushButton("Load")
+        load_image_button.setToolTip("Load an image from your computer.")
         top_layout.addWidget(load_image_button)
-
         main_layout.addLayout(top_layout)
 
         image_widget = QWidget()
@@ -66,6 +64,15 @@ class ControlImageWidget(QWidget):
         editor_layout.addWidget(self.image_editor)
         image_widget.setLayout(editor_layout)
         main_layout.addWidget(image_widget)
+
+        image_bottom_layout = QHBoxLayout()
+        undo_button = QPushButton("Undo")
+        undo_button.setToolTip("Undo the last drawing.")
+        image_bottom_layout.addWidget(undo_button)
+        redo_button = QPushButton("Redo")
+        redo_button.setToolTip("Redo last drawing that was reverted.")
+        image_bottom_layout.addWidget(redo_button)
+        main_layout.addLayout(image_bottom_layout)
 
         image_controls_layout = QHBoxLayout()
         self.image_scale_control = ImageControl("Scale: ", 1.0, 3)
@@ -87,6 +94,7 @@ class ControlImageWidget(QWidget):
         main_layout.setStretch(0, 0)
         main_layout.setStretch(1, 1)
         main_layout.setStretch(2, 0)
+        main_layout.setStretch(3, 0)
 
         self.setLayout(main_layout)
 
@@ -94,7 +102,7 @@ class ControlImageWidget(QWidget):
         undo_button.clicked.connect(self.image_editor.undo)
         redo_button.clicked.connect(self.image_editor.redo)
         current_image_button.clicked.connect(self.set_current_image)
-        blank_image_button.clicked.connect(self.set_blank_image)
+        blank_image_button.clicked.connect(self.set_color_image)
 
     def on_reset_image(self):
         self.image_scale_control.reset()
@@ -132,10 +140,10 @@ class ControlImageWidget(QWidget):
             pixmap = self.image_viewer.pixmap_item.pixmap()
             self.image_editor.set_pixmap(pixmap)
 
-    def set_blank_image(self):
+    def set_color_image(self):
         width = self.image_generation_data.image_width
         height = self.image_generation_data.image_height
-        self.image_editor.set_white_pixmap(width, height)
+        self.image_editor.set_color_pixmap(width, height)
 
     def clear_image(self):
         self.image_scale_control.reset()

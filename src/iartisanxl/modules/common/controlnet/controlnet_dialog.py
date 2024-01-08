@@ -149,7 +149,7 @@ class ControlNetDialog(BaseDialog):
         brush_hardness_slider.setValue(0.5)
         brush_layout.addWidget(brush_hardness_slider)
 
-        color_button = ColorButton("Brush color:")
+        color_button = ColorButton("Color:")
         brush_layout.addWidget(color_button)
 
         content_layout.addLayout(brush_layout)
