@@ -99,5 +99,4 @@ def createConvFunc(op_type):
 
         return func
     else:
-        print("impossible to be here unless you force that")
         return None

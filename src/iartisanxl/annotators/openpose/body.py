@@ -1,7 +1,7 @@
 import cv2
 import numpy as np
 import math
-from scipy.ndimage.filters import gaussian_filter
+from scipy.ndimage import gaussian_filter
 import torch
 
 from iartisanxl.annotators.openpose import util

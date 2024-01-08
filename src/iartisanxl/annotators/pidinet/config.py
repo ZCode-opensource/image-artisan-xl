@@ -260,8 +260,6 @@ def config_model(model):
     model_options = list(nets.keys())
     assert model in model_options, "unrecognized model, please choose from %s" % str(model_options)
 
-    print(str(nets[model]))
-
     pdcs = []
     for i in range(16):
         layer_name = "layer%d" % i
@@ -274,8 +272,6 @@ def config_model(model):
 def config_model_converted(model):
     model_options = list(nets.keys())
     assert model in model_options, "unrecognized model, please choose from %s" % str(model_options)
-
-    print(str(nets[model]))
 
     pdcs = []
     for i in range(16):
