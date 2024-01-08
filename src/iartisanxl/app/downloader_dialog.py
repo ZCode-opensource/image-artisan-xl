@@ -212,7 +212,6 @@ class DownloaderDialog(QDialog):
 
     def on_finished(self, directory: str, file: str):
         if self.response.error() != QNetworkReply.NetworkError.NoError:
-            print(f"Download error: {self.response.errorString()}")
             self.log_window.append_error(f"Download error: {self.response.errorString()}")
         else:
             path = os.path.join(directory, file)
