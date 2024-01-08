@@ -48,9 +48,6 @@ class IPAdapterDataObject:
                 images.remove(image)
                 return  # Image found and removed
 
-        # Image not found
-        print(f"Image with ID {image_id} not found in adapter.")
-
     def _generate_unique_id(self):
         """Generates a unique ID using a simple counter."""
 

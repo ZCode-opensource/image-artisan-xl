@@ -228,8 +228,6 @@ class LoraTrainThread(QThread):
             num_update_steps_per_epoch = math.ceil(len(train_dataloader) / self.lora_train_args.accumulation_steps)
             max_train_steps = self.lora_train_args.epochs * num_update_steps_per_epoch
             num_warmup_steps = max_train_steps * 0.05
-            print(f"Max train steps: {max_train_steps}")
-            print(f"Warmup steps: {num_warmup_steps}")
 
             lr_scheduler = get_scheduler(
                 "constant_with_warmup",
@@ -274,7 +272,6 @@ class LoraTrainThread(QThread):
             self.warning.emit("Starting training loop")
             epoch_losses = []
             for epoch in range(first_epoch, self.lora_train_args.epochs):
-                print(epoch)
                 epoch_loss = 0
                 self.unet.train()
                 self.text_encoder_one.train()
@@ -357,8 +354,6 @@ class LoraTrainThread(QThread):
                     # Checks if the accelerator has performed an optimization step behind the scenes
                     if self.accelerator.sync_gradients:
                         global_step += 1
-                        print(f"Train loss: {train_loss}")
-                        print(f"Step: {global_step}")
                         train_loss = 0.0
 
                         if global_step % self.lora_train_args.save_steps == 0:
