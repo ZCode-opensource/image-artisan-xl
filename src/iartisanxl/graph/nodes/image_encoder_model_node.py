@@ -34,8 +34,6 @@ class ImageEncoderModelNode(Node):
         self.path = node_dict["path"]
 
     def __call__(self) -> CLIPVisionModelWithProjection:
-        super().__call__()
-
         device = "cpu" if self.sequential_offload or self.cpu_offload else self.device
 
         image_encoder_model = CLIPVisionModelWithProjection.from_pretrained(

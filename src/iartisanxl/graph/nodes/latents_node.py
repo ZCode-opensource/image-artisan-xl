@@ -21,7 +21,6 @@ class LatentsNode(Node):
         self.device = None
 
     def __call__(self):
-        super().__call__()
         generator = torch.Generator(device="cpu").manual_seed(self.seed)
 
         shape = (
@@ -31,9 +30,7 @@ class LatentsNode(Node):
             self.width // self.vae_scale_factor,
         )
 
-        latents = randn_tensor(
-            shape, generator=generator, device=self.device, dtype=self.torch_dtype
-        )
+        latents = randn_tensor(shape, generator=generator, device=self.device, dtype=self.torch_dtype)
 
         self.values["latents"] = latents
         self.values["generator"] = generator

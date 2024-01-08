@@ -115,6 +115,7 @@ class ImageArtisanNodeGraph:
                 try:
                     self.executing_node = node
                     node()
+                    node.updated = False
                 except KeyError as e:
                     raise KeyError("KeyError occurred in node: " + str(e)) from e
 

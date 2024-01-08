@@ -36,8 +36,6 @@ class T2IAdapterModelNode(Node):
         self.path = node_dict["path"]
 
     def __call__(self) -> T2IAdapter:
-        super().__call__()
-
         device = "cpu" if self.sequential_offload or self.cpu_offload else self.device
 
         t2i_adapter_model = T2IAdapter.from_pretrained(

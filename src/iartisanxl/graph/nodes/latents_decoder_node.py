@@ -11,7 +11,6 @@ class LatentsDecoderNode(Node):
     OUTPUTS = ["image"]
 
     def __call__(self):
-        super().__call__()
         image = None
 
         needs_upcasting = self.vae.config.force_upcast and self.vae.dtype == torch.float16

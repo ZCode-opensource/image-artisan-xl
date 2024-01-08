@@ -65,8 +65,6 @@ class ImageLoadNode(Node):
         self.noise = node_dict["noise"]
 
     def __call__(self):
-        super().__call__()
-
         if self.image is None:
             pil_image = Image.open(self.path)
         else:

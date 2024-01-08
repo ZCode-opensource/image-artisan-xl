@@ -94,8 +94,6 @@ class StableDiffusionXLModelNode(Node):
         self.model_type = node_dict["model_type"]
 
     def __call__(self):
-        super().__call__()
-
         device = "cpu" if self.sequential_offload or self.cpu_offload else self.device
 
         if not self.single_checkpoint and os.path.isdir(self.path):

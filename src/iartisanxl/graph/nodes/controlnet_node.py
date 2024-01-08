@@ -45,8 +45,6 @@ class ControlnetNode(Node):
         self.guidance_end = node_dict["guidance_end"]
 
     def __call__(self):
-        super().__call__()
-
         if not self.enabled:
             self.conditioning_scale = 0
 

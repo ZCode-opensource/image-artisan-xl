@@ -30,7 +30,6 @@ class SchedulerNode(Node):
         self.scheduler_index = node_dict["scheduler_index"]
 
     def __call__(self):
-        super().__call__()
         scheduler = self.load_scheduler(self.scheduler_index)
         self.values["scheduler"] = scheduler
         return self.values

@@ -36,8 +36,6 @@ class ControlnetModelNode(Node):
         self.path = node_dict["path"]
 
     def __call__(self) -> ControlNetModel:
-        super().__call__()
-
         device = "cpu" if self.sequential_offload or self.cpu_offload else self.device
 
         controlnet_model = ControlNetModel.from_pretrained(

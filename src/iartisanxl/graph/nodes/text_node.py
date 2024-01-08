@@ -29,7 +29,6 @@ class TextNode(Node):
         self.text = node_dict["text"]
 
     def __call__(self):
-        super().__call__()
         self.values["value"] = self.text
 
         return self.values

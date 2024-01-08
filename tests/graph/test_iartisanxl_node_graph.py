@@ -40,7 +40,6 @@ class MockTextNode(Node):
         self.set_updated()
 
     def __call__(self):
-        super().__call__()
         self.values["text"] = self.text
         return self.values
 
@@ -72,7 +71,6 @@ class MockNumberNode(Node):
         self.set_updated()
 
     def __call__(self):
-        super().__call__()
         self.values["value"] = self.number
         return self.values
 
@@ -83,7 +81,6 @@ class MockSumNumbers(Node):
     OUTPUTS = ["sum_numbers"]
 
     def __call__(self):
-        super().__call__()
         sum_numbers = self.number_one + self.number_two
         if self.number_three is not None:
             sum_numbers += self.number_three
@@ -96,8 +93,6 @@ class MockSumNumbersList(Node):
     OUTPUTS = ["sum_numbers"]
 
     def __call__(self):
-        super().__call__()
-
         sum_numbers = 0
 
         if isinstance(self.numbers, list):
@@ -116,7 +111,6 @@ class MockMaybeSumNumbers(Node):
     OUTPUTS = ["sum_numbers"]
 
     def __call__(self):
-        super().__call__()
         sum_numbers = self.number_one
         if self.number_two is not None:
             sum_numbers += self.number_two
@@ -133,14 +127,12 @@ class MockCycleNode(Node):
         self.value = value
 
     def __call__(self):
-        super().__call__()
         self.values["output_value"] = self.value
         return self.values
 
 
 class MockTimerNode(Node):
     def __call__(self):
-        super().__call__()
         time.sleep(0.1)
 
 
@@ -190,10 +182,7 @@ class TestImageArtisanNodeGraph(unittest.TestCase):
         with self.assertRaises(ValueError) as context:
             self.graph.add_node(mock_node, "mock_node")
 
-        self.assertTrue(
-            "A node with the name mock_node already exists in the graph."
-            in str(context.exception)
-        )
+        self.assertTrue("A node with the name mock_node already exists in the graph." in str(context.exception))
 
     def test_get_node_by_name(self):
         mock_node = MockNode()
@@ -273,10 +262,7 @@ class TestImageArtisanNodeGraph(unittest.TestCase):
         with self.assertRaises(ValueError) as context:
             self.graph()
 
-        self.assertTrue(
-            'The required input "number_two" is not connected in "MockSumNumbers"'
-            in str(context.exception)
-        )
+        self.assertTrue('The required input "number_two" is not connected in "MockSumNumbers"' in str(context.exception))
 
     def test_save_and_load(self):
         # Add nodes to the graph
@@ -759,10 +745,7 @@ class TestImageArtisanNodeGraph(unittest.TestCase):
         with self.assertRaises(ValueError) as context:
             mock_number_node1.connect("value", mock_sum_node, "sum_numbers")
 
-        self.assertTrue(
-            'The input "value" is not present in "MockNumberNode"'
-            in str(context.exception)
-        )
+        self.assertTrue('The input "value" is not present in "MockNumberNode"' in str(context.exception))
 
     def test_graph_cycle_error(self):
         # Create a graph
@@ -1021,9 +1004,7 @@ class TestImageArtisanNodeGraph(unittest.TestCase):
         self.assertEqual(len(nodes), 3)
 
         for node in nodes:
-            assert isinstance(
-                node, MockNode
-            ), f"Node {node.name} is not an instance of MockNode"
+            assert isinstance(node, MockNode), f"Node {node.name} is not an instance of MockNode"
 
     def test_update_on_delete_not_connected(self):
         mock_number_node_one = MockNumberNode(number_value=3)

@@ -98,8 +98,6 @@ class NodeGraphThread(QThread):
         sdxl_model = self.node_graph.get_node_by_name("model")
         prompts_encoder = self.node_graph.get_node_by_name("prompts_encoder")
         image_generation = self.node_graph.get_node_by_name("image_generation")
-        decoder = self.node_graph.get_node_by_name("decoder")
-        image_send = self.node_graph.get_node_by_name("image_send")
 
         # process loras
         lora_scale = self.node_graph.get_node_by_name("lora_scale")
@@ -122,21 +120,12 @@ class NodeGraphThread(QThread):
                 lora.id = lora_node.id
                 image_generation.connect("lora", lora_node, "lora")
                 prompts_encoder.connect("lora", lora_node, "lora")
-
-                # ugly patch while I find why they dont get flagged as updated
-                decoder.updated = True
-                image_send.updated = True
-
         else:
             removed_loras = self.lora_list.get_removed()
 
             if len(removed_loras) > 0:
                 for lora in removed_loras:
                     self.node_graph.delete_node_by_id(lora.id)
-
-                # same as before
-                decoder.updated = True
-                image_send.updated = True
 
             new_loras = self.lora_list.get_added()
 
@@ -152,10 +141,6 @@ class NodeGraphThread(QThread):
                     image_generation.connect("lora", lora_node, "lora")
                     prompts_encoder.connect("lora", lora_node, "lora")
 
-                    # ugly patch while I find why they dont get flagged as updated
-                    decoder.updated = True
-                    image_send.updated = True
-
             modified_loras = self.lora_list.get_modified()
 
             if len(modified_loras) > 0:
@@ -164,10 +149,6 @@ class NodeGraphThread(QThread):
 
                     if lora_node is not None:
                         lora_node.update_lora(lora.weight, lora.enabled)
-
-                        # same as before
-                        decoder.updated = True
-                        image_send.updated = True
 
         self.lora_list.save_state()
         self.lora_list.dropped_image = False
@@ -242,8 +223,6 @@ class NodeGraphThread(QThread):
                     controlnet_node.name = f"controlnet_{controlnet.adapter_type}_{controlnet_node.id}"
                     self.node_graph.add_node(controlnet_image_node, f"control_image_{controlnet_node.id}")
 
-                image_send.updated = True
-
             modified_controlnets = self.controlnet_list.get_modified()
 
             if len(modified_controlnets) > 0:
@@ -254,7 +233,6 @@ class NodeGraphThread(QThread):
                     controlnet_node.update_controlnet(
                         controlnet.conditioning_scale, controlnet.guidance_start, controlnet.guidance_end, controlnet.enabled
                     )
-                image_send.updated = True
 
         removed_controlnets = self.controlnet_list.get_removed()
         if len(removed_controlnets) > 0:
@@ -332,8 +310,6 @@ class NodeGraphThread(QThread):
                     t2i_adapter.id = t2i_adapter_node.id
                     self.node_graph.add_node(t2i_adapter_image_node, f"adapter_image_{t2i_adapter_node.id}")
 
-                image_send.updated = True
-
             modified_t2i_adapters = self.t2i_adapter_list.get_modified()
 
             if len(modified_t2i_adapters) > 0:
@@ -342,8 +318,6 @@ class NodeGraphThread(QThread):
                     t2i_adapter_image_node.update_image(t2i_adapter.annotator_image)
                     t2i_adapter_node = self.node_graph.get_node(t2i_adapter.id)
                     t2i_adapter_node.update_adapter(t2i_adapter.conditioning_scale, t2i_adapter.conditioning_factor, t2i_adapter.enabled)
-
-                image_send.updated = True
 
         removed_t2i_adapters = self.t2i_adapter_list.get_removed()
         if len(removed_t2i_adapters) > 0:
@@ -391,8 +365,6 @@ class NodeGraphThread(QThread):
 
                     ip_adapter.save_image_state()
 
-                image_send.updated = True
-
             modified_ip_adapters = self.ip_adapter_list.get_modified()
 
             if len(modified_ip_adapters) > 0:
@@ -432,8 +404,6 @@ class NodeGraphThread(QThread):
                             self.node_graph.delete_node_by_id(image.node_id)
 
                     ip_adapter.save_image_state()
-
-                image_send.updated = True
 
         removed_ip_adapters = self.ip_adapter_list.get_removed()
         if len(removed_ip_adapters) > 0:

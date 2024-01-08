@@ -41,7 +41,6 @@ class VaeModelNode(Node):
         self.vae_name = node_dict["vae_name"]
 
     def __call__(self) -> AutoencoderKL:
-        super().__call__()
         device = "cpu" if self.sequential_offload or self.cpu_offload else self.device
 
         vae = AutoencoderKL.from_pretrained(

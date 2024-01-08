@@ -39,8 +39,6 @@ class T2IAdapterNode(Node):
         self.conditioning_factor = node_dict["conditioning_factor"]
 
     def __call__(self):
-        super().__call__()
-
         if not self.enabled:
             self.conditioning_scale = 0
 
