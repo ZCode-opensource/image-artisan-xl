@@ -4,7 +4,7 @@ from PyQt6.QtWidgets import QVBoxLayout, QPushButton, QWidget
 
 from iartisanxl.app.event_bus import EventBus
 from iartisanxl.modules.common.panels.base_panel import BasePanel
-from iartisanxl.modules.common.dialogs.controlnet_dialog import ControlNetDialog
+from iartisanxl.modules.common.controlnet.controlnet_dialog import ControlNetDialog
 from iartisanxl.modules.common.controlnet_added_item import ControlNetAddedItem
 from iartisanxl.modules.common.image.image_processor import ImageProcessor
 from iartisanxl.generation.controlnet_data_object import ControlNetDataObject
