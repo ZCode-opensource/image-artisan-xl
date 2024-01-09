@@ -5,13 +5,7 @@ from PIL import Image
 import torch
 
 # import tomesd
-from PyQt6.QtWidgets import (
-    QVBoxLayout,
-    QHBoxLayout,
-    QSpacerItem,
-    QSizePolicy,
-    QProgressBar,
-)
+from PyQt6.QtWidgets import QVBoxLayout, QHBoxLayout, QSpacerItem, QSizePolicy, QProgressBar
 from PyQt6.QtGui import QImage, QPixmap
 from PyQt6.QtCore import QSettings
 
@@ -21,14 +15,14 @@ from iartisanxl.modules.common.image_viewer_simple import ImageViewerSimple
 from iartisanxl.modules.common.prompt_window import PromptWindow
 from iartisanxl.modules.common.panels.generation_panel import GenerationPanel
 from iartisanxl.modules.common.panels.lora_panel import LoraPanel
-from iartisanxl.modules.common.panels.controlnet_panel import ControlNetPanel
+from iartisanxl.modules.common.controlnet.controlnet_panel import ControlNetPanel
 from iartisanxl.modules.common.panels.t2i_panel import T2IPanel
 from iartisanxl.modules.common.ip_adapter.ip_adapter_panel import IPAdapterPanel
 from iartisanxl.menu.right_menu import RightMenu
 from iartisanxl.generation.image_generation_data import ImageGenerationData
 from iartisanxl.generation.lora_list import LoraList
 from iartisanxl.generation.lora_data_object import LoraDataObject
-from iartisanxl.generation.controlnet_data_object import ControlNetDataObject
+from iartisanxl.modules.common.controlnet.controlnet_data_object import ControlNetDataObject
 from iartisanxl.generation.t2i_adapter_data_object import T2IAdapterDataObject
 from iartisanxl.modules.common.ip_adapter.ip_adapter_data_object import IPAdapterDataObject
 from iartisanxl.generation.adapter_list import AdapterList
@@ -141,12 +135,7 @@ class TextToImageModule(BaseModule):
         top_layout.addWidget(self.image_viewer)
         main_layout.addLayout(top_layout)
 
-        spacer = QSpacerItem(
-            5,
-            5,
-            QSizePolicy.Policy.Fixed,
-            QSizePolicy.Policy.Fixed,
-        )
+        spacer = QSpacerItem(5, 5, QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
         main_layout.addSpacerItem(spacer)
 
         self.progress_bar = QProgressBar()
@@ -194,14 +183,8 @@ class TextToImageModule(BaseModule):
     def closeEvent(self, event):
         self.settings.beginGroup("text_to_image")
         self.settings.setValue("right_menu_expanded", self.module_options.get("right_menu_expanded"))
-        self.settings.setValue(
-            "positive_prompt_split",
-            self.module_options.get("positive_prompt_split"),
-        )
-        self.settings.setValue(
-            "negative_prompt_split",
-            self.module_options.get("negative_prompt_split"),
-        )
+        self.settings.setValue("positive_prompt_split", self.module_options.get("positive_prompt_split"))
+        self.settings.setValue("negative_prompt_split", self.module_options.get("negative_prompt_split"))
         self.settings.endGroup()
 
         self.settings.beginGroup("image_generation")
@@ -288,11 +271,7 @@ class TextToImageModule(BaseModule):
 
             for lora in loras:
                 lora_object = LoraDataObject(
-                    name=lora["lora_name"],
-                    filename=lora["name"],
-                    version=lora["version"],
-                    path=lora["path"],
-                    weight=lora["scale"],
+                    name=lora["lora_name"], filename=lora["name"], version=lora["version"], path=lora["path"], weight=lora["scale"]
                 )
                 self.lora_list.add(lora_object)
 
@@ -381,12 +360,7 @@ class TextToImageModule(BaseModule):
             image = Image.fromarray(decoded[0].permute(1, 2, 0).cpu().numpy())
 
             # Convert the image to a QImage
-            qimage = QImage(
-                image.tobytes("raw", "RGB"),
-                image.width,
-                image.height,
-                QImage.Format.Format_RGB888,
-            )
+            qimage = QImage(image.tobytes("raw", "RGB"), image.width, image.height, QImage.Format.Format_RGB888)
 
             # Convert the QImage to a QPixmap
             qpixmap = QPixmap.fromImage(qimage)
@@ -452,11 +426,7 @@ class TextToImageModule(BaseModule):
 
             for lora in loras:
                 lora_object = LoraDataObject(
-                    name=lora["lora_name"],
-                    filename=lora["name"],
-                    version=lora["version"],
-                    path=lora["path"],
-                    weight=lora["scale"],
+                    name=lora["lora_name"], filename=lora["name"], version=lora["version"], path=lora["path"], weight=lora["scale"]
                 )
                 self.lora_list.add(lora_object)
 
