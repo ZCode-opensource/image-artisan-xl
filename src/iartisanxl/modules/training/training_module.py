@@ -233,6 +233,7 @@ class TrainingModule(BaseModule):
         resume_checkpoint_label = QLabel("Resume: ")
         dataset_layout.addWidget(resume_checkpoint_label, 1, 2)
         self.resume_checkpoint_combobox = QComboBox()
+        self.resume_checkpoint_combobox.addItem("start over")
         dataset_layout.addWidget(self.resume_checkpoint_combobox, 1, 3)
         middle_right_layout.addLayout(dataset_layout)
 
