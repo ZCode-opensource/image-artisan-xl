@@ -260,9 +260,10 @@ class DatasetModule(BaseModule):
                 with Image.open(image_path) as img:
                     if img.format != "JPEG":
                         img.save(original_path, "JPEG")
-                        filename = new_filename
                     else:
                         shutil.copy2(image_path, original_path)
+
+                    filename = new_filename
 
                 has_original = True
             else:
