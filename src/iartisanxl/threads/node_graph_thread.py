@@ -173,7 +173,7 @@ class NodeGraphThread(QThread):
                 for controlnet in added_controlnets:
                     controlnet_image_node = ImageLoadNode(path=controlnet.annotator_image)
                     controlnet_node = ControlnetNode(
-                        conditioning_scale=controlnet.conditioning_scale, guidance_start=controlnet.guidance_start, guidance_end=controlnet.guidance_end
+                        controlnet.type_index, controlnet.adapter_type, controlnet.conditioning_scale, controlnet.guidance_start, controlnet.guidance_end
                     )
 
                     controlnet_model_node = self.get_controlnet_model(controlnet.adapter_type)
@@ -189,12 +189,30 @@ class NodeGraphThread(QThread):
 
             if len(modified_controlnets) > 0:
                 for controlnet in modified_controlnets:
+                    controlnet_node = self.node_graph.get_node(controlnet.node_id)
+
+                    if controlnet.type_index != controlnet_node.type_index:
+                        # disconnect old model
+                        controlnet_model_node = self.get_controlnet_model(controlnet_node.adapter_type)
+                        controlnet_node.disconnect("controlnet_model", controlnet_model_node, "controlnet_model")
+
+                        # connect new changed model
+                        controlnet_model_node = self.get_controlnet_model(controlnet.adapter_type)
+                        controlnet_node.connect("controlnet_model", controlnet_model_node, "controlnet_model")
+
+                    # update rest of params
+                    controlnet_node.update_controlnet(
+                        controlnet.type_index,
+                        controlnet.adapter_type,
+                        controlnet.enabled,
+                        controlnet.conditioning_scale,
+                        controlnet.guidance_start,
+                        controlnet.guidance_end,
+                    )
+
+                    # update image
                     control_image_node = self.node_graph.get_node_by_name(f"control_image_{controlnet.node_id}")
                     control_image_node.update_path(controlnet.annotator_image)
-                    controlnet_node = self.node_graph.get_node(controlnet.node_id)
-                    controlnet_node.update_controlnet(
-                        controlnet.conditioning_scale, controlnet.guidance_start, controlnet.guidance_end, controlnet.enabled
-                    )
 
         removed_controlnets = self.controlnet_list.get_removed()
         if len(removed_controlnets) > 0:
