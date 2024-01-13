@@ -2,7 +2,7 @@ import torch
 
 from transformers import CLIPImageProcessor
 from diffusers.models import ImageProjection
-from diffusers.models.attention_processor import IPAdapterAttnProcessor, IPAdapterAttnProcessor2_0, AttnProcessor
+from diffusers.models.attention_processor import IPAdapterAttnProcessor, IPAdapterAttnProcessor2_0, AttnProcessor2_0
 from torchvision import transforms
 import numpy as np
 
@@ -146,7 +146,7 @@ class IPAdapterNode(Node):
     def unload(self):
         self.unet.encoder_hid_proj = None
 
-        processor = AttnProcessor()
+        processor = AttnProcessor2_0()
         self.unet.set_attn_processor(processor)
 
     # formula taken from https://github.com/cubiq/ComfyUI_IPAdapter_plus/blob/main/IPAdapterPlus.py
