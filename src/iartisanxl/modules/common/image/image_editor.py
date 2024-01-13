@@ -1,7 +1,7 @@
 from importlib.resources import files
 
-from PyQt6.QtWidgets import QGraphicsScene, QGraphicsPixmapItem, QGraphicsView, QGraphicsPathItem, QApplication, QMenu, QFileDialog
-from PyQt6.QtCore import Qt, QRectF, QPoint, QTimer, QSize
+from PyQt6.QtWidgets import QGraphicsScene, QGraphicsPixmapItem, QGraphicsView, QGraphicsPathItem, QApplication, QMenu
+from PyQt6.QtCore import Qt, QPoint, QTimer, QSize, pyqtSignal
 from PyQt6.QtGui import QPixmap, QPainter, QPainterPath, QColor, QRadialGradient, QBrush, QPen, QCursor, QGuiApplication, QAction
 from PyQt6.QtSvg import QSvgRenderer
 
@@ -14,31 +14,36 @@ class ImageEditor(QGraphicsView):
     CROSSHAIR_BLACK = files("iartisanxl.theme.cursors").joinpath("crosshair_black.svg")
     CROSSHAIR_WHITE = files("iartisanxl.theme.cursors").joinpath("crosshair_white.svg")
 
-    def __init__(self, parent=None, save_directory=None):
-        super(ImageEditor, self).__init__(parent)
+    image_changed = pyqtSignal()
+    image_moved = pyqtSignal(float, float)
+    image_scaled = pyqtSignal(float)
 
-        self.save_directory = save_directory
-
-        self.original_width = 300
-        self.original_height = 300
-        self.aspect_ratio = 1.0
-
-        self.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
-
-        self._zoom = 0
-        self._empty = True
-        self._scene = QGraphicsScene(0, 0, 0, 0)
-        self._photo = QGraphicsPixmapItem()
-        self._scene.addItem(self._photo)
-        self.setScene(self._scene)
-
-        self.setRenderHint(QPainter.RenderHint.Antialiasing)
-        self.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform)
+    def __init__(self, target_width: int, target_height: int, aspect_ratio: float, save_directory=None):
+        super(ImageEditor, self).__init__()
 
         self.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
 
+        self.save_directory = save_directory
+        self.original_scale = 1.000
+        self.original_x = 0
+        self.original_y = 0
+        self.original_rotation = 0
+
         self.original_pixmap = None
+        self.pixmap_item = None
+        self.target_width = target_width
+        self.target_height = target_height
+        self.aspect_ratio = aspect_ratio
+
+        self.setSceneRect(0, 0, self.target_width, self.target_height)
+
+        self.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
+        self.scene = QGraphicsScene(0, 0, 0, 0)
+        self.setScene(self.scene)
+
+        self.setRenderHint(QPainter.RenderHint.Antialiasing)
+        self.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform)
 
         self.drawing = False
         self.last_point = QPoint()
@@ -63,76 +68,8 @@ class ImageEditor(QGraphicsView):
         self.pressure_timer = QTimer()
         self.pressure_timer.timeout.connect(self.draw)
 
-    def set_original_size(self, width, height):
-        self.original_width = width
-        self.original_height = height
-        self.setSceneRect(0, 0, self.original_width, self.original_height)
-        self.aspect_ratio = float(width) / float(height)
-
     def sizeHint(self):
-        return QSize(self.original_width, self.original_height)
-
-    def set_pixmap(self, pixmap: QPixmap):
-        self.original_pixmap = pixmap
-        self._empty = False
-        self.setDragMode(QGraphicsView.DragMode.NoDrag)
-        self._photo.setPixmap(pixmap)
-        self.update_cursor()
-        self.fit_in_view()
-
-    def set_color_pixmap(self, width, height):
-        # Create a white QPixmap
-        white_pixmap = QPixmap(width, height)
-        white_pixmap.fill(self.brush_color)
-
-        # Set the QPixmap as the photo
-        self.original_pixmap = white_pixmap
-        self._empty = False
-        self.setDragMode(QGraphicsView.DragMode.NoDrag)
-        self._photo.setPixmap(self.original_pixmap)
-        self.update_cursor()
-        self.fit_in_view()
-
-    def set_image_scale(self, scale_factor):
-        if self._photo is not None:
-            self._photo.setTransformOriginPoint(self._photo.boundingRect().center())
-            self._photo.setScale(scale_factor)
-
-    def set_image_x(self, x_position):
-        if self._photo is not None:
-            self._photo.setX(x_position)
-
-    def set_image_y(self, y_position):
-        if self._photo is not None:
-            self._photo.setY(y_position)
-
-    def rotate_image(self, angle):
-        if self._photo is not None:
-            self._photo.setTransformOriginPoint(self._photo.boundingRect().center())
-            self._photo.setRotation(angle)
-
-    def has_photo(self):
-        return not self._empty
-
-    def fit_in_view(self, apply_zoom=True):
-        rect = QRectF(self._photo.pixmap().rect())
-        if not rect.isNull():
-            self.setSceneRect(rect)
-            if self.has_photo():
-                unity = self.transform().mapRect(QRectF(0, 0, 1, 1))
-                self.scale(1 / unity.width(), 1 / unity.height())
-                viewrect = self.viewport().rect()
-                scenerect = self.transform().mapRect(rect)
-                factor = min(
-                    viewrect.width() / scenerect.width(),
-                    viewrect.height() / scenerect.height(),
-                )
-                self.scale(factor, factor)
-                if apply_zoom and self._zoom != 0:
-                    factor = 1.25 if self._zoom > 0 else 0.8
-                    self.scale(factor ** abs(self._zoom), factor ** abs(self._zoom))
-            else:
-                self._zoom = 0
+        return QSize(self.target_width, self.target_height)
 
     def resizeEvent(self, event):
         rect = self.sceneRect()
@@ -140,30 +77,79 @@ class ImageEditor(QGraphicsView):
         self.scale(self.viewport().width() / rect.width(), self.viewport().height() / rect.height())
         super().resizeEvent(event)
 
-    def enterEvent(self, event):
-        self.setFocus()
-        self.drawing = False
-        self.timer.start(100)
-        super().enterEvent(event)
+    def fit_image(self):
+        if self.pixmap_item is not None:
+            pixmap_size = self.pixmap_item.pixmap().size()
 
-    def wheelEvent(self, event):
-        if self.has_photo():
-            if event.modifiers() == Qt.KeyboardModifier.ControlModifier:
-                if event.angleDelta().y() > 0:
-                    factor = 1.25
-                    self._zoom += 1
-                else:
-                    factor = 0.8
-                    self._zoom -= 1
-                if self._zoom > 0:
-                    self.setTransformationAnchor(QGraphicsView.ViewportAnchor.AnchorUnderMouse)
-                    self.scale(factor, factor)
-                elif self._zoom == 0:
-                    self.fit_in_view()
-                else:
-                    self._zoom = 0
-            else:
-                super().wheelEvent(event)
+            # Calculate scale factors for both dimensions, prioritizing height to fill the view
+            width_scale = (self.mapToScene(self.viewport().rect()).boundingRect().width()) / pixmap_size.width()
+            height_scale = (self.mapToScene(self.viewport().rect()).boundingRect().height()) / pixmap_size.height()
+            scale_factor = min(width_scale, height_scale)
+
+            # Scale the image
+            self.set_image_scale(scale_factor)
+
+            # Calculate the new top-left position after scaling
+            scaled_width = pixmap_size.width() * scale_factor
+            scaled_height = pixmap_size.height() * scale_factor
+            width_diff = pixmap_size.width() - scaled_width
+            height_diff = pixmap_size.height() - scaled_height
+
+            new_x = width_diff / 2
+            new_y = height_diff / 2
+
+            # Move the image to the new top-left corner
+            self.pixmap_item.setPos(-new_x, -new_y)
+
+            self.image_scaled.emit(scale_factor)
+            self.image_moved.emit(-new_x, -new_y)
+            self.image_changed.emit()
+
+    def set_image(self, image_path):
+        pixmap = QPixmap(image_path)
+        self.set_pixmap(pixmap)
+
+    def set_pixmap(self, pixmap: QPixmap):
+        if self.pixmap_item is not None:
+            self.scene.removeItem(self.pixmap_item)
+            self.pixmap_item = None
+
+        self.scene.clear()
+
+        self.original_pixmap = pixmap
+
+        self.pixmap_item = QGraphicsPixmapItem(pixmap)
+        self.pixmap_item.setTransformationMode(Qt.TransformationMode.SmoothTransformation)
+        self.pixmap_item.setZValue(0)
+        self.scene.addItem(self.pixmap_item)
+        self.update_cursor()
+
+    def set_color_pixmap(self, width, height):
+        color_pixmap = QPixmap(width, height)
+        color_pixmap.fill(self.brush_color)
+        self.set_pixmap(color_pixmap)
+
+    def set_image_scale(self, scale_factor):
+        if self.pixmap_item is not None:
+            self.pixmap_item.setTransformOriginPoint(self.pixmap_item.boundingRect().center())
+            self.pixmap_item.setScale(scale_factor)
+            self.image_changed.emit()
+
+    def set_image_x(self, x_position):
+        if self.pixmap_item is not None:
+            self.pixmap_item.setX(x_position)
+            self.image_changed.emit()
+
+    def set_image_y(self, y_position):
+        if self.pixmap_item is not None:
+            self.pixmap_item.setY(y_position)
+            self.image_changed.emit()
+
+    def rotate_image(self, angle):
+        if self.pixmap_item is not None:
+            self.pixmap_item.setTransformOriginPoint(self.pixmap_item.boundingRect().center())
+            self.pixmap_item.setRotation(angle)
+            self.image_changed.emit()
 
     def mousePressEvent(self, event):
         if event.button() == Qt.MouseButton.LeftButton:
@@ -191,12 +177,13 @@ class ImageEditor(QGraphicsView):
             brush = QBrush(gradient)
 
             path_item = QGraphicsPathItem()
+            path_item.setZValue(1)
             path_item.setBrush(brush)
             path_item.setPen(QPen(Qt.GlobalColor.transparent))
             path = QPainterPath()
             path.addEllipse(self.last_point, self.brush_size / 2, self.brush_size / 2)
             path_item.setPath(path)
-            self._scene.addItem(path_item)
+            self.scene.addItem(path_item)
             self.current_drawing.append(path_item)
 
             self.last_point = current_point
@@ -225,7 +212,7 @@ class ImageEditor(QGraphicsView):
             path = QPainterPath()
             path.addEllipse(self.last_point, self.brush_size / 2, self.brush_size / 2)
             path_item.setPath(path)
-            self._scene.addItem(path_item)
+            self.scene.addItem(path_item)
             self.current_drawing.append(path_item)
 
     def mouseReleaseEvent(self, event):
@@ -237,6 +224,7 @@ class ImageEditor(QGraphicsView):
             self.current_drawing = []
             self.pressure_timer.stop()
             self.timer.start(100)
+            self.image_changed.emit()
         else:
             super().mouseReleaseEvent(event)
 
@@ -266,50 +254,39 @@ class ImageEditor(QGraphicsView):
             drawing = self.undo_stack.pop()
             redo_drawing = []
             for path_item in drawing:
-                self._scene.removeItem(path_item)
+                self.scene.removeItem(path_item)
                 redo_drawing.append(path_item)
 
             self.redo_stack.append(redo_drawing)
+            self.image_changed.emit()
 
     def redo(self):
         if self.redo_stack:
             drawing = self.redo_stack.pop()
             undo_drawing = []
             for path_item in drawing:
-                self._scene.addItem(path_item)
+                self.scene.addItem(path_item)
                 undo_drawing.append(path_item)
             self.undo_stack.append(undo_drawing)
+            self.image_changed.emit()
 
     def clear_and_restore(self):
-        self._scene.clear()
+        self.scene.clear()
         self.undo_stack.clear()
         self.redo_stack.clear()
         original_image_item = QGraphicsPixmapItem(self.original_pixmap)
-        self._photo = original_image_item
-        self._scene.addItem(original_image_item)
+        self.pixmap_item = original_image_item
+        self.scene.addItem(original_image_item)
 
     def clear(self):
-        self._scene.clear()
+        self.scene.clear()
         self.undo_stack.clear()
         self.redo_stack.clear()
         original_image_item = QGraphicsPixmapItem()
-        self._photo = original_image_item
-        self._scene.addItem(original_image_item)
+        self.pixmap_item = original_image_item
+        self.scene.addItem(original_image_item)
 
         self.original_pixmap = None
-        self._empty = True
-
-    def get_painted_pixmap(self):
-        pixmap = QPixmap(self.original_width, self.original_height)
-        painter = QPainter(pixmap)
-        self.render(painter)
-        painter.end()
-
-        return pixmap
-
-    def get_painted_image(self):
-        pixmap = self.get_painted_pixmap()
-        return pixmap.toImage()
 
     def create_cursor(self, svg_path, use_crosshair):
         # Check if we should use the crosshair cursor
@@ -333,7 +310,8 @@ class ImageEditor(QGraphicsView):
 
     def update_cursor(self):
         # Check if the zoom factor is less than 7 and the brush size is smaller than 15
-        use_crosshair = self._zoom < 7 and self.brush_size < 15
+        # use_crosshair = self._zoom < 7 and self.brush_size < 15
+        use_crosshair = False
 
         # Determine the color of the cursor
         bg_color = self.get_color_under_cursor()
@@ -374,18 +352,6 @@ class ImageEditor(QGraphicsView):
     def dropEvent(self, event):
         pass
 
-    def paste_image(self):
-        clipboard = QApplication.clipboard()
-        pixmap = clipboard.pixmap()
-        if not pixmap.isNull():
-            self.set_pixmap(pixmap)
-
-    def copy_image(self):
-        if self._photo is not None:
-            pixmap = self.get_painted_pixmap()
-            clipboard = QApplication.clipboard()
-            clipboard.setPixmap(pixmap)
-
     def contextMenuEvent(self, event):
         context_menu = QMenu(self)
 
@@ -403,14 +369,34 @@ class ImageEditor(QGraphicsView):
 
         context_menu.exec(event.globalPos())
 
+    def paste_image(self):
+        clipboard = QApplication.clipboard()
+        pixmap = clipboard.pixmap()
+        if not pixmap.isNull():
+            self.set_pixmap(pixmap)
+
+    def copy_image(self):
+        pass
+
     def save_image(self):
-        if self._photo is not None:
-            file_dialog = QFileDialog()
-            export_path, _ = file_dialog.getSaveFileName(self, "Save image", self.save_directory, "Images (*.png *.jpg)")
+        pass
 
-            if export_path:
-                if "." not in export_path:
-                    export_path += ".png"
+    def get_layer(self, layer_z):
+        layer_items = [item for item in self.scene.items() if item.zValue() == layer_z]
 
-                pixmap = self.get_painted_pixmap()
-                pixmap.save(export_path)
+        layer_scene = QGraphicsScene()
+        layer_scene.setSceneRect(0, 0, self.target_width, self.target_height)
+        for item in layer_items:
+            layer_scene.addItem(item)
+
+        layer_pixmap = QPixmap(self.target_width, self.target_height)
+        layer_pixmap.fill(Qt.GlobalColor.transparent)
+
+        painter = QPainter(layer_pixmap)
+        layer_scene.render(painter)
+        painter.end()
+
+        for item in layer_items:
+            self.scene.addItem(item)
+
+        return layer_pixmap

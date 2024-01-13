@@ -1,13 +1,13 @@
 import torch
 
 from PyQt6.QtWidgets import QVBoxLayout, QPushButton, QWidget
+from PyQt6.QtGui import QPixmap
 
 from iartisanxl.app.event_bus import EventBus
 from iartisanxl.modules.common.panels.base_panel import BasePanel
 from iartisanxl.modules.common.controlnet.controlnet_dialog import ControlNetDialog
-from iartisanxl.modules.common.controlnet_added_item import ControlNetAddedItem
-from iartisanxl.modules.common.image.image_processor import ImageProcessor
-from iartisanxl.generation.controlnet_data_object import ControlNetDataObject
+from iartisanxl.modules.common.controlnet.controlnet_added_item import ControlNetAddedItem
+from iartisanxl.modules.common.controlnet.controlnet_data_object import ControlNetDataObject
 
 
 class ControlNetPanel(BasePanel):
@@ -64,8 +64,8 @@ class ControlNetPanel(BasePanel):
 
     def on_controlnet(self, data):
         if data["action"] == "add":
-            controlnet_id = self.controlnet_list.add(data["controlnet"])
-            data["controlnet"].controlnet_id = controlnet_id
+            adapter_id = self.controlnet_list.add(data["controlnet"])
+            data["controlnet"].adapter_id = adapter_id
             controlnet_widget = ControlNetAddedItem(data["controlnet"])
             controlnet_widget.remove_clicked.connect(self.on_remove_clicked)
             controlnet_widget.edit_clicked.connect(self.on_edit_clicked)
@@ -78,11 +78,10 @@ class ControlNetPanel(BasePanel):
                 widget = self.controlnets_layout.itemAt(i).widget()
                 if widget.controlnet.adapter_id == controlnet.adapter_id:
                     widget.enabled_checkbox.setText(controlnet.adapter_type)
-                    image_processor = ImageProcessor()
-                    image_processor.set_pillow_image(controlnet.source_image_thumb)
-                    widget.source_thumb.setPixmap(image_processor.get_qpixmap())
-                    image_processor.set_pillow_image(controlnet.annotator_image_thumb)
-                    widget.annotator_thumb.setPixmap(image_processor.get_qpixmap())
+                    source_thumb_pixmap = QPixmap(controlnet.source_image_thumb)
+                    widget.source_thumb.setPixmap(source_thumb_pixmap)
+                    annotator_thumb_pixmap = QPixmap(controlnet.annotator_image_thumb)
+                    widget.annotator_thumb.setPixmap(annotator_thumb_pixmap)
                     widget.controlnet = data["controlnet"]
                     break
 

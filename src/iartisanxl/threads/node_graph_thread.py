@@ -21,6 +21,13 @@ from iartisanxl.graph.nodes.image_encoder_model_node import ImageEncoderModelNod
 from iartisanxl.graph.nodes.ip_adapter_model_node import IPAdapterModelNode
 from iartisanxl.graph.nodes.ip_adapter_node import IPAdapterNode
 
+controlnet_dict = {
+    "controlnet_canny_model": "controlnet-canny-sdxl-1.0-small",
+    "controlnet_depth_model": "controlnet-depth-sdxl-1.0-small",
+    "controlnet_pose_model": "controlnet-openpose-sdxl-1.0",
+    "controlnet_inpaint_model": "controlnet-inpaint-dreamer-sdxl",
+}
+
 ip_adapter_dict = {
     "ip_adapter_vit_h": "ip-adapter_sdxl_vit-h.safetensors",
     "ip_adapter_plus": "ip-adapter-plus_sdxl_vit-h.safetensors",
@@ -155,71 +162,26 @@ class NodeGraphThread(QThread):
 
         # process controlnets
         controlnet_types = self.controlnet_list.get_used_types()
-        controlnet_canny_model = None
-        controlnet_depth_model = None
-        controlnet_pose_model = None
 
         for controlnet_type in controlnet_types:
-            if controlnet_type == "Canny":
-                controlnet_canny_model = self.node_graph.get_node_by_name("controlnet_canny_model")
-
-                if controlnet_canny_model is None:
-                    controlnet_canny_model = ControlnetModelNode(path=os.path.join(self.directories.models_controlnets, "controlnet-canny-sdxl-1.0-small"))
-                    self.node_graph.add_node(controlnet_canny_model, "controlnet_canny_model")
-            elif controlnet_type == "Depth Midas":
-                controlnet_depth_model = self.node_graph.get_node_by_name("controlnet_depth_model")
-
-                if controlnet_depth_model is None:
-                    controlnet_depth_model = ControlnetModelNode(path=os.path.join(self.directories.models_controlnets, "controlnet-depth-sdxl-1.0-small"))
-                    self.node_graph.add_node(controlnet_depth_model, "controlnet_depth_model")
-            elif controlnet_type == "Depth Zoe":
-                controlnet_depth_zoe_model = self.node_graph.get_node_by_name("controlnet_depth_zoe_model")
-
-                if controlnet_depth_zoe_model is None:
-                    controlnet_depth_zoe_model = ControlnetModelNode(
-                        path=os.path.join(self.directories.models_controlnets, "controlnet-zoe-depth-sdxl-1.0")
-                    )
-                    self.node_graph.add_node(controlnet_depth_zoe_model, "controlnet_depth_zoe_model")
-            elif controlnet_type == "Pose":
-                controlnet_pose_model = self.node_graph.get_node_by_name("controlnet_pose_model")
-
-                if controlnet_pose_model is None:
-                    controlnet_pose_model = ControlnetModelNode(path=os.path.join(self.directories.models_controlnets, "controlnet-openpose-sdxl-1.0"))
-                    self.node_graph.add_node(controlnet_pose_model, "controlnet_pose_model")
-            elif controlnet_type == "Inpaint":
-                controlnet_inpaint_model = self.node_graph.get_node_by_name("controlnet_inpaint_model")
-
-                if controlnet_inpaint_model is None:
-                    controlnet_inpaint_model = ControlnetModelNode(
-                        path=os.path.join(self.directories.models_controlnets, "controlnet-inpaint-dreamer-sdxl")
-                    )
-                    self.node_graph.add_node(controlnet_inpaint_model, "controlnet_inpaint_model")
+            self.get_controlnet_model(controlnet_type)
 
         if len(self.controlnet_list.adapters) > 0:
             added_controlnets = self.controlnet_list.get_added()
 
             if len(added_controlnets) > 0:
                 for controlnet in added_controlnets:
-                    controlnet_image_node = ImageLoadNode(image=controlnet.annotator_image)
+                    controlnet_image_node = ImageLoadNode(path=controlnet.annotator_image)
                     controlnet_node = ControlnetNode(
                         conditioning_scale=controlnet.conditioning_scale, guidance_start=controlnet.guidance_start, guidance_end=controlnet.guidance_end
                     )
 
-                    if controlnet.adapter_type == "Canny":
-                        controlnet_node.connect("controlnet_model", controlnet_canny_model, "controlnet_model")
-                    elif controlnet.adapter_type == "Depth Midas":
-                        controlnet_node.connect("controlnet_model", controlnet_depth_model, "controlnet_model")
-                    elif controlnet.adapter_type == "Depth Zoe":
-                        controlnet_node.connect("controlnet_model", controlnet_depth_zoe_model, "controlnet_model")
-                    elif controlnet.adapter_type == "Pose":
-                        controlnet_node.connect("controlnet_model", controlnet_pose_model, "controlnet_model")
-                    elif controlnet.adapter_type == "Inpaint":
-                        controlnet_node.connect("controlnet_model", controlnet_inpaint_model, "controlnet_model")
-
+                    controlnet_model_node = self.get_controlnet_model(controlnet.adapter_type)
+                    controlnet_node.connect("controlnet_model", controlnet_model_node, "controlnet_model")
                     controlnet_node.connect("image", controlnet_image_node, "image")
                     image_generation.connect("controlnet", controlnet_node, "controlnet")
                     self.node_graph.add_node(controlnet_node)
-                    controlnet.id = controlnet_node.id
+                    controlnet.node_id = controlnet_node.id
                     controlnet_node.name = f"controlnet_{controlnet.adapter_type}_{controlnet_node.id}"
                     self.node_graph.add_node(controlnet_image_node, f"control_image_{controlnet_node.id}")
 
@@ -227,9 +189,9 @@ class NodeGraphThread(QThread):
 
             if len(modified_controlnets) > 0:
                 for controlnet in modified_controlnets:
-                    control_image_node = self.node_graph.get_node_by_name(f"control_image_{controlnet.id}")
-                    control_image_node.update_image(controlnet.annotator_image)
-                    controlnet_node = self.node_graph.get_node(controlnet.id)
+                    control_image_node = self.node_graph.get_node_by_name(f"control_image_{controlnet.node_id}")
+                    control_image_node.update_path(controlnet.annotator_image)
+                    controlnet_node = self.node_graph.get_node(controlnet.node_id)
                     controlnet_node.update_controlnet(
                         controlnet.conditioning_scale, controlnet.guidance_start, controlnet.guidance_end, controlnet.enabled
                     )
@@ -237,9 +199,9 @@ class NodeGraphThread(QThread):
         removed_controlnets = self.controlnet_list.get_removed()
         if len(removed_controlnets) > 0:
             for controlnet in removed_controlnets:
-                control_image_node = self.node_graph.get_node_by_name(f"control_image_{controlnet.id}")
+                control_image_node = self.node_graph.get_node_by_name(f"control_image_{controlnet.node_id}")
                 self.node_graph.delete_node_by_id(control_image_node.id)
-                self.node_graph.delete_node_by_id(controlnet.id)
+                self.node_graph.delete_node_by_id(controlnet.node_id)
 
         self.controlnet_list.save_state()
         self.controlnet_list.dropped_image = False
@@ -466,6 +428,17 @@ class NodeGraphThread(QThread):
         self.lora_list = None
         self.controlnet_list = None
         self.t2i_adapter_list = None
+
+    def get_controlnet_model(self, controlnet_type):
+        controlnet_model_node = self.node_graph.get_node_by_name(controlnet_type)
+
+        if controlnet_model_node is None:
+            controlnet_model_path = controlnet_dict.get(controlnet_type, "")
+
+            controlnet_model_node = ControlnetModelNode(path=os.path.join(self.directories.models_controlnets, controlnet_model_path))
+            self.node_graph.add_node(controlnet_model_node, controlnet_type)
+
+        return controlnet_model_node
 
     def get_ip_adapter_model(self, ip_adapter_type):
         ip_adapter_model_node = self.node_graph.get_node_by_name(ip_adapter_type)

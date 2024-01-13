@@ -1,8 +1,8 @@
-from PyQt6.QtWidgets import QVBoxLayout, QHBoxLayout, QLabel, QWidget, QPushButton, QSpacerItem, QSizePolicy
-from PyQt6.QtCore import Qt
+from PyQt6.QtWidgets import QVBoxLayout, QHBoxLayout, QLabel, QWidget, QPushButton, QSpacerItem, QSizePolicy, QFileDialog
+from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import QImageReader, QPixmap
 
-from iartisanxl.modules.common.image_editor import ImageEditor
+from iartisanxl.modules.common.image.image_editor import ImageEditor
 from iartisanxl.modules.common.image_viewer_simple import ImageViewerSimple
 from iartisanxl.modules.common.image_control import ImageControl
 from iartisanxl.generation.image_generation_data import ImageGenerationData
@@ -10,21 +10,17 @@ from iartisanxl.layouts.aspect_ratio_layout import AspectRatioLayout
 
 
 class ControlImageWidget(QWidget):
-    def __init__(
-        self,
-        text: str,
-        image_viewer: ImageViewerSimple,
-        image_generation_data: ImageGenerationData,
-        *args,
-        **kwargs,
-    ):
+    image_loaded = pyqtSignal()
+    image_changed = pyqtSignal()
+
+    def __init__(self, text: str, image_viewer: ImageViewerSimple, image_generation_data: ImageGenerationData, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
         self.setObjectName("control_image_widget")
         self.text = text
         self.image_viewer = image_viewer
         self.image_generation_data = image_generation_data
-        self.image_path = ""
+        self.image_path = None
 
         self.setAcceptDrops(True)
 
@@ -54,12 +50,14 @@ class ControlImageWidget(QWidget):
         top_layout.addWidget(current_image_button)
         load_image_button = QPushButton("Load")
         load_image_button.setToolTip("Load an image from your computer.")
+        load_image_button.clicked.connect(self.on_load_image)
         top_layout.addWidget(load_image_button)
         main_layout.addLayout(top_layout)
 
         image_widget = QWidget()
-        self.image_editor = ImageEditor()
-        self.image_editor.set_original_size(self.editor_width, self.editor_height)
+        self.image_editor = ImageEditor(self.editor_width, self.editor_height, self.aspect_ratio)
+        self.image_editor.image_changed.connect(self.on_image_changed)
+        self.image_editor.image_scaled.connect(self.update_image_scale)
         editor_layout = AspectRatioLayout(image_widget, self.aspect_ratio)
         editor_layout.addWidget(self.image_editor)
         image_widget.setLayout(editor_layout)
@@ -104,6 +102,9 @@ class ControlImageWidget(QWidget):
         current_image_button.clicked.connect(self.set_current_image)
         blank_image_button.clicked.connect(self.set_color_image)
 
+    def update_image_scale(self, scale: float):
+        self.image_scale_control.set_value(scale)
+
     def on_reset_image(self):
         self.image_scale_control.reset()
         self.image_x_pos_control.reset()
@@ -134,16 +135,31 @@ class ControlImageWidget(QWidget):
                 self.image_path = path
                 pixmap = QPixmap(self.image_path)
                 self.image_editor.set_pixmap(pixmap)
+                self.image_loaded.emit()
+
+    def on_load_image(self):
+        options = QFileDialog.Options()
+        options |= QFileDialog.ReadOnly
+        image_path, _ = QFileDialog.getOpenFileName(self, "Load Image", "", "Images (*.png *.jpg)", options=options)
+        if image_path:
+            self.image_path = image_path
+            self.clear_image()
+            pixmap = QPixmap(self.image_path)
+            self.image_editor.set_pixmap(pixmap)
+            self.image_loaded.emit()
 
     def set_current_image(self):
         if self.image_viewer.pixmap_item is not None:
+            self.clear_image()
             pixmap = self.image_viewer.pixmap_item.pixmap()
             self.image_editor.set_pixmap(pixmap)
+            self.image_loaded.emit()
 
     def set_color_image(self):
         width = self.image_generation_data.image_width
         height = self.image_generation_data.image_height
         self.image_editor.set_color_pixmap(width, height)
+        self.image_loaded.emit()
 
     def clear_image(self):
         self.image_scale_control.reset()
@@ -151,3 +167,6 @@ class ControlImageWidget(QWidget):
         self.image_y_pos_control.reset()
         self.image_rotation_control.reset()
         self.image_editor.clear()
+
+    def on_image_changed(self):
+        self.image_changed.emit()

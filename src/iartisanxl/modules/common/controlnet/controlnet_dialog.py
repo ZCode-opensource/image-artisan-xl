@@ -1,20 +1,20 @@
-import numpy as np
-import torch
+import os
+import shutil
+from datetime import datetime
 
+import torch
 from PyQt6.QtWidgets import QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QSlider, QComboBox, QWidget
 from PyQt6.QtCore import QSettings, Qt
-from PyQt6.QtGui import QImage, QPixmap
 from superqt import QDoubleRangeSlider, QDoubleSlider
 
 from iartisanxl.app.event_bus import EventBus
 from iartisanxl.buttons.color_button import ColorButton
 from iartisanxl.modules.common.dialogs.base_dialog import BaseDialog
 from iartisanxl.modules.common.dialogs.control_image_widget import ControlImageWidget
-from iartisanxl.generation.controlnet_data_object import ControlNetDataObject
+from iartisanxl.modules.common.controlnet.controlnet_data_object import ControlNetDataObject
 from iartisanxl.modules.common.image.image_processor import ImageProcessor
-from iartisanxl.annotators.openpose.open_pose_detector import OpenPoseDetector
-from iartisanxl.annotators.depth.depth_estimator import DepthEstimator
-from iartisanxl.annotators.canny.canny_edges_detector import CannyEdgesDetector
+from iartisanxl.modules.common.image.image_data_object import ImageDataObject
+from iartisanxl.threads.annotator_thread import AnnotatorThread
 
 
 class ControlNetDialog(BaseDialog):
@@ -33,7 +33,7 @@ class ControlNetDialog(BaseDialog):
 
         self.event_bus = EventBus()
 
-        self.controlnet = None
+        self.controlnet = ControlNetDataObject()
         self.conditioning_scale = 0.50
         self.control_guidance_start = 0.0
         self.control_guidance_end = 1.0
@@ -41,9 +41,11 @@ class ControlNetDialog(BaseDialog):
         self.canny_low = 100
         self.canny_high = 300
 
-        self.canny_detector = None
-        self.depth_estimator = None
-        self.openpose_detector = None
+        self.source_changed = True
+        self.annotating = False
+        self.annotator_thread = None
+        self.source_data = ImageDataObject()
+        self.annotated_data = ImageDataObject()
 
         self.init_ui()
 
@@ -55,10 +57,10 @@ class ControlNetDialog(BaseDialog):
         control_layout.setSpacing(10)
 
         self.annotator_combo = QComboBox()
-        self.annotator_combo.addItem("Canny", "canny")
-        self.annotator_combo.addItem("Depth Midas", "depth")
-        self.annotator_combo.addItem("Pose", "pose")
-        self.annotator_combo.addItem("Inpaint", "inpaint")
+        self.annotator_combo.addItem("Canny", "controlnet_canny_model")
+        self.annotator_combo.addItem("Depth Midas", "controlnet_depth_model")
+        self.annotator_combo.addItem("Pose", "controlnet_pose_model")
+        self.annotator_combo.addItem("Inpaint", "controlnet_inpaint_model")
         self.annotator_combo.currentIndexChanged.connect(self.on_annotator_changed)
         control_layout.addWidget(self.annotator_combo)
 
@@ -160,6 +162,8 @@ class ControlNetDialog(BaseDialog):
 
         source_layout = QVBoxLayout()
         self.source_widget = ControlImageWidget("Source image", self.image_viewer, self.image_generation_data)
+        self.source_widget.image_loaded.connect(lambda: self.on_image_loaded(0))
+        self.source_widget.image_changed.connect(self.on_source_changed)
         source_layout.addWidget(self.source_widget)
         annotate_button = QPushButton("Annotate")
         annotate_button.clicked.connect(self.on_annotate)
@@ -168,6 +172,7 @@ class ControlNetDialog(BaseDialog):
 
         annotator_layout = QVBoxLayout()
         self.annotator_widget = ControlImageWidget("Annotator", self.image_viewer, self.image_generation_data)
+        self.annotator_widget.image_loaded.connect(lambda: self.on_image_loaded(1))
         annotator_layout.addWidget(self.annotator_widget)
 
         self.add_button = QPushButton("Add")
@@ -198,114 +203,140 @@ class ControlNetDialog(BaseDialog):
         self.settings.setValue("geometry", self.saveGeometry())
         self.settings.endGroup()
 
-        self.canny_detector = None
-        self.depth_estimator = None
-        self.openpose_detector = None
-
+        self.annotator_thread = None
         torch.cuda.empty_cache()
         torch.cuda.ipc_collect()
 
         super().closeEvent(event)
 
+    def on_source_changed(self):
+        self.source_changed = True
+
     def on_annotate(self):
-        annotator_index = self.annotator_combo.currentIndex()
+        if not self.annotating:
+            if self.source_data.image_original is None:
+                self.show_error("You must load an image or create a new one to be able to use annotators.")
 
-        if self.source_widget.image_editor.original_pixmap is not None:
-            source_image = self.source_widget.image_editor.get_painted_image()
-            width, height = source_image.width(), source_image.height()
-            ptr = source_image.bits()
-            ptr.setsize(height * width * 4)
-            arr = np.frombuffer(ptr, np.uint8).reshape((height, width, 4))
-            numpy_image = arr[..., :3]
+            self.annotating = True
 
-            annotator_image = None
+            if self.annotated_data.image_filename is not None:
+                os.remove(self.annotated_data.image_filename)
 
-            if annotator_index == 0:
-                if self.canny_detector is None:
-                    self.canny_detector = CannyEdgesDetector()
+            self.source_data.image_scale = self.source_widget.image_scale_control.value
+            self.source_data.image_x_pos = self.source_widget.image_x_pos_control.value
+            self.source_data.image_y_pos = self.source_widget.image_y_pos_control.value
+            self.source_data.image_rotation = self.source_widget.image_rotation_control.value
 
-                annotator_image = self.canny_detector.get_canny_edges(
-                    numpy_image,
-                    self.canny_low,
-                    self.canny_high,
-                    resolution=(
-                        int(self.image_generation_data.image_width * self.annotator_resolution),
-                        int(self.image_generation_data.image_height * self.annotator_resolution),
-                    ),
-                )
-            elif annotator_index == 1:
-                try:
-                    if self.depth_estimator is None:
-                        self.depth_estimator = DepthEstimator(self.depth_type_combo.currentData())
+            resolution = (
+                int(self.image_generation_data.image_width * self.annotator_resolution),
+                int(self.image_generation_data.image_height * self.annotator_resolution),
+            )
 
-                    self.depth_estimator.change_model(self.depth_type_combo.currentData())
-                except OSError:
-                    self.show_error("You need to download the annotators from the downloader menu first.")
-                    return
+            drawings_pixmap = self.source_widget.image_editor.get_layer(1)
 
-                annotator_image = self.depth_estimator.get_depth_map(
-                    numpy_image,
-                    (
-                        int(self.image_generation_data.image_width * self.annotator_resolution),
-                        int(self.image_generation_data.image_height * self.annotator_resolution),
-                    ),
-                )
-            elif annotator_index == 2:
-                try:
-                    if self.openpose_detector is None:
-                        self.openpose_detector = OpenPoseDetector()
-                except FileNotFoundError:
-                    self.show_error("You need to download the annotators from the downloader menu first.")
-                    return
+            self.annotator_thread = AnnotatorThread(
+                self.annotator_combo.currentIndex(),
+                self.source_data,
+                drawings_pixmap,
+                self.source_changed,
+                self.image_generation_data.image_width,
+                self.image_generation_data.image_height,
+                resolution,
+                self.canny_low,
+                self.canny_high,
+                self.depth_type_combo.currentData(),
+            )
+            self.annotator_thread.finished.connect(self.on_annotated)
+            self.annotator_thread.start()
 
-                annotator_image = self.openpose_detector.get_open_pose(
-                    numpy_image,
-                    (
-                        int(self.image_generation_data.image_width * self.annotator_resolution),
-                        int(self.image_generation_data.image_height * self.annotator_resolution),
-                    ),
-                )
+    def on_annotated(self):
+        self.controlnet.source_image = self.source_data.image_filename
+        self.controlnet.source_image_thumb = self.source_data.image_thumb
 
-            if annotator_image is not None:
-                qimage = QImage(
-                    annotator_image.tobytes(),
-                    annotator_image.shape[1],
-                    annotator_image.shape[0],
-                    QImage.Format.Format_RGB888,
-                )
-                pixmap = QPixmap.fromImage(qimage)
-                self.annotator_widget.image_editor.set_pixmap(pixmap)
+        pixmap = self.annotator_thread.annotator_pixmap
+        self.annotator_widget.image_editor.set_pixmap(pixmap)
+        self.source_changed = False
+        self.annotating = False
+
+    def on_image_loaded(self, image_type: int):
+        # types: 0 - source, 1 - annotator
+        timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+
+        if image_type == 0:
+            if self.source_data.image_original is not None:
+                os.remove(self.source_data.image_original)
+                os.remove(self.source_data.image_thumb)
+
+            original_filename = f"cn_{timestamp}_original.png"
+            original_path = os.path.join("tmp/", original_filename)
+
+            if self.source_widget.image_path is not None:
+                shutil.copy2(self.source_widget.image_path, original_path)
+            else:
+                # If there is no path in the widget, in means its a blank, so we need to create the image
+                pixmap = self.image_viewer.pixmap_item.pixmap()
+                original_filename = f"cn_{timestamp}_original.png"
+                original_path = os.path.join("tmp/", original_filename)
+                pixmap.save(original_path)
+
+            self.source_data.image_original = original_path
+        else:
+            # the annotator doesn't have a original, its just the annotated image
+            if self.annotated_data.image_filename is not None:
+                os.remove(self.annotated_data.image_filename)
+
+            annotated_filename = f"cn_{timestamp}_annotated.png"
+            annotated_path = os.path.join("tmp/", annotated_filename)
+
+            if self.annotator_widget.image_path is not None:
+                shutil.copy2(self.source_widget.image_path, annotated_path)
+            else:
+                # If there is no path in the widget, in means its a blank, so we need to create the image
+                pass
+
+            self.annotated_data.image_filename = annotated_path
 
     def on_controlnet_added(self):
-        if self.controlnet is None:
-            self.controlnet = ControlNetDataObject(
-                adapter_type=self.annotator_combo.currentText(),
-                enabled=True,
-                guess_mode=False,
-                conditioning_scale=round(self.conditioning_scale, 2),
-                guidance_start=self.control_guidance_start,
-                guidance_end=self.control_guidance_end,
-                type_index=self.annotator_combo.currentIndex(),
-                canny_low=self.canny_low,
-                canny_high=self.canny_high,
-            )
-        else:
-            self.controlnet.adapter_type = self.annotator_combo.currentText()
-            self.controlnet.conditioning_scale = round(self.conditioning_scale, 2)
-            self.controlnet.guidance_start = self.control_guidance_start
-            self.controlnet.guidance_end = self.control_guidance_end
+        self.controlnet.adapter_name = self.annotator_combo.currentText()
+        self.controlnet.adapter_type = self.annotator_combo.currentData()
+        self.controlnet.type_index = self.annotator_combo.currentIndex()
+        self.controlnet.conditioning_scale = round(self.conditioning_scale, 2)
+        self.controlnet.guidance_start = self.control_guidance_start
+        self.controlnet.guidance_end = self.control_guidance_end
+        self.controlnet.canny_low = self.canny_low
+        self.controlnet.canny_high = self.canny_high
 
-        source_image = ImageProcessor()
-        source_qimage = self.source_widget.image_editor.get_painted_image()
-        source_image.set_qimage(source_qimage)
-        self.controlnet.source_image_thumb = source_image.get_pillow_thumbnail(target_height=80)
-        self.controlnet.source_image = source_image.get_pillow_image()
+        resolution = (
+            int(self.image_generation_data.image_width * self.annotator_resolution),
+            int(self.image_generation_data.image_height * self.annotator_resolution),
+        )
 
-        annotator_image = ImageProcessor()
-        annotator_qimage = self.annotator_widget.image_editor.get_painted_image()
-        annotator_image.set_qimage(annotator_qimage)
-        self.controlnet.annotator_image_thumb = annotator_image.get_pillow_thumbnail(target_height=80)
-        self.controlnet.annotator_image = annotator_image.get_pillow_image()
+        drawings_pixmap = self.source_widget.image_editor.get_layer(1)
+        annotator_drawings_pixmap = self.annotator_widget.image_editor.get_layer(1)
+
+        self.annotator_thread = AnnotatorThread(
+            self.annotator_combo.currentIndex(),
+            self.source_data,
+            drawings_pixmap,
+            self.source_changed,
+            self.image_generation_data.image_width,
+            self.image_generation_data.image_height,
+            resolution,
+            self.canny_low,
+            self.canny_high,
+            self.depth_type_combo.currentData(),
+            save_annotator=True,
+            annotator_drawings=annotator_drawings_pixmap,
+        )
+        self.annotator_thread.finished.connect(self.on_controlnet_image_saved)
+        self.annotator_thread.start()
+
+    def on_controlnet_image_saved(self):
+        if self.controlnet.annotator_image is not None:
+            os.remove(self.controlnet.annotator_image)
+            os.remove(self.controlnet.annotator_image_thumb)
+        self.controlnet.annotator_image = self.annotator_thread.annotator_path
+        self.controlnet.annotator_image_thumb = self.annotator_thread.annotator_thumb_path
 
         if self.controlnet.adapter_id is None:
             self.event_bus.publish("controlnet", {"action": "add", "controlnet": self.controlnet})
