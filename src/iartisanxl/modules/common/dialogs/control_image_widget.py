@@ -38,10 +38,8 @@ class ControlImageWidget(QWidget):
         top_layout = QHBoxLayout()
         source_text_label = QLabel(self.text)
         top_layout.addWidget(source_text_label, alignment=Qt.AlignmentFlag.AlignCenter)
-
-        reset_image_button = QPushButton("Reset")
-        reset_image_button.setToolTip("Reset all modifications of the image including zoom, position and drawing.")
-        top_layout.addWidget(reset_image_button)
+        fit_image_button = QPushButton("Fit")
+        top_layout.addWidget(fit_image_button)
         blank_image_button = QPushButton("Blank")
         blank_image_button.setToolTip("Create a new empty image with the selected color as background.")
         top_layout.addWidget(blank_image_button)
@@ -58,12 +56,16 @@ class ControlImageWidget(QWidget):
         self.image_editor = ImageEditor(self.editor_width, self.editor_height, self.aspect_ratio)
         self.image_editor.image_changed.connect(self.on_image_changed)
         self.image_editor.image_scaled.connect(self.update_image_scale)
+        self.image_editor.image_moved.connect(self.update_image_position)
         editor_layout = AspectRatioLayout(image_widget, self.aspect_ratio)
         editor_layout.addWidget(self.image_editor)
         image_widget.setLayout(editor_layout)
         main_layout.addWidget(image_widget)
 
         image_bottom_layout = QHBoxLayout()
+        reset_image_button = QPushButton("Reset")
+        reset_image_button.setToolTip("Reset all modifications of the image including zoom, position and drawing.")
+        image_bottom_layout.addWidget(reset_image_button)
         undo_button = QPushButton("Undo")
         undo_button.setToolTip("Undo the last drawing.")
         image_bottom_layout.addWidget(undo_button)
@@ -96,14 +98,19 @@ class ControlImageWidget(QWidget):
 
         self.setLayout(main_layout)
 
+        fit_image_button.clicked.connect(self.image_editor.fit_image)
+        blank_image_button.clicked.connect(self.set_color_image)
+        current_image_button.clicked.connect(self.set_current_image)
         reset_image_button.clicked.connect(self.on_reset_image)
         undo_button.clicked.connect(self.image_editor.undo)
         redo_button.clicked.connect(self.image_editor.redo)
-        current_image_button.clicked.connect(self.set_current_image)
-        blank_image_button.clicked.connect(self.set_color_image)
 
     def update_image_scale(self, scale: float):
         self.image_scale_control.set_value(scale)
+
+    def update_image_position(self, x, y):
+        self.image_x_pos_control.set_value(x)
+        self.image_y_pos_control.set_value(y)
 
     def on_reset_image(self):
         self.image_scale_control.reset()
