@@ -77,7 +77,7 @@ class ControlNetPanel(BasePanel):
             for i in range(self.controlnets_layout.count()):
                 widget = self.controlnets_layout.itemAt(i).widget()
                 if widget.controlnet.adapter_id == controlnet.adapter_id:
-                    widget.enabled_checkbox.setText(controlnet.adapter_type)
+                    widget.enabled_checkbox.setText(controlnet.adapter_name)
                     source_thumb_pixmap = QPixmap(controlnet.source_image_thumb)
                     widget.source_thumb.setPixmap(source_thumb_pixmap)
                     annotator_thumb_pixmap = QPixmap(controlnet.annotator_image_thumb)

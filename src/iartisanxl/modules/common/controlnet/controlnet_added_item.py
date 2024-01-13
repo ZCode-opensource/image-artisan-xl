@@ -21,7 +21,7 @@ class ControlNetAddedItem(QWidget):
 
         upper_layout = QHBoxLayout()
 
-        self.enabled_checkbox = QCheckBox(self.controlnet.adapter_type)
+        self.enabled_checkbox = QCheckBox(self.controlnet.adapter_name)
         self.enabled_checkbox.setChecked(self.controlnet.enabled)
         self.enabled_checkbox.stateChanged.connect(self.on_check_enabled)
         upper_layout.addWidget(self.enabled_checkbox)

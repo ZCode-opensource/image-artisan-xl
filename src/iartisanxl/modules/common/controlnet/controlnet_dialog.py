@@ -58,7 +58,7 @@ class ControlNetDialog(BaseDialog):
 
         self.annotator_combo = QComboBox()
         self.annotator_combo.addItem("Canny", "controlnet_canny_model")
-        self.annotator_combo.addItem("Depth Midas", "controlnet_depth_model")
+        self.annotator_combo.addItem("Depth", "controlnet_depth_model")
         self.annotator_combo.addItem("Pose", "controlnet_pose_model")
         self.annotator_combo.addItem("Inpaint", "controlnet_inpaint_model")
         self.annotator_combo.currentIndexChanged.connect(self.on_annotator_changed)
