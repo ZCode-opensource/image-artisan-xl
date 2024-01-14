@@ -1,7 +1,7 @@
 from importlib.resources import files
 
 from PyQt6.QtWidgets import QGraphicsScene, QGraphicsPixmapItem, QGraphicsView, QGraphicsPathItem, QApplication, QMenu
-from PyQt6.QtCore import Qt, QPoint, QTimer, QSize, pyqtSignal
+from PyQt6.QtCore import Qt, QPoint, QTimer, QSize, pyqtSignal, QLineF
 from PyQt6.QtGui import QPixmap, QPainter, QPainterPath, QColor, QRadialGradient, QBrush, QPen, QCursor, QGuiApplication, QAction
 from PyQt6.QtSvg import QSvgRenderer
 
@@ -51,7 +51,6 @@ class ImageEditor(QGraphicsView):
         self.brush_size = 32
         self.last_cursor_size = None
         self.hardness = 0
-        self.pressure = 0
         self.undo_stack = []
         self.redo_stack = []
         self.current_drawing = []
@@ -64,9 +63,6 @@ class ImageEditor(QGraphicsView):
 
         self.timer = QTimer()
         self.timer.timeout.connect(self.update_cursor)
-
-        self.pressure_timer = QTimer()
-        self.pressure_timer.timeout.connect(self.draw)
 
     def sizeHint(self):
         return QSize(self.target_width, self.target_height)
@@ -151,69 +147,44 @@ class ImageEditor(QGraphicsView):
             self.pixmap_item.setRotation(angle)
             self.image_changed.emit()
 
+    def draw(self, point):
+        gradient = QRadialGradient(point, self.brush_size / 2)
+        gradient.setColorAt(0, QColor(0, 0, 0, 255))  # Inner color (black)
+        gradient.setColorAt(self.hardness, self.brush_color)  # Outer color (black)
+        gradient.setColorAt(1, QColor(0, 0, 0, 0))  # Beyond hardness (transparent)
+        brush = QBrush(gradient)
+
+        path_item = QGraphicsPathItem()
+        path_item.setZValue(1)
+        path_item.setBrush(brush)
+        path_item.setPen(QPen(Qt.GlobalColor.transparent))
+        path = QPainterPath()
+        path.addEllipse(point, self.brush_size / 2, self.brush_size / 2)
+        path_item.setPath(path)
+        self.scene.addItem(path_item)
+        self.current_drawing.append(path_item)
+
     def mousePressEvent(self, event):
-        if event.button() == Qt.MouseButton.LeftButton:
+        if event.button() == Qt.MouseButton.LeftButton and self.pixmap_item:
+            self.timer.stop()
+
             if self.moving:
-                self.timer.stop()
                 self.setDragMode(QGraphicsView.DragMode.ScrollHandDrag)
-                super().mousePressEvent(event)
             else:
-                self.timer.stop()
                 self.drawing = True
-                self.pressure = 0
                 self.last_point = self.mapToScene(event.pos())
-                self.pressure_timer.start(100)
+                self.draw(self.last_point)
+
+            super().mousePressEvent(event)
 
     def mouseMoveEvent(self, event):
-        if (event.buttons() & Qt.MouseButton.LeftButton) and self.drawing:
+        if (event.buttons() & Qt.MouseButton.LeftButton) and self.drawing and self.pixmap_item:
             current_point = self.mapToScene(event.pos())
 
-            hardness = self.hardness * self.pressure
-
-            gradient = QRadialGradient(self.last_point, self.brush_size / 2)
-            gradient.setColorAt(0, QColor(0, 0, 0, 255))  # Inner color (black)
-            gradient.setColorAt(hardness, self.brush_color)  # Outer color (black)
-            gradient.setColorAt(1, QColor(0, 0, 0, 0))  # Beyond hardness (transparent)
-            brush = QBrush(gradient)
-
-            path_item = QGraphicsPathItem()
-            path_item.setZValue(1)
-            path_item.setBrush(brush)
-            path_item.setPen(QPen(Qt.GlobalColor.transparent))
-            path = QPainterPath()
-            path.addEllipse(self.last_point, self.brush_size / 2, self.brush_size / 2)
-            path_item.setPath(path)
-            self.scene.addItem(path_item)
-            self.current_drawing.append(path_item)
-
-            self.last_point = current_point
-
+            if QLineF(current_point, self.last_point).length() > self.brush_size / 4:
+                self.draw(current_point)
+                self.last_point = current_point
         super().mouseMoveEvent(event)
-
-    def draw(self):
-        if self.drawing:
-            # Increase pressure over time
-            self.pressure = min(self.pressure + 0.01, 1)
-
-            # Use pressure to adjust hardness
-            hardness = self.hardness * self.pressure
-
-            # Create a radial gradient as the brush
-            gradient = QRadialGradient(self.last_point, self.brush_size / 2)
-            gradient.setColorAt(0, QColor(0, 0, 0, 255))  # Inner color (black)
-            gradient.setColorAt(hardness, self.brush_color)  # Outer color (black)
-            gradient.setColorAt(1, QColor(0, 0, 0, 0))  # Beyond hardness (transparent)
-            brush = QBrush(gradient)
-
-            # Create a path item with the brush
-            path_item = QGraphicsPathItem()
-            path_item.setBrush(brush)
-            path_item.setPen(QPen(Qt.GlobalColor.transparent))
-            path = QPainterPath()
-            path.addEllipse(self.last_point, self.brush_size / 2, self.brush_size / 2)
-            path_item.setPath(path)
-            self.scene.addItem(path_item)
-            self.current_drawing.append(path_item)
 
     def mouseReleaseEvent(self, event):
         if event.button() == Qt.MouseButton.LeftButton:
@@ -222,7 +193,6 @@ class ImageEditor(QGraphicsView):
             self.update_cursor()
             self.undo_stack.append(self.current_drawing)
             self.current_drawing = []
-            self.pressure_timer.stop()
             self.timer.start(100)
             self.image_changed.emit()
         else:
