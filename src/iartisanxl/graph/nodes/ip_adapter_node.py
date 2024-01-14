@@ -144,10 +144,11 @@ class IPAdapterNode(Node):
             return image_embeds, uncond_image_embeds
 
     def unload(self):
-        self.unet.encoder_hid_proj = None
+        if self.unet is not None:
+            self.unet.encoder_hid_proj = None
 
-        processor = AttnProcessor2_0()
-        self.unet.set_attn_processor(processor)
+            processor = AttnProcessor2_0()
+            self.unet.set_attn_processor(processor)
 
     # formula taken from https://github.com/cubiq/ComfyUI_IPAdapter_plus/blob/main/IPAdapterPlus.py
     def image_add_noise(self, source_image, noise):
