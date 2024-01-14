@@ -367,5 +367,6 @@ class ImageEditor(QGraphicsView):
 
         for item in layer_items:
             self.scene.addItem(item)
+            item.setParentItem(self.pixmap_item)
 
         return layer_pixmap
