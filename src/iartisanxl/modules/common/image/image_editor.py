@@ -73,6 +73,12 @@ class ImageEditor(QGraphicsView):
         self.scale(self.viewport().width() / rect.width(), self.viewport().height() / rect.height())
         super().resizeEvent(event)
 
+    def enterEvent(self, event):
+        self.setFocus()
+        self.drawing = False
+        self.timer.start(100)
+        super().enterEvent(event)
+
     def fit_image(self):
         if self.pixmap_item is not None:
             pixmap_size = self.pixmap_item.pixmap().size()
@@ -154,14 +160,13 @@ class ImageEditor(QGraphicsView):
         gradient.setColorAt(1, QColor(0, 0, 0, 0))  # Beyond hardness (transparent)
         brush = QBrush(gradient)
 
-        path_item = QGraphicsPathItem()
+        path_item = QGraphicsPathItem(self.pixmap_item)
         path_item.setZValue(1)
         path_item.setBrush(brush)
         path_item.setPen(QPen(Qt.GlobalColor.transparent))
         path = QPainterPath()
         path.addEllipse(point, self.brush_size / 2, self.brush_size / 2)
         path_item.setPath(path)
-        self.scene.addItem(path_item)
         self.current_drawing.append(path_item)
 
     def mousePressEvent(self, event):
@@ -172,14 +177,14 @@ class ImageEditor(QGraphicsView):
                 self.setDragMode(QGraphicsView.DragMode.ScrollHandDrag)
             else:
                 self.drawing = True
-                self.last_point = self.mapToScene(event.pos())
+                self.last_point = self.pixmap_item.mapFromScene(self.mapToScene(event.pos()))
                 self.draw(self.last_point)
 
             super().mousePressEvent(event)
 
     def mouseMoveEvent(self, event):
         if (event.buttons() & Qt.MouseButton.LeftButton) and self.drawing and self.pixmap_item:
-            current_point = self.mapToScene(event.pos())
+            current_point = self.pixmap_item.mapFromScene(self.mapToScene(event.pos()))
 
             if QLineF(current_point, self.last_point).length() > self.brush_size / 4:
                 self.draw(current_point)
@@ -279,8 +284,6 @@ class ImageEditor(QGraphicsView):
         return QCursor(pixmap)
 
     def update_cursor(self):
-        # Check if the zoom factor is less than 7 and the brush size is smaller than 15
-        # use_crosshair = self._zoom < 7 and self.brush_size < 15
         use_crosshair = False
 
         # Determine the color of the cursor
