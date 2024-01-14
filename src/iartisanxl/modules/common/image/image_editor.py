@@ -263,17 +263,9 @@ class ImageEditor(QGraphicsView):
 
         self.original_pixmap = None
 
-    def create_cursor(self, svg_path, use_crosshair):
-        # Check if we should use the crosshair cursor
+    def create_cursor(self, svg_path, use_crosshair, pixmap_size):
         if use_crosshair:
-            # If it is, use the last pixmap size
-            pixmap_size = self.last_cursor_size
-        else:
-            zoom_factor = self.transform().m11()
-            # If it's not, calculate the pixmap size
-            pixmap_size = int(self.brush_size * 0.8 * zoom_factor)
-            # Store the calculated pixmap size
-            self.last_cursor_size = pixmap_size
+            pixmap_size *= 10
 
         pixmap = QPixmap(pixmap_size, pixmap_size)
         pixmap.fill(QColor(0, 0, 0, 0))
@@ -284,7 +276,11 @@ class ImageEditor(QGraphicsView):
         return QCursor(pixmap)
 
     def update_cursor(self):
-        use_crosshair = False
+        zoom_factor = self.transform().m11()
+        scale_factor = 1 if self.pixmap_item is None else self.pixmap_item.scale()
+        pixmap_size = int(self.brush_size * 0.8 * zoom_factor * scale_factor)
+
+        use_crosshair = pixmap_size < 6
 
         # Determine the color of the cursor
         bg_color = self.get_color_under_cursor()
@@ -296,7 +292,7 @@ class ImageEditor(QGraphicsView):
         else:
             cursor_type = self.CROSSHAIR_BLACK if use_crosshair else self.BRUSH_BLACK
 
-        self.setCursor(self.create_cursor(str(cursor_type), use_crosshair))
+        self.setCursor(self.create_cursor(str(cursor_type), use_crosshair, pixmap_size))
 
     def get_color_under_cursor(self):
         screen = QGuiApplication.primaryScreen()
