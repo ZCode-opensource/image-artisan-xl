@@ -20,9 +20,7 @@ class ControlNetAddedItem(QWidget):
         main_layout = QVBoxLayout()
 
         upper_layout = QHBoxLayout()
-
-        self.enabled_checkbox = QCheckBox(self.controlnet.adapter_name)
-        self.enabled_checkbox.setChecked(self.controlnet.enabled)
+        self.enabled_checkbox = QCheckBox()
         self.enabled_checkbox.stateChanged.connect(self.on_check_enabled)
         upper_layout.addWidget(self.enabled_checkbox)
 
@@ -40,19 +38,25 @@ class ControlNetAddedItem(QWidget):
         lower_layout.addWidget(edit_button)
         self.source_thumb = QLabel()
         self.source_thumb.setFixedSize(80, 80)
-        source_thumb_pixmap = QPixmap(self.controlnet.source_image_thumb)
-        self.source_thumb.setPixmap(source_thumb_pixmap)
         lower_layout.addWidget(self.source_thumb)
         self.annotator_thumb = QLabel()
         self.annotator_thumb.setFixedSize(80, 80)
-        annotator_thumb_pixmap = QPixmap(self.controlnet.annotator_image_thumb)
-        self.annotator_thumb.setPixmap(annotator_thumb_pixmap)
         lower_layout.addWidget(self.annotator_thumb)
 
         main_layout.addLayout(upper_layout)
         main_layout.addLayout(lower_layout)
 
         self.setLayout(main_layout)
+
+    def update_ui(self):
+        self.enabled_checkbox.setText(self.controlnet.adapter_name)
+        self.enabled_checkbox.setChecked(self.controlnet.enabled)
+
+        source_thumb_pixmap = QPixmap(self.controlnet.source_image.image_thumb)
+        self.source_thumb.setPixmap(source_thumb_pixmap)
+
+        annotator_thumb_pixmap = QPixmap(self.controlnet.annotator_image.image_thumb)
+        self.annotator_thumb.setPixmap(annotator_thumb_pixmap)
 
     def on_check_enabled(self):
         self.enabled.emit(self.controlnet.adapter_id, self.enabled_checkbox.isChecked())

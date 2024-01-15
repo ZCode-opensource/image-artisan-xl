@@ -125,6 +125,7 @@ class ImageEditor(QGraphicsView):
         self.pixmap_item.setZValue(0)
         self.scene.addItem(self.pixmap_item)
         self.update_cursor()
+        self.image_changed.emit()
 
     def set_color_pixmap(self, width, height):
         color_pixmap = QPixmap(width, height)
@@ -257,10 +258,7 @@ class ImageEditor(QGraphicsView):
         self.scene.clear()
         self.undo_stack.clear()
         self.redo_stack.clear()
-        original_image_item = QGraphicsPixmapItem()
-        self.pixmap_item = original_image_item
-        self.scene.addItem(original_image_item)
-
+        self.pixmap_item = None
         self.original_pixmap = None
 
     def create_cursor(self, svg_path, use_crosshair, pixmap_size):
@@ -343,6 +341,7 @@ class ImageEditor(QGraphicsView):
         pixmap = clipboard.pixmap()
         if not pixmap.isNull():
             self.set_pixmap(pixmap)
+            self.image_changed.emit()
 
     def copy_image(self):
         pass

@@ -171,7 +171,7 @@ class NodeGraphThread(QThread):
 
             if len(added_controlnets) > 0:
                 for controlnet in added_controlnets:
-                    controlnet_image_node = ImageLoadNode(path=controlnet.annotator_image)
+                    controlnet_image_node = ImageLoadNode(path=controlnet.annotator_image.image_filename)
                     controlnet_node = ControlnetNode(
                         controlnet.type_index, controlnet.adapter_type, controlnet.conditioning_scale, controlnet.guidance_start, controlnet.guidance_end
                     )
@@ -212,7 +212,7 @@ class NodeGraphThread(QThread):
 
                     # update image
                     control_image_node = self.node_graph.get_node_by_name(f"control_image_{controlnet.node_id}")
-                    control_image_node.update_path(controlnet.annotator_image)
+                    control_image_node.update_path(controlnet.annotator_image.image_filename)
 
         removed_controlnets = self.controlnet_list.get_removed()
         if len(removed_controlnets) > 0:

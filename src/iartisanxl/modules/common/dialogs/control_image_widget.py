@@ -118,6 +118,7 @@ class ControlImageWidget(QWidget):
         self.image_y_pos_control.reset()
         self.image_rotation_control.reset()
         self.image_editor.clear_and_restore()
+        self.image_changed.emit()
 
     def dragEnterEvent(self, event):
         if event.mimeData().hasUrls():
@@ -157,6 +158,7 @@ class ControlImageWidget(QWidget):
 
     def set_current_image(self):
         if self.image_viewer.pixmap_item is not None:
+            self.image_path = None
             self.clear_image()
             pixmap = self.image_viewer.pixmap_item.pixmap()
             self.image_editor.set_pixmap(pixmap)
