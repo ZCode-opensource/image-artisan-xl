@@ -1,9 +1,7 @@
 import torch
 
 from PyQt6.QtWidgets import QVBoxLayout, QPushButton, QWidget
-from PyQt6.QtGui import QPixmap
 
-from iartisanxl.app.event_bus import EventBus
 from iartisanxl.modules.common.panels.base_panel import BasePanel
 from iartisanxl.modules.common.controlnet.controlnet_dialog import ControlNetDialog
 from iartisanxl.modules.common.controlnet.controlnet_added_item import ControlNetAddedItem
@@ -13,9 +11,6 @@ from iartisanxl.modules.common.controlnet.controlnet_data_object import ControlN
 class ControlNetPanel(BasePanel):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.event_bus = EventBus()
-        self.event_bus.subscribe("controlnet", self.on_controlnet)
-        self.controlnets = []
 
         self.init_ui()
         self.update_ui()
@@ -57,33 +52,9 @@ class ControlNetPanel(BasePanel):
         )
 
     def on_dialog_closed(self):
-        self.parent().controlnet_dialog.depth_estimator = None
         self.parent().controlnet_dialog = None
         torch.cuda.empty_cache()
         torch.cuda.ipc_collect()
-
-    def on_controlnet(self, data):
-        if data["action"] == "add":
-            adapter_id = self.controlnet_list.add(data["controlnet"])
-            data["controlnet"].adapter_id = adapter_id
-            controlnet_widget = ControlNetAddedItem(data["controlnet"])
-            controlnet_widget.remove_clicked.connect(self.on_remove_clicked)
-            controlnet_widget.edit_clicked.connect(self.on_edit_clicked)
-            controlnet_widget.enabled.connect(self.on_controlnet_enabled)
-            self.controlnets_layout.addWidget(controlnet_widget)
-        elif data["action"] == "update":
-            controlnet = data["controlnet"]
-            self.controlnet_list.update_with_adapter_data_object(controlnet)
-            for i in range(self.controlnets_layout.count()):
-                widget = self.controlnets_layout.itemAt(i).widget()
-                if widget.controlnet.adapter_id == controlnet.adapter_id:
-                    widget.enabled_checkbox.setText(controlnet.adapter_name)
-                    source_thumb_pixmap = QPixmap(controlnet.source_image_thumb)
-                    widget.source_thumb.setPixmap(source_thumb_pixmap)
-                    annotator_thumb_pixmap = QPixmap(controlnet.annotator_image_thumb)
-                    widget.annotator_thumb.setPixmap(annotator_thumb_pixmap)
-                    widget.controlnet = data["controlnet"]
-                    break
 
     def on_remove_clicked(self, controlnet_widget: ControlNetAddedItem):
         self.controlnet_list.remove(controlnet_widget.controlnet)
@@ -101,10 +72,6 @@ class ControlNetPanel(BasePanel):
         self.parent().controlnet_dialog.controlnet = controlnet
         self.parent().controlnet_dialog.update_ui()
         self.parent().controlnet_dialog.raise_()
-
-    def clean_up(self):
-        self.event_bus.unsubscribe("controlnet", self.on_controlnet)
-        super().clean_up()
 
     def on_controlnet_enabled(self, controlet_id, enabled):
         self.controlnet_list.update_adapter(controlet_id, {"enabled": enabled})

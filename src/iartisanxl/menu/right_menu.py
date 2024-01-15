@@ -1,6 +1,8 @@
 from PyQt6.QtWidgets import QSizePolicy, QHBoxLayout, QVBoxLayout, QFrame
 from PyQt6.QtCore import QPropertyAnimation, QEasingCurve, QTimer
+from PyQt6.QtGui import QPixmap
 
+from iartisanxl.app.event_bus import EventBus
 from iartisanxl.buttons.expand_right_button import ExpandRightButton
 from iartisanxl.buttons.vertical_button import VerticalButton
 from iartisanxl.generation.image_generation_data import ImageGenerationData
@@ -11,6 +13,8 @@ from iartisanxl.app.preferences import PreferencesObject
 from iartisanxl.modules.common.image_viewer_simple import ImageViewerSimple
 from iartisanxl.modules.common.prompt_window import PromptWindow
 from iartisanxl.modules.common.panels.panel_container import PanelContainer
+from iartisanxl.modules.common.controlnet.controlnet_panel import ControlNetPanel
+from iartisanxl.modules.common.controlnet.controlnet_added_item import ControlNetAddedItem
 
 
 class RightMenu(QFrame):
@@ -46,6 +50,9 @@ class RightMenu(QFrame):
         self.image_viewer = image_viewer
         self.prompt_window = prompt_window
         self.show_error = show_error
+
+        self.event_bus = EventBus()
+        self.event_bus.subscribe("controlnet", self.on_controlnet)
 
         self.expanded = self.module_options.get("right_menu_expanded")
         self.animating = False
@@ -184,3 +191,30 @@ class RightMenu(QFrame):
 
     def close_all_dialogs(self):
         self.panel_container.close_all_dialogs()
+
+    def on_controlnet(self, data):
+        if data["action"] == "add":
+            adapter_id = self.controlnet_list.add(data["controlnet"])
+
+            if isinstance(self.current_panel, ControlNetPanel):
+                data["controlnet"].adapter_id = adapter_id
+                controlnet_widget = ControlNetAddedItem(data["controlnet"])
+                controlnet_widget.remove_clicked.connect(self.current_panel.on_remove_clicked)
+                controlnet_widget.edit_clicked.connect(self.current_panel.on_edit_clicked)
+                controlnet_widget.enabled.connect(self.current_panel.on_controlnet_enabled)
+                self.current_panel.controlnets_layout.addWidget(controlnet_widget)
+        elif data["action"] == "update":
+            controlnet = data["controlnet"]
+
+            if isinstance(self.current_panel, ControlNetPanel):
+                self.current_panel.controlnet_list.update_with_adapter_data_object(controlnet)
+                for i in range(self.current_panel.controlnets_layout.count()):
+                    widget = self.current_panel.controlnets_layout.itemAt(i).widget()
+                    if widget.controlnet.adapter_id == controlnet.adapter_id:
+                        widget.enabled_checkbox.setText(controlnet.adapter_name)
+                        source_thumb_pixmap = QPixmap(controlnet.source_image_thumb)
+                        widget.source_thumb.setPixmap(source_thumb_pixmap)
+                        annotator_thumb_pixmap = QPixmap(controlnet.annotator_image_thumb)
+                        widget.annotator_thumb.setPixmap(annotator_thumb_pixmap)
+                        widget.controlnet = data["controlnet"]
+                        break
