@@ -16,14 +16,14 @@ from iartisanxl.modules.common.prompt_window import PromptWindow
 from iartisanxl.modules.common.panels.generation_panel import GenerationPanel
 from iartisanxl.modules.common.panels.lora_panel import LoraPanel
 from iartisanxl.modules.common.controlnet.controlnet_panel import ControlNetPanel
-from iartisanxl.modules.common.panels.t2i_panel import T2IPanel
+from iartisanxl.modules.common.t2i_adapter.t2i_panel import T2IPanel
 from iartisanxl.modules.common.ip_adapter.ip_adapter_panel import IPAdapterPanel
 from iartisanxl.menu.right_menu import RightMenu
 from iartisanxl.generation.image_generation_data import ImageGenerationData
 from iartisanxl.generation.lora_list import LoraList
 from iartisanxl.generation.lora_data_object import LoraDataObject
 from iartisanxl.modules.common.controlnet.controlnet_data_object import ControlNetDataObject
-from iartisanxl.generation.t2i_adapter_data_object import T2IAdapterDataObject
+from iartisanxl.modules.common.t2i_adapter.t2i_adapter_data_object import T2IAdapterDataObject
 from iartisanxl.modules.common.ip_adapter.ip_adapter_data_object import IPAdapterDataObject
 from iartisanxl.generation.adapter_list import AdapterList
 from iartisanxl.generation.model_data_object import ModelDataObject

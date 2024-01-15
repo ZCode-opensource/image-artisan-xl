@@ -28,6 +28,15 @@ controlnet_dict = {
     "controlnet_inpaint_model": "controlnet-inpaint-dreamer-sdxl",
 }
 
+t2i_adapter_dict = {
+    "t2i_adapter_canny_model": "t2i-adapter-canny-sdxl-1.0",
+    "t2i_adapter_depth_model": "t2i-adapter-depth-midas-sdxl-1.0",
+    "t2i_adapter_pose_model": "t2i-adapter-openpose-sdxl-1.0",
+    "t2i_adapter_lineart_model": "t2i-adapter-lineart-sdxl-1.0",
+    "t2i_adapter_sketch_model": "t2i-adapter-sketch-sdxl-1.0",
+}
+
+
 ip_adapter_dict = {
     "ip_adapter_vit_h": "ip-adapter_sdxl_vit-h.safetensors",
     "ip_adapter_plus": "ip-adapter-plus_sdxl_vit-h.safetensors",
@@ -228,76 +237,54 @@ class NodeGraphThread(QThread):
         t2i_adapter_types = self.t2i_adapter_list.get_used_types()
 
         for t2i_adapter_type in t2i_adapter_types:
-            if t2i_adapter_type == "canny":
-                t2i_adapter_canny_model = self.node_graph.get_node_by_name("t2i_adapter_canny_model")
-
-                if t2i_adapter_canny_model is None:
-                    t2i_adapter_canny_model = T2IAdapterModelNode(path=os.path.join(self.directories.models_t2i_adapters, "t2i-adapter-canny-sdxl-1.0"))
-                    self.node_graph.add_node(t2i_adapter_canny_model, "t2i_adapter_canny_model")
-            elif t2i_adapter_type == "depth":
-                t2i_adapter_depth_model = self.node_graph.get_node_by_name("t2i_adapter_depth_model")
-
-                if t2i_adapter_depth_model is None:
-                    t2i_adapter_depth_model = T2IAdapterModelNode(
-                        path=os.path.join(self.directories.models_t2i_adapters, "t2i-adapter-depth-midas-sdxl-1.0")
-                    )
-                    self.node_graph.add_node(t2i_adapter_depth_model, "t2i_adapter_depth_model")
-            elif t2i_adapter_type == "pose":
-                t2i_adapter_pose_model = self.node_graph.get_node_by_name("t2i_adapter_pose_model")
-
-                if t2i_adapter_pose_model is None:
-                    t2i_adapter_pose_model = T2IAdapterModelNode(path=os.path.join(self.directories.models_t2i_adapters, "t2i-adapter-openpose-sdxl-1.0"))
-                    self.node_graph.add_node(t2i_adapter_pose_model, "t2i_adapter_pose_model")
-            elif t2i_adapter_type == "lineart":
-                t2i_adapter_lineart_model = self.node_graph.get_node_by_name("t2i_adapter_lineart_model")
-
-                if t2i_adapter_lineart_model is None:
-                    t2i_adapter_lineart_model = T2IAdapterModelNode(
-                        path=os.path.join(self.directories.models_t2i_adapters, "t2i-adapter-lineart-sdxl-1.0")
-                    )
-                    self.node_graph.add_node(t2i_adapter_lineart_model, "t2i_adapter_lineart_model")
-            elif t2i_adapter_type == "sketch":
-                t2i_adapter_sketch_model = self.node_graph.get_node_by_name("t2i_adapter_sketch_model")
-
-                if t2i_adapter_sketch_model is None:
-                    t2i_adapter_sketch_model = T2IAdapterModelNode(path=os.path.join(self.directories.models_t2i_adapters, "t2i-adapter-sketch-sdxl-1.0"))
-                    self.node_graph.add_node(t2i_adapter_sketch_model, "t2i_adapter_sketch_model")
+            self.get_t2i_adapter_model(t2i_adapter_type)
 
         if len(self.t2i_adapter_list.adapters) > 0:
             added_t2i_adapters = self.t2i_adapter_list.get_added()
 
             if len(added_t2i_adapters) > 0:
                 for t2i_adapter in added_t2i_adapters:
-                    t2i_adapter_image_node = ImageLoadNode(image=t2i_adapter.annotator_image)
+                    t2i_adapter_image_node = ImageLoadNode(path=t2i_adapter.annotator_image.image_filename)
                     t2i_adapter_node = T2IAdapterNode(
-                        conditioning_scale=t2i_adapter.conditioning_scale, conditioning_factor=t2i_adapter.conditioning_factor
+                        t2i_adapter.type_index, t2i_adapter.adapter_type, t2i_adapter.conditioning_scale, t2i_adapter.conditioning_factor
                     )
 
-                    if t2i_adapter.adapter_type == "canny":
-                        t2i_adapter_node.connect("t2i_adapter_model", t2i_adapter_canny_model, "t2i_adapter_model")
-                    elif t2i_adapter.adapter_type == "depth":
-                        t2i_adapter_node.connect("t2i_adapter_model", t2i_adapter_depth_model, "t2i_adapter_model")
-                    elif t2i_adapter.adapter_type == "pose":
-                        t2i_adapter_node.connect("t2i_adapter_model", t2i_adapter_pose_model, "t2i_adapter_model")
-                    elif t2i_adapter.adapter_type == "lineart":
-                        t2i_adapter_node.connect("t2i_adapter_model", t2i_adapter_lineart_model, "t2i_adapter_model")
-                    elif t2i_adapter.adapter_type == "sketch":
-                        t2i_adapter_node.connect("t2i_adapter_model", t2i_adapter_sketch_model, "t2i_adapter_model")
-
+                    t2i_adapter_model_node = self.get_t2i_adapter_model(t2i_adapter.adapter_type)
+                    t2i_adapter_node.connect("t2i_adapter_model", t2i_adapter_model_node, "t2i_adapter_model")
                     t2i_adapter_node.connect("image", t2i_adapter_image_node, "image")
                     image_generation.connect("t2i_adapter", t2i_adapter_node, "t2i_adapter")
                     self.node_graph.add_node(t2i_adapter_node)
-                    t2i_adapter.id = t2i_adapter_node.id
+                    t2i_adapter.node_id = t2i_adapter_node.id
+                    t2i_adapter_node.name = f"t2i_adapter{t2i_adapter.adapter_type}_{t2i_adapter_node.id}"
                     self.node_graph.add_node(t2i_adapter_image_node, f"adapter_image_{t2i_adapter_node.id}")
 
             modified_t2i_adapters = self.t2i_adapter_list.get_modified()
 
             if len(modified_t2i_adapters) > 0:
                 for t2i_adapter in modified_t2i_adapters:
-                    t2i_adapter_image_node = self.node_graph.get_node_by_name(f"adapter_image_{t2i_adapter.id}")
-                    t2i_adapter_image_node.update_image(t2i_adapter.annotator_image)
-                    t2i_adapter_node = self.node_graph.get_node(t2i_adapter.id)
-                    t2i_adapter_node.update_adapter(t2i_adapter.conditioning_scale, t2i_adapter.conditioning_factor, t2i_adapter.enabled)
+                    t2i_adapter_node = self.node_graph.get_node(t2i_adapter.node_id)
+
+                    if t2i_adapter.type_index != t2i_adapter_node.type_index:
+                        # disconnect old model
+                        t2i_adapter_model_node = self.get_t2i_adapter_model(t2i_adapter_node.adapter_type)
+                        t2i_adapter_node.disconnect("t2i_adapter_model", t2i_adapter_model_node, "t2i_adapter_model")
+
+                        # connect new changed model
+                        t2i_adapter_model_node = self.get_t2i_adapter_model(t2i_adapter.adapter_type)
+                        t2i_adapter_node.connect("t2i_adapter_model", t2i_adapter_model_node, "t2i_adapter_model")
+
+                    # update rest of params
+                    t2i_adapter_node.update_adapter(
+                        t2i_adapter.type_index,
+                        t2i_adapter.adapter_type,
+                        t2i_adapter.enabled,
+                        t2i_adapter.conditioning_scale,
+                        t2i_adapter.conditioning_factor,
+                    )
+
+                    # update image
+                    t2i_adapter_image_node = self.node_graph.get_node_by_name(f"adapter_image_{t2i_adapter.node_id}")
+                    t2i_adapter_image_node.update_path(t2i_adapter.annotator_image.image_filename)
 
         removed_t2i_adapters = self.t2i_adapter_list.get_removed()
         if len(removed_t2i_adapters) > 0:
@@ -457,6 +444,17 @@ class NodeGraphThread(QThread):
             self.node_graph.add_node(controlnet_model_node, controlnet_type)
 
         return controlnet_model_node
+
+    def get_t2i_adapter_model(self, adapter_type):
+        t2i_adapter_model_node = self.node_graph.get_node_by_name(adapter_type)
+
+        if t2i_adapter_model_node is None:
+            t2i_adapter_model_path = t2i_adapter_dict.get(adapter_type, "")
+
+            t2i_adapter_model_node = T2IAdapterModelNode(path=os.path.join(self.directories.models_t2i_adapters, t2i_adapter_model_path))
+            self.node_graph.add_node(t2i_adapter_model_node, adapter_type)
+
+        return t2i_adapter_model_node
 
     def get_ip_adapter_model(self, ip_adapter_type):
         ip_adapter_model_node = self.node_graph.get_node_by_name(ip_adapter_type)

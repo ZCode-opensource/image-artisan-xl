@@ -110,6 +110,7 @@ class ControlNetDialog(BaseDialog):
         self.depth_type_combo.addItem("Depth Hybrid Midas", "dpt-hybrid-midas")
         self.depth_type_combo.addItem("Depth BEiT Base 384", "dpt-beit-base-384")
         self.depth_type_combo.addItem("Depth BEiT Large 512", "dpt-beit-large-512")
+        self.depth_type_combo.currentIndexChanged.connect(self.on_annotator_type_changed)
         depth_layout.addWidget(self.depth_type_combo)
         self.depth_widget.setVisible(False)
         second_control_layout.addWidget(self.depth_widget)
@@ -354,6 +355,9 @@ class ControlNetDialog(BaseDialog):
 
         self.annotate = True
 
+    def on_annotator_type_changed(self):
+        self.annotate = True
+
     def on_annotator_resolution_changed(self, value):
         self.controlnet.annotator_resolution = value
         self.annotator_resolution_value_label.setText(f"{int(value * 100)}%")
@@ -371,14 +375,14 @@ class ControlNetDialog(BaseDialog):
         self.annotator_combo.setCurrentIndex(self.controlnet.type_index)
         self.on_annotator_changed()
 
-        if self.controlnet.source_image is not None:
+        if self.controlnet.source_image:
             source_pixmap = QPixmap(self.controlnet.source_image.image_original)
             self.source_widget.image_editor.set_pixmap(source_pixmap)
 
         annotator_pixmap = QPixmap(self.controlnet.annotator_image.image_filename)
         self.annotator_widget.image_editor.set_pixmap(annotator_pixmap)
 
-        if self.controlnet.adapter_id is not None:
+        if self.controlnet.adapter_id:
             self.add_button.setText("Update")
 
     def reset_ui(self):
