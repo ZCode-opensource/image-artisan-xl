@@ -105,7 +105,9 @@ class LoraNode(Node):
     def before_delete(self):
         if self.unet is not None:
             delete_adapter_layers(self.unet, self.adapter_name)
-            self.unet.peft_config.pop(self.adapter_name, None)
+
+            if self.unet.peft_config is not None:
+                self.unet.peft_config.pop(self.adapter_name, None)
 
         if self.text_encoder_1 is not None:
             delete_adapter_layers(self.text_encoder_1, self.adapter_name)
