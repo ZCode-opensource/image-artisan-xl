@@ -17,10 +17,15 @@ class TestMainWindow(unittest.TestCase):
         directories = DirectoriesObject(
             models_diffusers="",
             models_safetensors="",
-            vaes="",
+            models_vaes="",
             models_loras="",
             models_controlnets="",
+            models_t2i_adapters="",
+            models_ip_adapters="",
+            models_upscalers="",
             outputs_images="",
+            outputs_loras="",
+            datasets="",
         )
 
         preferences = PreferencesObject(
@@ -31,6 +36,7 @@ class TestMainWindow(unittest.TestCase):
             save_image_metadata=False,
             save_image_control_annotators=False,
             save_image_control_sources=False,
+            hide_nsfw=False,
         )
 
         self.window = MainWindow(directories, preferences)
@@ -52,9 +58,7 @@ class TestMainWindow(unittest.TestCase):
 
         # Assert the initial module has been replaced
         self.assertEqual(self.window.workspace_layout.count(), 1)
-        self.assertIsNot(
-            self.window.workspace_layout.itemAt(0).widget(), initial_module
-        )
+        self.assertIsNot(self.window.workspace_layout.itemAt(0).widget(), initial_module)
 
     def test_load_module_TypeError(self):
         class MockModule(BaseModule):

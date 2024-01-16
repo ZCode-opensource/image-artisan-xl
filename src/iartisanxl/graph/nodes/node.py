@@ -37,6 +37,9 @@ class Node:
         node.dependents.append(self)
         self.updated = True
 
+        for dependent_node in self.dependents:
+            dependent_node.set_updated()
+
     def disconnect(self, input_name: str, node, output_name: str):
         if input_name in self.connections:
             self.connections[input_name] = [(n, out_name) for n, out_name in self.connections[input_name] if not (n == node and out_name == output_name)]
@@ -86,7 +89,7 @@ class Node:
             raise ValueError(f'The required input "{input_name}" is not connected in "{self.__class__.__name__}"')
 
     def __call__(self):
-        self.updated = False
+        pass
 
     def to_dict(self):
         return {
@@ -104,6 +107,9 @@ class Node:
         return node
 
     def update_inputs(self, node_dict):
+        pass
+
+    def before_delete(self):
         pass
 
     def delete(self):

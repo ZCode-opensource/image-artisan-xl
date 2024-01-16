@@ -54,7 +54,9 @@ class IPAdapterAttnProcessor2_0(torch.nn.Module):
             hidden_states = hidden_states.view(batch_size, channel, height * width).transpose(1, 2)
 
         batch_size, sequence_length, _ = hidden_states.shape if encoder_hidden_states is None else encoder_hidden_states.shape
-        batch_size = 2
+
+        if batch_size > 2:
+            batch_size = 2
 
         if attention_mask is not None:
             attention_mask = attn.prepare_attention_mask(attention_mask, sequence_length, batch_size)

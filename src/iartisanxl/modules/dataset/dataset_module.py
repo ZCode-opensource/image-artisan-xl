@@ -11,7 +11,7 @@ from PyQt6.QtGui import QPixmap
 from PIL import Image
 
 from iartisanxl.modules.base_module import BaseModule
-from iartisanxl.modules.common.dataset_items_view import DatasetItemsView
+from iartisanxl.modules.dataset.dataset_items_view import DatasetItemsView
 from iartisanxl.modules.dataset.image_cropper_widget import ImageCropperWidget
 from iartisanxl.modules.common.prompt_input import PromptInput
 from iartisanxl.threads.generate_captions_thread import GenerateCaptionsThread
@@ -44,6 +44,7 @@ class DatasetModule(BaseModule):
         self.init_ui()
 
         self.fit_button.clicked.connect(self.image_cropper_widget.image_cropper.fit_image)
+        self.reset_button.clicked.connect(self.image_cropper_widget.reset_values)
 
     def init_ui(self):
         super().init_ui()
@@ -86,6 +87,7 @@ class DatasetModule(BaseModule):
         self.aspect_combo.currentIndexChanged.connect(self.on_aspect_change)
         image_top_layout.addWidget(self.aspect_combo)
         self.load_button = QPushButton("Load")
+        self.load_button.clicked.connect(self.on_load_image)
         image_top_layout.addWidget(self.load_button)
         self.fit_button = QPushButton("Fit")
         image_top_layout.addWidget(self.fit_button)
@@ -260,6 +262,8 @@ class DatasetModule(BaseModule):
                         img.save(original_path, "JPEG")
                     else:
                         shutil.copy2(image_path, original_path)
+
+                    filename = new_filename
 
                 has_original = True
             else:
@@ -478,6 +482,17 @@ class DatasetModule(BaseModule):
         self.current_image_path = None
         self.current_caption_path = None
         self.save_button.setText("Save")
+
+    def on_load_image(self):
+        options = QFileDialog.Options()
+        options |= QFileDialog.ReadOnly
+        image_path, _ = QFileDialog.getOpenFileName(self, "Load Image", "", "Images (*.png *.jpg ¨.jpeg *.webp)", options=options)
+        if image_path:
+            self.image_cropper_widget.clear_image()
+            self.image_cropper_widget.image_path = image_path
+            pixmap = QPixmap(self.image_cropper_widget.image_path)
+            self.image_cropper_widget.image_cropper.set_pixmap(pixmap)
+            self.image_loaded = True
 
     def on_image_loaded(self):
         self.image_loaded = True

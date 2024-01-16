@@ -62,12 +62,17 @@ class ImageGenerationNode(Node):
         node.callback = callbacks.get(node_dict["callback"]) if callbacks else None
         return node
 
+    def set_updated(self, *args, **kwargs):
+        super().set_updated(*args, **kwargs)
+
     @torch.inference_mode()
     def __call__(self):
-        super().__call__()
-
         crops_coords_top_left = self.crops_coords_top_left if self.crops_coords_top_left is not None else (0, 0)
         negative_crops_coords_top_left = self.negative_crops_coords_top_left if self.negative_crops_coords_top_left is not None else (0, 0)
+
+        if hasattr(self.unet, "peft_config"):
+            if len(self.unet.peft_config) == 0:
+                del self.unet.peft_config
 
         if self.lora:
             if isinstance(self.lora, list):

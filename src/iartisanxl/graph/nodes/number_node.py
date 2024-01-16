@@ -31,7 +31,6 @@ class NumberNode(Node):
         self.number = node_dict["number"]
 
     def __call__(self):
-        super().__call__()
         self.values["value"] = self.number
 
         return self.values

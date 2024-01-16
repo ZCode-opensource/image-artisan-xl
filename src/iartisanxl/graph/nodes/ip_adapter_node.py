@@ -2,7 +2,7 @@ import torch
 
 from transformers import CLIPImageProcessor
 from diffusers.models import ImageProjection
-from diffusers.models.attention_processor import IPAdapterAttnProcessor, IPAdapterAttnProcessor2_0, AttnProcessor
+from diffusers.models.attention_processor import IPAdapterAttnProcessor, IPAdapterAttnProcessor2_0, AttnProcessor2_0
 from torchvision import transforms
 import numpy as np
 
@@ -49,8 +49,6 @@ class IPAdapterNode(Node):
         self.adapter_scale = node_dict["adapter_scale"]
 
     def __call__(self) -> dict:
-        super().__call__()
-
         if self.enabled:
             self.unet._load_ip_adapter_weights(self.ip_adapter_model)
 
@@ -146,10 +144,11 @@ class IPAdapterNode(Node):
             return image_embeds, uncond_image_embeds
 
     def unload(self):
-        self.unet.encoder_hid_proj = None
+        if self.unet is not None:
+            self.unet.encoder_hid_proj = None
 
-        processor = AttnProcessor()
-        self.unet.set_attn_processor(processor)
+            processor = AttnProcessor2_0()
+            self.unet.set_attn_processor(processor)
 
     # formula taken from https://github.com/cubiq/ComfyUI_IPAdapter_plus/blob/main/IPAdapterPlus.py
     def image_add_noise(self, source_image, noise):

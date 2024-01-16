@@ -21,7 +21,6 @@ class ImageSaveNode(Node):
                 os.makedirs(self.directory)
 
     def __call__(self):
-        super().__call__()
         if self.filename is None:
             timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
             filename = f"{timestamp}.png"

@@ -1,28 +1,26 @@
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QCheckBox, QLabel, QPushButton
 from PyQt6.QtCore import pyqtSignal
+from PyQt6.QtGui import QPixmap
 
-from iartisanxl.generation.t2i_adapter_data_object import T2IAdapterDataObject
+from iartisanxl.modules.common.controlnet.controlnet_data_object import ControlNetDataObject
 from iartisanxl.buttons.remove_button import RemoveButton
-from iartisanxl.modules.common.image.image_processor import ImageProcessor
 
 
-class AdapterAddedItem(QWidget):
+class ControlNetAddedItem(QWidget):
     remove_clicked = pyqtSignal(object)
     edit_clicked = pyqtSignal(object)
     enabled = pyqtSignal(int, bool)
 
-    def __init__(self, adapter: T2IAdapterDataObject, *args, **kwargs):
+    def __init__(self, controlnet: ControlNetDataObject, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.adapter = adapter
+        self.controlnet = controlnet
         self.init_ui()
 
     def init_ui(self):
         main_layout = QVBoxLayout()
 
         upper_layout = QHBoxLayout()
-
-        self.enabled_checkbox = QCheckBox(self.adapter.adapter_type)
-        self.enabled_checkbox.setChecked(self.adapter.enabled)
+        self.enabled_checkbox = QCheckBox()
         self.enabled_checkbox.stateChanged.connect(self.on_check_enabled)
         upper_layout.addWidget(self.enabled_checkbox)
 
@@ -34,21 +32,15 @@ class AdapterAddedItem(QWidget):
         upper_layout.setStretch(0, 1)
         upper_layout.setStretch(1, 0)
 
-        image_processor = ImageProcessor()
-
         lower_layout = QHBoxLayout()
         edit_button = QPushButton("Edit")
-        edit_button.clicked.connect(lambda: self.edit_clicked.emit(self.adapter))
+        edit_button.clicked.connect(lambda: self.edit_clicked.emit(self.controlnet))
         lower_layout.addWidget(edit_button)
         self.source_thumb = QLabel()
         self.source_thumb.setFixedSize(80, 80)
-        image_processor.set_pillow_image(self.adapter.source_image_thumb)
-        self.source_thumb.setPixmap(image_processor.get_qpixmap())
         lower_layout.addWidget(self.source_thumb)
         self.annotator_thumb = QLabel()
         self.annotator_thumb.setFixedSize(80, 80)
-        image_processor.set_pillow_image(self.adapter.annotator_image_thumb)
-        self.annotator_thumb.setPixmap(image_processor.get_qpixmap())
         lower_layout.addWidget(self.annotator_thumb)
 
         main_layout.addLayout(upper_layout)
@@ -56,5 +48,15 @@ class AdapterAddedItem(QWidget):
 
         self.setLayout(main_layout)
 
+    def update_ui(self):
+        self.enabled_checkbox.setText(self.controlnet.adapter_name)
+        self.enabled_checkbox.setChecked(self.controlnet.enabled)
+
+        source_thumb_pixmap = QPixmap(self.controlnet.source_image.image_thumb)
+        self.source_thumb.setPixmap(source_thumb_pixmap)
+
+        annotator_thumb_pixmap = QPixmap(self.controlnet.annotator_image.image_thumb)
+        self.annotator_thumb.setPixmap(annotator_thumb_pixmap)
+
     def on_check_enabled(self):
-        self.enabled.emit(self.adapter.adapter_id, self.enabled_checkbox.isChecked())
+        self.enabled.emit(self.controlnet.adapter_id, self.enabled_checkbox.isChecked())

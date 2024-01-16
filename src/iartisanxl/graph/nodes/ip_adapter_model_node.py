@@ -34,8 +34,6 @@ class IPAdapterModelNode(Node):
         self.path = node_dict["path"]
 
     def __call__(self) -> dict:
-        super().__call__()
-
         state_dict = {"image_proj": {}, "ip_adapter": {}}
         with safe_open(self.path, framework="pt", device="cpu") as model_file:
             for key in model_file.keys():

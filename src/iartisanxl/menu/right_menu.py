@@ -1,6 +1,7 @@
 from PyQt6.QtWidgets import QSizePolicy, QHBoxLayout, QVBoxLayout, QFrame
 from PyQt6.QtCore import QPropertyAnimation, QEasingCurve, QTimer
 
+from iartisanxl.app.event_bus import EventBus
 from iartisanxl.buttons.expand_right_button import ExpandRightButton
 from iartisanxl.buttons.vertical_button import VerticalButton
 from iartisanxl.generation.image_generation_data import ImageGenerationData
@@ -11,6 +12,10 @@ from iartisanxl.app.preferences import PreferencesObject
 from iartisanxl.modules.common.image_viewer_simple import ImageViewerSimple
 from iartisanxl.modules.common.prompt_window import PromptWindow
 from iartisanxl.modules.common.panels.panel_container import PanelContainer
+from iartisanxl.modules.common.controlnet.controlnet_panel import ControlNetPanel
+from iartisanxl.modules.common.controlnet.controlnet_added_item import ControlNetAddedItem
+from iartisanxl.modules.common.t2i_adapter.t2i_panel import T2IPanel
+from iartisanxl.modules.common.t2i_adapter.adapter_added_item import AdapterAddedItem
 
 
 class RightMenu(QFrame):
@@ -46,6 +51,10 @@ class RightMenu(QFrame):
         self.image_viewer = image_viewer
         self.prompt_window = prompt_window
         self.show_error = show_error
+
+        self.event_bus = EventBus()
+        self.event_bus.subscribe("controlnet", self.on_controlnet)
+        self.event_bus.subscribe("t2i_adapters", self.on_t2i_adapters)
 
         self.expanded = self.module_options.get("right_menu_expanded")
         self.animating = False
@@ -184,3 +193,51 @@ class RightMenu(QFrame):
 
     def close_all_dialogs(self):
         self.panel_container.close_all_dialogs()
+
+    def on_controlnet(self, data):
+        if data["action"] == "add":
+            adapter_id = self.controlnet_list.add(data["controlnet"])
+
+            if isinstance(self.current_panel, ControlNetPanel):
+                data["controlnet"].adapter_id = adapter_id
+                controlnet_widget = ControlNetAddedItem(data["controlnet"])
+                controlnet_widget.update_ui()
+                controlnet_widget.remove_clicked.connect(self.current_panel.on_remove_clicked)
+                controlnet_widget.edit_clicked.connect(self.current_panel.on_edit_clicked)
+                controlnet_widget.enabled.connect(self.current_panel.on_controlnet_enabled)
+                self.current_panel.controlnets_layout.addWidget(controlnet_widget)
+        elif data["action"] == "update":
+            controlnet = data["controlnet"]
+            self.controlnet_list.update_with_adapter_data_object(controlnet)
+
+            if isinstance(self.current_panel, ControlNetPanel):
+                for i in range(self.current_panel.controlnets_layout.count()):
+                    widget = self.current_panel.controlnets_layout.itemAt(i).widget()
+                    if widget.controlnet.adapter_id == controlnet.adapter_id:
+                        widget.controlnet = controlnet
+                        widget.update_ui()
+                        break
+
+    def on_t2i_adapters(self, data):
+        if data["action"] == "add":
+            adataper_id = self.t2i_adapter_list.add(data["t2i_adapter"])
+
+            if isinstance(self.current_panel, T2IPanel):
+                data["t2i_adapter"].adapter_id = adataper_id
+                adapter_widget = AdapterAddedItem(data["t2i_adapter"])
+                adapter_widget.update_ui()
+                adapter_widget.remove_clicked.connect(self.current_panel.on_remove_clicked)
+                adapter_widget.edit_clicked.connect(self.current_panel.on_edit_clicked)
+                adapter_widget.enabled.connect(self.current_panel.on_enabled)
+                self.current_panel.adapters_layout.addWidget(adapter_widget)
+        elif data["action"] == "update":
+            adapter = data["t2i_adapter"]
+            self.t2i_adapter_list.update_with_adapter_data_object(adapter)
+
+            if isinstance(self.current_panel, T2IPanel):
+                for i in range(self.current_panel.adapters_layout.count()):
+                    widget = self.current_panel.adapters_layout.itemAt(i).widget()
+                    if widget.adapter.adapter_id == adapter.adapter_id:
+                        widget.adapter = adapter
+                        widget.update_ui()
+                        break

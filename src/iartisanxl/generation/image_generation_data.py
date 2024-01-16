@@ -172,11 +172,7 @@ class ImageGenerationData:
         image_generation.connect("prompt_embeds", prompts_encoder, "prompt_embeds")
         image_generation.connect("guidance_scale", guidance_scale, "value")
         image_generation.connect("negative_prompt_embeds", prompts_encoder, "negative_prompt_embeds")
-        image_generation.connect(
-            "negative_pooled_prompt_embeds",
-            prompts_encoder,
-            "negative_pooled_prompt_embeds",
-        )
+        image_generation.connect("negative_pooled_prompt_embeds", prompts_encoder, "negative_pooled_prompt_embeds")
         image_generation.connect("unet", sdxl_model, "unet")
         image_generation.connect("generator", latents, "generator")
         image_generation.connect("vae_scale_factor", vae_model, "vae_scale_factor")

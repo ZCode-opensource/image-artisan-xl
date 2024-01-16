@@ -209,8 +209,6 @@ class PiDiNet(nn.Module):
         nn.init.constant_(self.classifier.weight, 0.25)
         nn.init.constant_(self.classifier.bias, 0)
 
-        print("initialization done")
-
     def get_weights(self):
         conv_weights = []
         bn_weights = []

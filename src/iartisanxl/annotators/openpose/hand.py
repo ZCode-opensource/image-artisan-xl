@@ -1,6 +1,6 @@
 import cv2
 import numpy as np
-from scipy.ndimage.filters import gaussian_filter
+from scipy.ndimage import gaussian_filter
 import torch
 from skimage.measure import label  # pylint: disable=no-name-in-module
 
