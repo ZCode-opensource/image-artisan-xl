@@ -289,9 +289,9 @@ class NodeGraphThread(QThread):
         removed_t2i_adapters = self.t2i_adapter_list.get_removed()
         if len(removed_t2i_adapters) > 0:
             for t2i_adapter in removed_t2i_adapters:
-                adapter_image_node = self.node_graph.get_node_by_name(f"adapter_image_{t2i_adapter.id}")
+                adapter_image_node = self.node_graph.get_node_by_name(f"adapter_image_{t2i_adapter.node_id}")
                 self.node_graph.delete_node_by_id(adapter_image_node.id)
-                self.node_graph.delete_node_by_id(t2i_adapter.id)
+                self.node_graph.delete_node_by_id(t2i_adapter.node_id)
 
         self.t2i_adapter_list.save_state()
         self.t2i_adapter_list.dropped_image = False
