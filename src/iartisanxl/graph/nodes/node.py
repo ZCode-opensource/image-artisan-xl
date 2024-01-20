@@ -67,9 +67,12 @@ class Node:
         return set(current_connections) != set(new_connections)
 
     def set_updated(self, updated_nodes=None, update_dependents=True):
+        if updated_nodes is None:
+            updated_nodes = set()
+        if self.id in updated_nodes:
+            return
         self.updated = True
-        if updated_nodes is not None:
-            updated_nodes.add(self.id)
+        updated_nodes.add(self.id)
         if update_dependents:
             for dependent in self.dependents:
                 dependent.set_updated(updated_nodes)
