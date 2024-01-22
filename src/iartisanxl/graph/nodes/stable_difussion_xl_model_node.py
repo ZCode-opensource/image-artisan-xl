@@ -1,5 +1,4 @@
 import os
-from types import MethodType
 
 import accelerate
 import torch
@@ -18,7 +17,6 @@ from diffusers.pipelines.stable_diffusion.convert_from_ckpt import (
     convert_ldm_clip_checkpoint,
     convert_open_clip_checkpoint,
 )
-import diffusers.models.attention_processor
 from diffusers.utils.peft_utils import delete_adapter_layers
 from omegaconf import OmegaConf
 from accelerate import init_empty_weights
@@ -28,12 +26,6 @@ from peft.tuners.tuners_utils import BaseTunerLayer
 
 
 from iartisanxl.graph.nodes.node import Node
-from iartisanxl.diffusers_patch.unet import forward
-from iartisanxl.diffusers_patch.ip_adapter_attention_processor import IPAdapterAttnProcessor2_0
-
-
-# monkey patch the ip adapter attention processor
-diffusers.models.attention_processor.IPAdapterAttnProcessor2_0 = IPAdapterAttnProcessor2_0
 
 
 class StableDiffusionXLModelNode(Node):
@@ -196,9 +188,6 @@ class StableDiffusionXLModelNode(Node):
                         value=param,
                         dtype=self.torch_dtype,
                     )
-
-        # monkey path the unet forward method
-        self.values["unet"].forward = MethodType(forward, self.values["unet"])
 
         self.values["num_channels_latents"] = self.values["unet"].config.in_channels
 
