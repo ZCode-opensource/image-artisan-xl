@@ -147,6 +147,7 @@ class IPAdapterDialog(BaseDialog):
         self.image_items_view = IpAdapterImageItemsView(self.adapter)
         self.image_items_view.item_selected.connect(self.on_item_selected)
         self.image_items_view.item_deleted.connect(self.on_item_deleted)
+        self.image_items_view.finished_loading.connect(self.on_images_finished_loading)
         all_images_layout.addWidget(self.image_items_view)
         self.images_view.setLayout(all_images_layout)
         middle_layout.addWidget(self.images_view)
@@ -246,7 +247,7 @@ class IPAdapterDialog(BaseDialog):
         else:
             self.adapter.add_image_data_object(image_data_object)
             image_item = self.image_items_view.add_item_data_object(image_data_object)
-            self.image_items_view.set_current_item(image_item)
+            self.image_items_view.on_item_selected(image_item)
 
         self.image_widget.image_id = image_data_object.id
         self.image_widget.add_image_button.setText("Update image")
@@ -271,6 +272,8 @@ class IPAdapterDialog(BaseDialog):
         self.image_widget.add_image_button.setEnabled(False)
         self.image_widget.delete_image_button.setEnabled(True)
         self.image_widget.new_image_button.setEnabled(True)
+
+        self.dataset_items_count_label.setText(f"{self.image_items_view.current_item_index + 1}/{self.image_items_view.item_count}")
 
     def on_item_deleted(self, image_data: ImageDataObject, clear_view: bool):
         if clear_view:
@@ -302,3 +305,8 @@ class IPAdapterDialog(BaseDialog):
         self.image_items_view.ip_adapter_data = self.adapter
         self.on_adapter_scale_changed(1.0)
         self.adapter_scale_slider.setValue(1.0)
+
+    def on_images_finished_loading(self):
+        self.image_widget.new_image_button.setEnabled(True)
+        self.on_item_selected(self.image_items_view.current_item.widget().image_data)
+        self.dataset_items_count_label.setText(f"{self.image_items_view.current_item_index + 1}/{self.image_items_view.item_count}")
