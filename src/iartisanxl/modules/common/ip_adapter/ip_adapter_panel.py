@@ -1,3 +1,5 @@
+import os
+
 from PyQt6.QtWidgets import QVBoxLayout, QPushButton, QWidget
 
 from iartisanxl.app.event_bus import EventBus
@@ -56,6 +58,17 @@ class IPAdapterPanel(BasePanel):
 
     def on_remove_clicked(self, adapter_widget: IPAdapterAddedItem):
         ip_adapter_id = adapter_widget.adapter.adapter_id
+
+        for image in adapter_widget.adapter.images:
+            if os.path.isfile(image.image_thumb):
+                os.remove(image.image_thumb)
+
+            if os.path.isfile(image.image_filename):
+                os.remove(image.image_filename)
+
+            if os.path.isfile(image.image_original):
+                os.remove(image.image_original)
+
         self.ip_adapter_list.remove(adapter_widget.adapter)
         self.adapters_layout.removeWidget(adapter_widget)
         adapter_widget.deleteLater()
