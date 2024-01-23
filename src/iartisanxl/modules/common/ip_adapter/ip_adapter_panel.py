@@ -1,5 +1,4 @@
 from PyQt6.QtWidgets import QVBoxLayout, QPushButton, QWidget
-from PyQt6.QtGui import QPixmap
 
 from iartisanxl.app.event_bus import EventBus
 from iartisanxl.modules.common.panels.base_panel import BasePanel
@@ -11,7 +10,6 @@ class IPAdapterPanel(BasePanel):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.event_bus = EventBus()
-        self.event_bus.subscribe("ip_adapters", self.on_ip_adapters)
 
         self.init_ui()
         self.update_ui()
@@ -34,46 +32,27 @@ class IPAdapterPanel(BasePanel):
         if len(self.ip_adapter_list.adapters) > 0:
             for adapter in self.ip_adapter_list.adapters:
                 adapter_widget = IPAdapterAddedItem(adapter)
+                adapter_widget.update_ui()
                 adapter_widget.remove_clicked.connect(self.on_remove_clicked)
                 adapter_widget.edit_clicked.connect(self.on_edit_clicked)
                 adapter_widget.enabled.connect(self.on_enabled)
                 self.adapters_layout.addWidget(adapter_widget)
 
     def open_ip_adapter_dialog(self):
-        if self.parent().ip_dialog is None:
-            self.parent().open_dialog(
-                "ip",
-                IPAdapterDialog,
-                self.directories,
-                self.preferences,
-                "IP adapter",
-                self.show_error,
-                self.image_generation_data,
-                self.image_viewer,
-                self.prompt_window,
-            )
-        else:
-            self.parent().ip_dialog.make_new_adapter()
+        self.parent().open_dialog(
+            "ip",
+            IPAdapterDialog,
+            self.directories,
+            self.preferences,
+            "IP adapter",
+            self.show_error,
+            self.image_generation_data,
+            self.image_viewer,
+            self.prompt_window,
+        )
 
-    def on_ip_adapters(self, data):
-        if data["action"] == "add":
-            adataper_id = self.ip_adapter_list.add(data["ip_adapter"])
-            data["ip_adapter"].adapter_id = adataper_id
-            adapter_widget = IPAdapterAddedItem(data["ip_adapter"])
-            adapter_widget.remove_clicked.connect(self.on_remove_clicked)
-            adapter_widget.edit_clicked.connect(self.on_edit_clicked)
-            adapter_widget.enabled.connect(self.on_enabled)
-            self.adapters_layout.addWidget(adapter_widget)
-        elif data["action"] == "update":
-            adapter = data["ip_adapter"]
-            self.t2i_adapter_list.update_with_adapter_data_object(adapter)
-            for i in range(self.adapters_layout.count()):
-                widget = self.adapters_layout.itemAt(i).widget()
-                if widget.adapter.adapter_id == adapter.adapter_id:
-                    widget.enabled_checkbox.setText(adapter.adapter_type)
-                    pixmap = QPixmap(adapter.images[0].image_thumb)
-                    widget.image_thumb.setPixmap(pixmap)
-                    break
+        if self.parent().ip_dialog is not None:
+            self.parent().ip_dialog.make_new_adapter()
 
     def on_remove_clicked(self, adapter_widget: IPAdapterAddedItem):
         ip_adapter_id = adapter_widget.adapter.adapter_id
@@ -94,7 +73,3 @@ class IPAdapterPanel(BasePanel):
 
     def on_enabled(self, adapter_id, enabled):
         self.ip_adapter_list.update_adapter(adapter_id, {"enabled": enabled})
-
-    def clean_up(self):
-        self.event_bus.unsubscribe("ip_adapters", self.on_ip_adapters)
-        super().clean_up()

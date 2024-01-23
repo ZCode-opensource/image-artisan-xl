@@ -16,6 +16,8 @@ from iartisanxl.modules.common.controlnet.controlnet_panel import ControlNetPane
 from iartisanxl.modules.common.controlnet.controlnet_added_item import ControlNetAddedItem
 from iartisanxl.modules.common.t2i_adapter.t2i_panel import T2IPanel
 from iartisanxl.modules.common.t2i_adapter.adapter_added_item import AdapterAddedItem
+from iartisanxl.modules.common.ip_adapter.ip_adapter_panel import IPAdapterPanel
+from iartisanxl.modules.common.ip_adapter.ip_adapter_added_item import IPAdapterAddedItem
 
 
 class RightMenu(QFrame):
@@ -55,6 +57,7 @@ class RightMenu(QFrame):
         self.event_bus = EventBus()
         self.event_bus.subscribe("controlnet", self.on_controlnet)
         self.event_bus.subscribe("t2i_adapters", self.on_t2i_adapters)
+        self.event_bus.subscribe("ip_adapters", self.on_ip_adapters)
 
         self.expanded = self.module_options.get("right_menu_expanded")
         self.animating = False
@@ -220,10 +223,10 @@ class RightMenu(QFrame):
 
     def on_t2i_adapters(self, data):
         if data["action"] == "add":
-            adataper_id = self.t2i_adapter_list.add(data["t2i_adapter"])
+            adapter_id = self.t2i_adapter_list.add(data["t2i_adapter"])
 
             if isinstance(self.current_panel, T2IPanel):
-                data["t2i_adapter"].adapter_id = adataper_id
+                data["t2i_adapter"].adapter_id = adapter_id
                 adapter_widget = AdapterAddedItem(data["t2i_adapter"])
                 adapter_widget.update_ui()
                 adapter_widget.remove_clicked.connect(self.current_panel.on_remove_clicked)
@@ -235,6 +238,30 @@ class RightMenu(QFrame):
             self.t2i_adapter_list.update_with_adapter_data_object(adapter)
 
             if isinstance(self.current_panel, T2IPanel):
+                for i in range(self.current_panel.adapters_layout.count()):
+                    widget = self.current_panel.adapters_layout.itemAt(i).widget()
+                    if widget.adapter.adapter_id == adapter.adapter_id:
+                        widget.adapter = adapter
+                        widget.update_ui()
+                        break
+
+    def on_ip_adapters(self, data):
+        if data["action"] == "add":
+            adapter_id = self.ip_adapter_list.add(data["ip_adapter"])
+
+            if isinstance(self.current_panel, IPAdapterPanel):
+                data["ip_adapter"].adapter_id = adapter_id
+                adapter_widget = IPAdapterAddedItem(data["ip_adapter"])
+                adapter_widget.update_ui()
+                adapter_widget.remove_clicked.connect(self.current_panel.on_remove_clicked)
+                adapter_widget.edit_clicked.connect(self.current_panel.on_edit_clicked)
+                adapter_widget.enabled.connect(self.current_panel.on_enabled)
+                self.current_panel.adapters_layout.addWidget(adapter_widget)
+        elif data["action"] == "update":
+            adapter = data["ip_adapter"]
+            self.ip_adapter_list.update_with_adapter_data_object(adapter)
+
+            if isinstance(self.current_panel, IPAdapterPanel):
                 for i in range(self.current_panel.adapters_layout.count()):
                     widget = self.current_panel.adapters_layout.itemAt(i).widget()
                     if widget.adapter.adapter_id == adapter.adapter_id:

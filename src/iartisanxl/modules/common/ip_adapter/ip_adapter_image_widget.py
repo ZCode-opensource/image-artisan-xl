@@ -11,7 +11,6 @@ from iartisanxl.layouts.aspect_ratio_layout import AspectRatioLayout
 
 class IPAdapterImageWidget(QWidget):
     image_added = pyqtSignal()
-    image_dropped = pyqtSignal()
 
     def __init__(self, text: str, image_viewer: ImageViewerSimple, save_directory: str, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -31,15 +30,13 @@ class IPAdapterImageWidget(QWidget):
 
         self.init_ui()
 
-        self.enable_add_image_button()
-
     def init_ui(self):
         main_layout = QVBoxLayout()
         main_layout.setContentsMargins(0, 0, 0, 0)
         main_layout.setSpacing(0)
 
         top_layout = QHBoxLayout()
-        top_layout.setContentsMargins(0, 0, 0, 5)
+        top_layout.setContentsMargins(0, 0, 0, 0)
         load_image_button = QPushButton("Load")
         load_image_button.clicked.connect(self.on_load_image)
         top_layout.addWidget(load_image_button)
@@ -54,6 +51,7 @@ class IPAdapterImageWidget(QWidget):
 
         image_widget = QWidget()
         self.image_editor = ImageAdderPreview(self.editor_width, self.editor_height, self.aspect_ratio, self.save_directory)
+        self.image_editor.image_updated.connect(self.on_image_updated)
         self.image_editor.image_moved.connect(self.update_image_position)
         self.image_editor.image_scaled.connect(self.update_image_scale)
         editor_layout = AspectRatioLayout(image_widget, self.aspect_ratio)
@@ -61,6 +59,7 @@ class IPAdapterImageWidget(QWidget):
         main_layout.addWidget(image_widget)
 
         image_controls_layout = QHBoxLayout()
+        image_controls_layout.setContentsMargins(0, 0, 0, 0)
         self.image_scale_control = ImageControl("Scale: ", 1.0, 3)
         self.image_scale_control.value_changed.connect(self.image_editor.set_image_scale)
         image_controls_layout.addWidget(self.image_scale_control)
@@ -75,37 +74,54 @@ class IPAdapterImageWidget(QWidget):
         image_controls_layout.addWidget(self.image_rotation_control)
         main_layout.addLayout(image_controls_layout)
 
-        images_actions_layout = QHBoxLayout()
-        images_actions_layout.setSpacing(10)
+        image_actions_layout = QHBoxLayout()
+        image_actions_layout.setContentsMargins(0, 0, 0, 0)
+        image_actions_layout.setSpacing(10)
         image_weight_label = QLabel("Image weight:")
-        images_actions_layout.addWidget(image_weight_label)
+        image_actions_layout.addWidget(image_weight_label)
         self.image_weight_slider = QLabeledDoubleSlider(Qt.Orientation.Horizontal)
         self.image_weight_slider.setRange(0.0, 1.0)
         self.image_weight_slider.setValue(1.0)
-        images_actions_layout.addWidget(self.image_weight_slider)
+        self.image_weight_slider.valueChanged.connect(self.on_image_updated)
+        image_actions_layout.addWidget(self.image_weight_slider)
 
         image_noise_label = QLabel("Noise:")
-        images_actions_layout.addWidget(image_noise_label)
+        image_actions_layout.addWidget(image_noise_label)
         self.image_noise_slider = QLabeledDoubleSlider(Qt.Orientation.Horizontal)
         self.image_noise_slider.setRange(0.0, 1.0)
         self.image_noise_slider.setValue(0.0)
-        images_actions_layout.addWidget(self.image_noise_slider)
+        self.image_noise_slider.valueChanged.connect(self.on_image_updated)
+        image_actions_layout.addWidget(self.image_noise_slider)
 
+        image_actions_layout.setStretch(0, 0)
+        image_actions_layout.setStretch(1, 1)
+        image_actions_layout.setStretch(2, 0)
+        image_actions_layout.setStretch(3, 1)
+        main_layout.addLayout(image_actions_layout)
+
+        image_bottom_actions_layout = QHBoxLayout()
+        image_bottom_actions_layout.setContentsMargins(0, 5, 0, 5)
+        self.delete_image_button = QPushButton("Delete image")
+        self.delete_image_button.setObjectName("red_button")
+        self.delete_image_button.setDisabled(True)
+        image_bottom_actions_layout.addWidget(self.delete_image_button)
+        self.new_image_button = QPushButton("New image")
+        self.new_image_button.setObjectName("yellow_button")
+        self.new_image_button.clicked.connect(self.on_new_image)
+        self.new_image_button.setDisabled(True)
+        image_bottom_actions_layout.addWidget(self.new_image_button)
         self.add_image_button = QPushButton("Add image")
+        self.add_image_button.setObjectName("blue_button")
         self.add_image_button.clicked.connect(self.on_add_image)
-        images_actions_layout.addWidget(self.add_image_button)
-
-        images_actions_layout.setStretch(0, 0)
-        images_actions_layout.setStretch(1, 1)
-        images_actions_layout.setStretch(2, 0)
-        images_actions_layout.setStretch(3, 1)
-        images_actions_layout.setStretch(4, 2)
-        main_layout.addLayout(images_actions_layout)
+        self.add_image_button.setDisabled(True)
+        image_bottom_actions_layout.addWidget(self.add_image_button)
+        main_layout.addLayout(image_bottom_actions_layout)
 
         main_layout.setStretch(0, 0)
         main_layout.setStretch(1, 1)
         main_layout.setStretch(2, 0)
         main_layout.setStretch(3, 0)
+        main_layout.setStretch(4, 0)
 
         self.setLayout(main_layout)
 
@@ -137,29 +153,26 @@ class IPAdapterImageWidget(QWidget):
 
         for url in event.mimeData().urls():
             path = url.toLocalFile()
-
             reader = QImageReader(path)
 
             if reader.canRead():
                 self.clear_image()
-                self.image_id = None
-                self.image_path = path
-                pixmap = QPixmap(self.image_path)
-                self.image_editor.set_pixmap(pixmap)
-                self.image_dropped.emit()
+                self.show_image(path)
 
     def on_load_image(self):
         options = QFileDialog.Options()
         options |= QFileDialog.ReadOnly
-        fileName, _ = QFileDialog.getOpenFileName(self, "Load Image", "", "Images (*.png *.jpg)", options=options)
-        if fileName:
+        path, _ = QFileDialog.getOpenFileName(self, "Load Image", "", "Images (*.png *.jpg)", options=options)
+        if path:
             self.clear_image()
-            self.image_id = None
-            self.show_image(fileName)
+            self.show_image(path)
 
     def show_image(self, path):
+        self.image_path = path
         pixmap = QPixmap(path)
         self.image_editor.set_pixmap(pixmap)
+        self.add_image_button.setEnabled(True)
+        self.new_image_button.setEnabled(True)
 
     def reset_values(self):
         self.image_scale_control.reset()
@@ -195,7 +208,6 @@ class IPAdapterImageWidget(QWidget):
             self.image_editor.set_pixmap(pixmap)
 
     def clear_image(self):
-        self.add_image_button.setText("Add image")
         self.image_scale_control.reset()
         self.image_x_pos_control.reset()
         self.image_y_pos_control.reset()
@@ -206,32 +218,17 @@ class IPAdapterImageWidget(QWidget):
 
     def on_add_image(self):
         if self.image_editor.pixmap_item is not None:
-            self.disable_add_image_button()
+            self.add_image_button.setEnabled(False)
             QTimer.singleShot(10, self.image_added.emit)
 
-    def enable_add_image_button(self):
-        self.add_image_button.setStyleSheet(
-            """
-            QPushButton {
-                background-color: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #234a92, stop: 1 #12314e);
-            }
-            QPushButton:hover {
-                background-color: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #2c67b3, stop: 1 #173864);
-            }
-            QPushButton:pressed {
-                background-color: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #357ad4, stop: 1 #1f5088);
-            }             
-            """
-        )
+    def on_image_updated(self):
         self.add_image_button.setEnabled(True)
 
-    def disable_add_image_button(self):
-        self.add_image_button.setStyleSheet(
-            """
-            QPushButton {
-                background-color: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #333333, stop: 1 #1d1d1d);
-            }
-            """
-        )
-
-        self.add_image_button.setEnabled(False)
+    def on_new_image(self):
+        self.image_id = None
+        self.image_path = None
+        self.clear_image()
+        self.add_image_button.setText("Add image")
+        self.add_image_button.setDisabled(True)
+        self.delete_image_button.setDisabled(True)
+        self.new_image_button.setDisabled(True)
