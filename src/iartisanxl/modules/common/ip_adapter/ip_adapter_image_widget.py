@@ -18,7 +18,7 @@ class IPAdapterImageWidget(QWidget):
         self.setObjectName("ip_adapter_image_widget")
         self.text = text
         self.image_viewer = image_viewer
-        self.image_path = ""
+        self.image_path = None
         self.save_directory = save_directory
         self.image_id = None
 

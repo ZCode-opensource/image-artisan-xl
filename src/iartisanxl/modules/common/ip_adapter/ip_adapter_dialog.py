@@ -32,7 +32,13 @@ class ImageProcessThread(QThread):
         if self.image_data_object.id is None or self.image_data_object.replace_original:
             original_filename = f"ip_{timestamp}_original.png"
             original_path = os.path.join("tmp/", original_filename)
-            shutil.copy2(self.image_data_object.image_original, original_path)
+
+            if self.image_data_object.image_original is not None:
+                shutil.copy2(self.image_data_object.image_original, original_path)
+            else:
+                pixmap = self.image_editor.pixmap_item.pixmap()
+                pixmap.save(original_path)
+
             self.image_data_object.image_original = original_path
             self.image_data_object.replace_original = False
 
