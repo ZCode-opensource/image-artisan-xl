@@ -1,25 +1,23 @@
 import torch
-
-from transformers import CLIPImageProcessor
-from diffusers.models import ImageProjection
-from diffusers.models.attention_processor import IPAdapterAttnProcessor, IPAdapterAttnProcessor2_0, AttnProcessor2_0
 from torchvision import transforms
-import numpy as np
+from diffusers.models.embeddings import ImageProjection, IPAdapterFullImageProjection, IPAdapterPlusImageProjection
+from transformers import CLIPImageProcessor
 
 from iartisanxl.graph.nodes.node import Node
 
 
 class IPAdapterNode(Node):
-    REQUIRED_INPUTS = ["unet", "ip_adapter_model", "image_encoder", "image"]
-    OUTPUTS = ["image_embeds", "negative_image_embeds"]
+    REQUIRED_INPUTS = ["ip_adapter_model", "image_encoder", "image"]
+    OUTPUTS = ["ip_adapter"]
 
     def __init__(self, type_index: int, adapter_type: str, adapter_scale: float = None, **kwargs):
         super().__init__(**kwargs)
 
-        self.feature_extractor = CLIPImageProcessor()
         self.type_index = type_index
         self.adapter_type = adapter_type
         self.adapter_scale = adapter_scale
+
+        self.clip_image_processor = CLIPImageProcessor()
 
     def update_adapter(self, type_index: int, adapter_type: str, enabled: bool, adapter_scale: float = None):
         self.type_index = type_index
@@ -49,106 +47,65 @@ class IPAdapterNode(Node):
         self.adapter_scale = node_dict["adapter_scale"]
 
     def __call__(self) -> dict:
-        if self.enabled:
-            self.unet._load_ip_adapter_weights(self.ip_adapter_model)
+        image_projection = self.convert_ip_adapter_image_proj_to_diffusers(self.ip_adapter_model["image_proj"])
+        image_projection.to(device=self.device, dtype=self.torch_dtype)
 
-            for attn_processor in self.unet.attn_processors.values():
-                if isinstance(attn_processor, (IPAdapterAttnProcessor, IPAdapterAttnProcessor2_0)):
-                    attn_processor.scale = self.adapter_scale
+        image = self.image
+        if isinstance(image, dict):
+            image = [image]
 
-            image = self.image
+        output_hidden_states = True
+        if self.type_index == 0:
+            output_hidden_states = False
 
-            if isinstance(image, dict):
-                image = [image]
+        image_prompt_embeds, uncond_image_prompt_embeds = self.get_image_embeds(image, image_projection, output_hidden_states)
 
-            image_embeds, negative_image_embeds = self.encode_image(image)
-
-            self.values["image_embeds"] = image_embeds
-            self.values["negative_image_embeds"] = negative_image_embeds
-        else:
-            self.unload()
-            self.values["image_embeds"] = None
-            self.values["negative_image_embeds"] = None
+        self.values["ip_adapter"] = {
+            "weights": self.ip_adapter_model,
+            "image_prompt_embeds": image_prompt_embeds,
+            "uncond_image_prompt_embeds": uncond_image_prompt_embeds,
+            "scale": self.adapter_scale,
+        }
 
         return self.values
 
-    def encode_image(self, images):
-        transform = transforms.ToTensor()
+    def get_image_embeds(self, images, image_projection, output_hidden_states):
+        image_prompt_embeds, uncond_image_prompt_embeds = [], []
 
-        mean = [0.485, 0.456, 0.406]
-        std = [0.229, 0.224, 0.225]
-        normalize = transforms.Normalize(mean=mean, std=std)
-
-        tensor_images = []
-        neg_tensor_images = []
-        weights = []
-
-        for image_dict in images:
-            image = image_dict.get("image")
-            weight = image_dict.get("weight")
-
-            # formula taken from https://github.com/cubiq/ComfyUI_IPAdapter_plus/blob/main/IPAdapterPlus.py
+        for image in images:
+            weight = image["weight"]
             weight *= 0.1 + (weight - 0.1)
             weight = 1.19e-05 if weight <= 1.19e-05 else weight
 
-            noise = image_dict.get("noise")
+            pil_image = image["image"]
+            tensor_image = self.clip_image_processor(images=pil_image, return_tensors="pt").pixel_values
+            tensor_image = tensor_image.to(self.device, dtype=self.torch_dtype)
 
-            tensor_image = transform(image)
-
-            if image.mode in ("RGBA", "LA") or (image.mode == "P" and "transparency" in image.info):
-                alpha = torch.from_numpy(np.array(image.convert("RGBA").split()[-1])).float()
-                mask = (alpha != 0).float()
-
-                # Apply the mask to the RGB channels of the tensor
-                tensor_image[:3, :, :] *= mask.unsqueeze(0)
-
-            tensor_image = tensor_image[:3, :, :]
-            tensor_image = tensor_image.unsqueeze(0)
-            tensor_image = normalize(tensor_image)
-
-            tensor_image = tensor_image.to(device=self.device, dtype=self.torch_dtype)
-            tensor_images.append(tensor_image)
-            weights.append(weight)
-
-            if noise == 0:
-                neg_tensor_image = torch.zeros_like(tensor_image)
+            if output_hidden_states:
+                image_embeds = self.image_encoder(tensor_image, output_hidden_states=output_hidden_states).hidden_states[-2]
             else:
-                neg_tensor_image = self.image_add_noise(tensor_image, noise)
+                image_embeds = self.image_encoder(tensor_image).image_embeds
 
-            neg_tensor_image = neg_tensor_image.to(device=self.device, dtype=self.torch_dtype)
-            neg_tensor_images.append(neg_tensor_image)
+            image_embeds = image_embeds * weight
+            image_prompt_embeds.append(image_projection(image_embeds))
 
-        tensor_images = torch.cat(tensor_images, dim=0)
-        neg_tensor_images = torch.cat(neg_tensor_images, dim=0)
-        weights = torch.tensor(weights).to(self.device, dtype=self.torch_dtype).view(-1, 1, 1, 1)
-        weighted_tensor_images = tensor_images * weights
-        weighted_neg_tensor_images = neg_tensor_images * weights
+            if image["noise"] > 0:
+                uncond_tensor_image = self.image_add_noise(tensor_image, image["noise"])
+                uncond_tensor_image = uncond_tensor_image.to(self.device, dtype=self.torch_dtype)
 
-        output_hidden_states = False if isinstance(self.unet.encoder_hid_proj, ImageProjection) else True
+                if output_hidden_states:
+                    uncond_image_embeds = self.image_encoder(uncond_tensor_image, output_hidden_states=output_hidden_states).hidden_states[-2]
+                else:
+                    uncond_image_embeds = self.image_encoder(uncond_tensor_image).image_embeds
+            else:
+                if output_hidden_states:
+                    uncond_image_embeds = self.image_encoder(torch.zeros_like(tensor_image), output_hidden_states=output_hidden_states).hidden_states[-2]
+                else:
+                    uncond_image_embeds = torch.zeros_like(image_embeds)
 
-        if output_hidden_states:
-            image_enc_hidden_states = self.image_encoder(weighted_tensor_images, output_hidden_states=True).hidden_states[-2]
-            image_enc_hidden_states = image_enc_hidden_states.repeat_interleave(len(images), dim=0)
+            uncond_image_prompt_embeds.append(image_projection(uncond_image_embeds))
 
-            uncond_image_enc_hidden_states = self.image_encoder(weighted_neg_tensor_images, output_hidden_states=True).hidden_states[-2]
-            uncond_image_enc_hidden_states = uncond_image_enc_hidden_states.repeat_interleave(len(images), dim=0)
-
-            return image_enc_hidden_states, uncond_image_enc_hidden_states
-        else:
-            image_embeds = self.image_encoder(weighted_tensor_images).image_embeds
-            image_embeds = image_embeds.repeat_interleave(len(images), dim=0)
-
-            uncond_image_embeds = self.image_encoder(weighted_neg_tensor_images).image_embeds
-            uncond_image_embeds = uncond_image_embeds.repeat_interleave(len(images), dim=0)
-
-            return image_embeds, uncond_image_embeds
-
-    def unload(self):
-        if self.unet is not None:
-            self.unet.encoder_hid_proj = None
-
-            processor = AttnProcessor2_0()
-            self.unet.set_attn_processor(processor)
+        return torch.cat(image_prompt_embeds, dim=0), torch.cat(uncond_image_prompt_embeds, dim=0)
 
     # formula taken from https://github.com/cubiq/ComfyUI_IPAdapter_plus/blob/main/IPAdapterPlus.py
     def image_add_noise(self, source_image, noise):
@@ -164,3 +121,75 @@ class IPAdapterNode(Node):
         image = transformations(image.cpu())
         image = image + ((0.25 * (1 - noise) + 0.05) * torch.randn_like(image))
         return image
+
+    def convert_ip_adapter_image_proj_to_diffusers(self, state_dict):
+        updated_state_dict = {}
+        image_projection = None
+
+        if "proj.weight" in state_dict:
+            # IP-Adapter
+            num_image_text_embeds = 4
+            clip_embeddings_dim = state_dict["proj.weight"].shape[-1]
+            cross_attention_dim = state_dict["proj.weight"].shape[0] // 4
+
+            image_projection = ImageProjection(
+                cross_attention_dim=cross_attention_dim,
+                image_embed_dim=clip_embeddings_dim,
+                num_image_text_embeds=num_image_text_embeds,
+            )
+
+            for key, value in state_dict.items():
+                diffusers_name = key.replace("proj", "image_embeds")
+                updated_state_dict[diffusers_name] = value
+
+        elif "proj.3.weight" in state_dict:
+            # IP-Adapter Full
+            clip_embeddings_dim = state_dict["proj.0.weight"].shape[0]
+            cross_attention_dim = state_dict["proj.3.weight"].shape[0]
+
+            image_projection = IPAdapterFullImageProjection(cross_attention_dim=cross_attention_dim, image_embed_dim=clip_embeddings_dim)
+
+            for key, value in state_dict.items():
+                diffusers_name = key.replace("proj.0", "ff.net.0.proj")
+                diffusers_name = diffusers_name.replace("proj.2", "ff.net.2")
+                diffusers_name = diffusers_name.replace("proj.3", "norm")
+                updated_state_dict[diffusers_name] = value
+
+        else:
+            # IP-Adapter Plus
+            num_image_text_embeds = state_dict["latents"].shape[1]
+            embed_dims = state_dict["proj_in.weight"].shape[1]
+            output_dims = state_dict["proj_out.weight"].shape[0]
+            hidden_dims = state_dict["latents"].shape[2]
+            heads = state_dict["layers.0.0.to_q.weight"].shape[0] // 64
+
+            image_projection = IPAdapterPlusImageProjection(
+                embed_dims=embed_dims,
+                output_dims=output_dims,
+                hidden_dims=hidden_dims,
+                heads=heads,
+                num_queries=num_image_text_embeds,
+            )
+
+            for key, value in state_dict.items():
+                diffusers_name = key.replace("0.to", "2.to")
+                diffusers_name = diffusers_name.replace("1.0.weight", "3.0.weight")
+                diffusers_name = diffusers_name.replace("1.0.bias", "3.0.bias")
+                diffusers_name = diffusers_name.replace("1.1.weight", "3.1.net.0.proj.weight")
+                diffusers_name = diffusers_name.replace("1.3.weight", "3.1.net.2.weight")
+
+                if "norm1" in diffusers_name:
+                    updated_state_dict[diffusers_name.replace("0.norm1", "0")] = value
+                elif "norm2" in diffusers_name:
+                    updated_state_dict[diffusers_name.replace("0.norm2", "1")] = value
+                elif "to_kv" in diffusers_name:
+                    v_chunk = value.chunk(2, dim=0)
+                    updated_state_dict[diffusers_name.replace("to_kv", "to_k")] = v_chunk[0]
+                    updated_state_dict[diffusers_name.replace("to_kv", "to_v")] = v_chunk[1]
+                elif "to_out" in diffusers_name:
+                    updated_state_dict[diffusers_name.replace("to_out", "to_out.0")] = value
+                else:
+                    updated_state_dict[diffusers_name] = value
+
+        image_projection.load_state_dict(updated_state_dict)
+        return image_projection

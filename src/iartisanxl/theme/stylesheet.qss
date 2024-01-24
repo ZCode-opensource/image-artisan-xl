@@ -291,6 +291,9 @@ QPushButton#red_button:hover {
 QPushButton#red_button:pressed {
     background-color: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #fa3333, stop: 1 #b62828);
 }
+QPushButton#red_button:disabled {
+    background-color: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #741919, stop: 1 #521111);
+}
 
 QPushButton#yellow_button {
     background-color: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #939b22, stop: 1 #77761a);
@@ -301,6 +304,9 @@ QPushButton#yellow_button:hover {
 QPushButton#yellow_button:pressed {
     background-color: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #b1bb28, stop: 1 #a09e23);
 }
+QPushButton#yellow_button:disabled {
+    background-color: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #626816, stop: 1 #3c3f0d);
+}
 
 QPushButton#blue_button {
     background-color: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #22569b, stop: 1 #1a4577);
@@ -310,6 +316,9 @@ QPushButton#blue_button:hover {
 }
 QPushButton#blue_button:pressed {
     background-color: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #2a73d3, stop: 1 #2561af);
+}
+QPushButton#blue_button:disabled {
+    background-color: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #193e6e, stop: 1 #112949);
 }
 
 QLabel#example_prompt_text_label {

@@ -21,8 +21,7 @@ class IPAdapterAddedItem(QWidget):
 
         upper_layout = QHBoxLayout()
 
-        self.enabled_checkbox = QCheckBox(self.adapter.adapter_type)
-        self.enabled_checkbox.setChecked(self.adapter.enabled)
+        self.enabled_checkbox = QCheckBox()
         self.enabled_checkbox.stateChanged.connect(self.on_check_enabled)
         upper_layout.addWidget(self.enabled_checkbox)
 
@@ -49,6 +48,13 @@ class IPAdapterAddedItem(QWidget):
         main_layout.addLayout(lower_layout)
 
         self.setLayout(main_layout)
+
+    def update_ui(self):
+        self.enabled_checkbox.setText(self.adapter.adapter_name)
+        self.enabled_checkbox.setChecked(self.adapter.enabled)
+
+        thumb_pixmap = QPixmap(self.adapter.images[0].image_thumb)
+        self.image_thumb.setPixmap(thumb_pixmap)
 
     def on_check_enabled(self):
         self.enabled.emit(self.adapter.adapter_id, self.enabled_checkbox.isChecked())

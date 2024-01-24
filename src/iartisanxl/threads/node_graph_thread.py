@@ -20,6 +20,7 @@ from iartisanxl.graph.nodes.image_load_node import ImageLoadNode
 from iartisanxl.graph.nodes.image_encoder_model_node import ImageEncoderModelNode
 from iartisanxl.graph.nodes.ip_adapter_model_node import IPAdapterModelNode
 from iartisanxl.graph.nodes.ip_adapter_node import IPAdapterNode
+from iartisanxl.graph.nodes.ip_adapter_merge_node import IPAdapterMergeNode
 
 controlnet_dict = {
     "controlnet_canny_model": "controlnet-canny-sdxl-1.0-small",
@@ -289,9 +290,9 @@ class NodeGraphThread(QThread):
         removed_t2i_adapters = self.t2i_adapter_list.get_removed()
         if len(removed_t2i_adapters) > 0:
             for t2i_adapter in removed_t2i_adapters:
-                adapter_image_node = self.node_graph.get_node_by_name(f"adapter_image_{t2i_adapter.id}")
+                adapter_image_node = self.node_graph.get_node_by_name(f"adapter_image_{t2i_adapter.node_id}")
                 self.node_graph.delete_node_by_id(adapter_image_node.id)
-                self.node_graph.delete_node_by_id(t2i_adapter.id)
+                self.node_graph.delete_node_by_id(t2i_adapter.node_id)
 
         self.t2i_adapter_list.save_state()
         self.t2i_adapter_list.dropped_image = False
@@ -299,30 +300,34 @@ class NodeGraphThread(QThread):
         # Process IP adapters
         ip_adapter_types = self.ip_adapter_list.get_used_types()
 
-        for ip_adapter_type in ip_adapter_types:
+        for _ in ip_adapter_types:
             image_encoder_h_model_node = self.node_graph.get_node_by_name("ip_image_encoder_h")
 
             if image_encoder_h_model_node is None:
                 image_encoder_h_model_node = ImageEncoderModelNode(path=os.path.join(self.directories.models_ip_adapters, "image_encoder"))
                 self.node_graph.add_node(image_encoder_h_model_node, "ip_image_encoder_h")
 
-            self.get_ip_adapter_model(ip_adapter_type)
-
         if len(self.ip_adapter_list.adapters) > 0:
             added_ip_adapters = self.ip_adapter_list.get_added()
+
+            ip_adapter_merge_node = self.node_graph.get_node_by_name("ip_adapter_merge_node")
+
+            if ip_adapter_merge_node is None:
+                ip_adapter_merge_node = IPAdapterMergeNode()
+                ip_adapter_merge_node.connect("unet", sdxl_model, "unet")
+                image_generation.connect("ip_image_prompt_embeds", ip_adapter_merge_node, "ip_image_prompt_embeds")
+                self.node_graph.add_node(ip_adapter_merge_node, "ip_adapter_merge_node")
 
             if len(added_ip_adapters) > 0:
                 for ip_adapter in added_ip_adapters:
                     ip_adapter_node = IPAdapterNode(ip_adapter.type_index, ip_adapter.adapter_type, ip_adapter.ip_adapter_scale)
                     self.node_graph.add_node(ip_adapter_node)
-                    ip_adapter.id = ip_adapter_node.id
+                    ip_adapter.node_id = ip_adapter_node.id
 
                     ip_adapter_model_node = self.get_ip_adapter_model(ip_adapter.adapter_type)
                     ip_adapter_node.connect("image_encoder", image_encoder_h_model_node, "image_encoder")
                     ip_adapter_node.connect("ip_adapter_model", ip_adapter_model_node, "ip_adapter_model")
-                    ip_adapter_node.connect("unet", sdxl_model, "unet")
-                    image_generation.connect("image_embeds", ip_adapter_node, "image_embeds")
-                    image_generation.connect("negative_image_embeds", ip_adapter_node, "negative_image_embeds")
+                    ip_adapter_merge_node.connect("ip_adapter", ip_adapter_node, "ip_adapter")
 
                     for image in ip_adapter.images:
                         ip_adapter_image_node = ImageLoadNode(path=image.image_filename, weight=image.weight, noise=image.noise)
@@ -336,7 +341,7 @@ class NodeGraphThread(QThread):
 
             if len(modified_ip_adapters) > 0:
                 for ip_adapter in modified_ip_adapters:
-                    ip_adapter_node = self.node_graph.get_node(ip_adapter.id)
+                    ip_adapter_node = self.node_graph.get_node(ip_adapter.node_id)
 
                     if ip_adapter.type_index != ip_adapter_node.type_index:
                         # disconnect old model
@@ -371,6 +376,10 @@ class NodeGraphThread(QThread):
                             self.node_graph.delete_node_by_id(image.node_id)
 
                     ip_adapter.save_image_state()
+        else:
+            ip_adapter_merge_node = self.node_graph.get_node_by_name("ip_adapter_merge_node")
+            if ip_adapter_merge_node:
+                self.node_graph.delete_node(ip_adapter_merge_node)
 
         removed_ip_adapters = self.ip_adapter_list.get_removed()
         if len(removed_ip_adapters) > 0:
@@ -378,10 +387,8 @@ class NodeGraphThread(QThread):
                 for image in ip_adapter.images:
                     self.node_graph.delete_node_by_id(image.node_id)
 
-                adapter_image_node = self.node_graph.get_node_by_name(f"adapter_image_{ip_adapter.id}")
-                ip_adapter_node = self.node_graph.get_node(ip_adapter.id)
-                ip_adapter_node.unload()
-                self.node_graph.delete_node_by_id(ip_adapter.id)
+                ip_adapter_node = self.node_graph.get_node(ip_adapter.node_id)
+                self.node_graph.delete_node_by_id(ip_adapter.node_id)
 
         self.ip_adapter_list.save_state()
         self.ip_adapter_list.dropped_image = False

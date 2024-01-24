@@ -1,10 +1,10 @@
 import os
-import io
+import shutil
 import math
 from datetime import datetime
 
 from PIL import Image
-from PyQt6.QtCore import QSettings, Qt, QThread, pyqtSignal, QBuffer
+from PyQt6.QtCore import QSettings, Qt, QThread, pyqtSignal
 from PyQt6.QtWidgets import QVBoxLayout, QHBoxLayout, QComboBox, QLabel, QPushButton, QWidget
 from superqt import QDoubleSlider
 
@@ -20,23 +20,30 @@ from iartisanxl.modules.common.image.image_data_object import ImageDataObject
 class ImageProcessThread(QThread):
     image_saved = pyqtSignal(ImageDataObject)
 
-    def __init__(self, image_editor: ImageAdderPreview, image_data_object: ImageDataObject, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, image_editor: ImageAdderPreview, image_data_object: ImageDataObject):
+        super().__init__()
 
         self.image_editor = image_editor
         self.image_data_object = image_data_object
 
     def run(self):
-        pixmap = self.image_editor.pixmap_item.pixmap()
-        qimage = pixmap.toImage()
-        buffer = QBuffer()
-        buffer.open(QBuffer.OpenModeFlag.ReadWrite)
-        qimage.save(buffer, "PNG")
+        timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
 
-        pil_image = Image.open(io.BytesIO(buffer.data()))
+        if self.image_data_object.id is None or self.image_data_object.replace_original:
+            original_filename = f"ip_{timestamp}_original.png"
+            original_path = os.path.join("tmp/", original_filename)
+
+            if self.image_data_object.image_original is not None:
+                shutil.copy2(self.image_data_object.image_original, original_path)
+            else:
+                pixmap = self.image_editor.pixmap_item.pixmap()
+                pixmap.save(original_path)
+
+            self.image_data_object.image_original = original_path
+            self.image_data_object.replace_original = False
+
+        pil_image = Image.open(self.image_data_object.image_original)
         width, height = pil_image.size
-        if pil_image.mode not in ("RGBA", "LA", "P"):
-            pil_image = pil_image.convert("RGBA")
 
         dx = self.image_editor.pixmap_item.x()
         dy = self.image_editor.pixmap_item.y()
@@ -56,8 +63,6 @@ class ImageProcessThread(QThread):
         pil_image = pil_image.crop((left, top, right, bottom))
 
         original_pixmap = self.image_editor.original_pixmap
-
-        timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
 
         if self.image_data_object.id is None:
             original_filename = f"ip_{timestamp}_original.png"
@@ -115,8 +120,8 @@ class IPAdapterDialog(BaseDialog):
 
         self.type_combo = QComboBox()
         self.type_combo.addItem("IP Adapter", "ip_adapter_vit_h")
-        self.type_combo.addItem("IP¨Adapter Plus", "ip_adapter_plus")
-        self.type_combo.addItem("IP¨Adapter Plus Face", "ip_adapter_plus_face")
+        self.type_combo.addItem("IP Adapter Plus", "ip_adapter_plus")
+        self.type_combo.addItem("IP Adapter Plus Face", "ip_adapter_plus_face")
         top_layout.addWidget(self.type_combo)
 
         adapter_scale_label = QLabel("Adapter scale:")
@@ -142,6 +147,7 @@ class IPAdapterDialog(BaseDialog):
         self.image_items_view = IpAdapterImageItemsView(self.adapter)
         self.image_items_view.item_selected.connect(self.on_item_selected)
         self.image_items_view.item_deleted.connect(self.on_item_deleted)
+        self.image_items_view.finished_loading.connect(self.on_images_finished_loading)
         all_images_layout.addWidget(self.image_items_view)
         self.images_view.setLayout(all_images_layout)
         middle_layout.addWidget(self.images_view)
@@ -150,7 +156,6 @@ class IPAdapterDialog(BaseDialog):
         image_layout.setContentsMargins(5, 0, 5, 0)
         self.image_widget = IPAdapterImageWidget("image", self.image_viewer, self.directories.outputs_images)
         self.image_widget.image_added.connect(self.on_image_added)
-        self.image_widget.image_dropped.connect(self.image_items_view.clear_selection)
         image_layout.addWidget(self.image_widget)
 
         middle_layout.addLayout(image_layout)
@@ -163,6 +168,7 @@ class IPAdapterDialog(BaseDialog):
         bottom_layout = QHBoxLayout()
         bottom_layout.setContentsMargins(5, 0, 5, 0)
         self.add_button = QPushButton("Add IP-Adapter")
+        self.add_button.setObjectName("green_button")
         self.add_button.clicked.connect(self.on_ip_adapter_added)
         bottom_layout.addWidget(self.add_button)
         self.main_layout.addLayout(bottom_layout)
@@ -171,20 +177,6 @@ class IPAdapterDialog(BaseDialog):
         self.main_layout.setStretch(1, 1)
         self.main_layout.setStretch(2, 0)
         self.main_layout.setSpacing(3)
-
-        self.add_button.setStyleSheet(
-            """
-            QPushButton {
-                background-color: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #23923b, stop: 1 #124e1f);
-            }
-            QPushButton:hover {
-                background-color: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #2cb349, stop: 1 #176427);
-            }
-            QPushButton:pressed {
-                background-color: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #35d457, stop: 1 #1f8834);
-            }            
-            """
-        )
 
     def closeEvent(self, event):
         self.settings.beginGroup("ip_adapters_dialog")
@@ -199,6 +191,7 @@ class IPAdapterDialog(BaseDialog):
 
     def on_ip_adapter_added(self):
         if len(self.adapter.images) > 0:
+            self.adapter.adapter_name = self.type_combo.currentText()
             self.adapter.adapter_type = self.type_combo.currentData()
             self.adapter.type_index = self.type_combo.currentIndex()
             self.adapter.ip_adapter_scale = self.adapter_scale
@@ -222,6 +215,7 @@ class IPAdapterDialog(BaseDialog):
                 image_rotation=self.image_widget.image_rotation_control.value,
                 weight=self.image_widget.image_weight_slider.value(),
                 noise=self.image_widget.image_noise_slider.value(),
+                image_original=self.image_widget.image_path,
             )
         else:
             image_data_object = self.adapter.get_image_data_object(image_id)
@@ -233,6 +227,11 @@ class IPAdapterDialog(BaseDialog):
                 image_data_object.image_rotation = self.image_widget.image_rotation_control.value
                 image_data_object.weight = self.image_widget.image_weight_slider.value()
                 image_data_object.noise = self.image_widget.image_noise_slider.value()
+
+                if image_data_object.image_original != self.image_widget.image_path:
+                    os.remove(image_data_object.image_original)
+                    image_data_object.image_original = self.image_widget.image_path
+                    image_data_object.replace_original = True
             else:
                 self.show_error("Couldn't obtain the information to add the image.")
                 return
@@ -247,10 +246,13 @@ class IPAdapterDialog(BaseDialog):
             self.image_items_view.update_current_item(image_data_object)
         else:
             self.adapter.add_image_data_object(image_data_object)
-            self.image_items_view.add_item_data_object(image_data_object)
+            image_item = self.image_items_view.add_item_data_object(image_data_object)
+            self.image_items_view.on_item_selected(image_item)
 
-        self.image_widget.clear_image()
-        self.image_widget.enable_add_image_button()
+        self.image_widget.image_id = image_data_object.id
+        self.image_widget.add_image_button.setText("Update image")
+        self.image_widget.new_image_button.setEnabled(True)
+        self.image_widget.delete_image_button.setEnabled(True)
 
     def on_image_process_finished(self):
         self.image_process_thread = None
@@ -266,6 +268,12 @@ class IPAdapterDialog(BaseDialog):
             image_data.weight,
             image_data.noise,
         )
+        self.image_widget.add_image_button.setText("Update image")
+        self.image_widget.add_image_button.setEnabled(False)
+        self.image_widget.delete_image_button.setEnabled(True)
+        self.image_widget.new_image_button.setEnabled(True)
+
+        self.dataset_items_count_label.setText(f"{self.image_items_view.current_item_index + 1}/{self.image_items_view.item_count}")
 
     def on_item_deleted(self, image_data: ImageDataObject, clear_view: bool):
         if clear_view:
@@ -286,8 +294,10 @@ class IPAdapterDialog(BaseDialog):
         self.image_items_view.ip_adapter_data = self.adapter
         self.image_items_view.load_items()
 
+        self.type_combo.setCurrentIndex(self.adapter.type_index)
         self.on_adapter_scale_changed(self.adapter.ip_adapter_scale)
         self.adapter_scale_slider.setValue(self.adapter_scale)
+        self.add_button.setText("Update IP-Adapter")
 
     def make_new_adapter(self):
         self.reset_ui()
@@ -295,3 +305,8 @@ class IPAdapterDialog(BaseDialog):
         self.image_items_view.ip_adapter_data = self.adapter
         self.on_adapter_scale_changed(1.0)
         self.adapter_scale_slider.setValue(1.0)
+
+    def on_images_finished_loading(self):
+        self.image_widget.new_image_button.setEnabled(True)
+        self.on_item_selected(self.image_items_view.current_item.widget().image_data)
+        self.dataset_items_count_label.setText(f"{self.image_items_view.current_item_index + 1}/{self.image_items_view.item_count}")

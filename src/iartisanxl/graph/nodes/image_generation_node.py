@@ -38,11 +38,9 @@ class ImageGenerationNode(Node):
         "crops_coords_top_left",
         "negative_crops_coords_top_left",
         "lora",
-        "cross_attention_kwargs",
         "controlnet",
         "t2i_adapter",
-        "image_embeds",
-        "negative_image_embeds",
+        "ip_image_prompt_embeds",
     ]
     OUTPUTS = ["latents"]
 
@@ -67,6 +65,7 @@ class ImageGenerationNode(Node):
 
     @torch.inference_mode()
     def __call__(self):
+        cross_attention_kwargs = {}
         crops_coords_top_left = self.crops_coords_top_left if self.crops_coords_top_left is not None else (0, 0)
         negative_crops_coords_top_left = self.negative_crops_coords_top_left if self.negative_crops_coords_top_left is not None else (0, 0)
 
@@ -152,8 +151,6 @@ class ImageGenerationNode(Node):
         else:
             negative_add_time_ids = add_time_ids
 
-        image_embeds = self.image_embeds
-
         do_classifier_free_guidance = False
         if self.guidance_scale > 1:
             do_classifier_free_guidance = True
@@ -162,9 +159,17 @@ class ImageGenerationNode(Node):
             add_text_embeds = torch.cat([self.negative_pooled_prompt_embeds, add_text_embeds], dim=0)
             add_time_ids = torch.cat([negative_add_time_ids, add_time_ids], dim=0)
 
-            if image_embeds is not None:
-                image_embeds = torch.cat([self.negative_image_embeds, self.image_embeds])
-                image_embeds = image_embeds.to(self.device)
+        # IP Adapters
+        if self.ip_image_prompt_embeds is not None:
+            ip_hidden_states = []
+
+            for image_embeds in self.ip_image_prompt_embeds:
+                if do_classifier_free_guidance:
+                    ip_hidden_states.append(torch.cat([image_embeds["uncond_image_prompt_embeds"], image_embeds["image_prompt_embeds"]]))
+                else:
+                    ip_hidden_states.append(image_embeds["image_prompt_embeds"])
+
+            cross_attention_kwargs["ip_hidden_states"] = ip_hidden_states
 
         if t2i_adapter_models is not None:
             adapter_states = t2i_adapter_models(t2i_adapter_images, t2i_conditioning_scale)
@@ -236,8 +241,6 @@ class ImageGenerationNode(Node):
                 "text_embeds": add_text_embeds,
                 "time_ids": add_time_ids,
             }
-            if image_embeds is not None:
-                added_cond_kwargs["image_embeds"] = image_embeds
 
             if self.abort:
                 return
@@ -288,7 +291,7 @@ class ImageGenerationNode(Node):
                 t,
                 encoder_hidden_states=prompt_embeds,
                 timestep_cond=timestep_cond,
-                cross_attention_kwargs=self.cross_attention_kwargs,
+                cross_attention_kwargs=cross_attention_kwargs,
                 down_block_additional_residuals=down_block_res_samples,
                 mid_block_additional_residual=mid_block_res_sample,
                 down_intrablock_additional_residuals=down_intrablock_additional_residuals,

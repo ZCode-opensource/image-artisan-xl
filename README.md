@@ -40,14 +40,14 @@ It is highly recommended to use the included VAE with the FP16 fix, since the VA
 - Easy sharing of models and Lora's metadata since the information its stored in each model, including sample image, sample generation, triggers and tags for filtering.
 - Latent Consistency Models (LCM) and LoRAs for fast inference.
 - Segmind Stable Diffusion (SSD-1B and Vega) models for VRAM savings.
-- SDXL Turbo supported
-- ControlNet
+- SDXL Turbo supported.
+- ControlNet.
 - T2I Adapters
-- IP Adapters (just one at a time for now) with multiple images.
-- Dataset creation and management
-- Dreambooth LoRA Training (more to come)
-- Resume training
-- Image bucketing for training
+- Multiple IP Adapters with multiple images.
+- Dataset creation and management.
+- Dreambooth LoRA Training (more to come).
+- Resume training.
+- Image bucketing for training.
 
 ## Limitations
 
@@ -72,7 +72,6 @@ You can read why [here](https://github.com/ZCode-opensource/image-artisan-xl/blo
 - Fine tune your own model.
 - Train dreambooth LoRAs (Kohya)
 - Train LoRAs (diffusers and Kohya).
-- Dataset creation and management.
 - Nodes UI (under the hood already uses them).
 
 ## Installation

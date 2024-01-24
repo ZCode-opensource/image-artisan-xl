@@ -29,6 +29,9 @@ class IpAdapterImageItemsView(QWidget):
         self.current_item_index = None
         self.item_count = None
 
+        self.thumb_width = 80
+        self.thumb_height = 80
+
         self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
 
         self.init_ui()
@@ -77,17 +80,27 @@ class IpAdapterImageItemsView(QWidget):
         image_item.clicked.connect(self.on_item_selected)
 
         self.flow_layout.addWidget(image_item)
+        self.item_count = self.flow_layout.count()
 
         return image_item
 
     def update_current_item(self, image_data: ImageDataObject):
         pixmap = QPixmap(image_data.image_thumb)
         self.current_item.image_data = image_data
-        self.current_item.set_image(pixmap)
+        self.current_item.widget().set_image(pixmap)
 
     def on_loading_finished(self):
         self.item_count = self.flow_layout.count()
+        self.current_item_index = 0
+        self.current_item = self.flow_layout.itemAt(0)
         self.finished_loading.emit()
+
+    def clear_selection(self):
+        if self.current_item is not None:
+            self.current_item.set_selected(False)
+            self.current_item_index = None
+            self.current_item = None
+            self.image_data = None
 
     def on_item_selected(self, item: ImageItem):
         for i in range(self.flow_layout.count()):
@@ -97,30 +110,29 @@ class IpAdapterImageItemsView(QWidget):
                 self.current_item_index = i
                 self.current_item = widget
                 self.image_data = item.image_data
+                widget.set_selected(True)
                 self.item_selected.emit(item.image_data)
             else:
                 widget.set_selected(False)
 
         self.setFocus()
 
-    def clear_selection(self):
-        if self.current_item is not None:
+    def set_current_item(self, image_item: ImageItem):
+        if self.current_item:
             self.current_item.set_selected(False)
-            self.current_item_index = None
-            self.current_item = None
-            self.image_data = None
+
+        self.current_item = image_item
+        self.image_data = image_item.image_data
+
+        self.scroll_area.ensureWidgetVisible(image_item)
 
     def get_first_item(self):
         self.current_item_index = 0
         item: ImageItem = self.flow_layout.itemAt(self.current_item_index).widget()
 
         if item is not None:
-            self.current_item.set_selected(False)
-            self.current_item = item
-            self.image_data = item.image_data
-            item.set_selected(True)
+            self.set_current_item(item)
             self.item_selected.emit(item.image_data)
-            self.scroll_area.ensureWidgetVisible(item)
 
         return item
 
@@ -130,12 +142,9 @@ class IpAdapterImageItemsView(QWidget):
             item: ImageItem = self.flow_layout.itemAt(self.current_item_index).widget()
 
             if item is not None:
-                self.current_item.set_selected(False)
-                self.current_item = item
-                self.image_data = item.image_data
-                item.set_selected(True)
+                self.set_current_item(item)
                 self.item_selected.emit(item.image_data)
-                self.scroll_area.ensureWidgetVisible(item)
+
             return item
         return None
 
@@ -145,12 +154,8 @@ class IpAdapterImageItemsView(QWidget):
             item: ImageItem = self.flow_layout.itemAt(self.current_item_index).widget()
 
             if item is not None:
-                self.current_item.set_selected(False)
-                self.current_item = item
-                self.image_data = item.image_data
-                item.set_selected(True)
+                self.set_current_item(item)
                 self.item_selected.emit(item.image_data)
-                self.scroll_area.ensureWidgetVisible(item)
             return item
         return None
 
@@ -161,12 +166,7 @@ class IpAdapterImageItemsView(QWidget):
             self.get_next_item()
 
     def update_current_item_image(self, pixmap):
-        scaled_pixmap = pixmap.scaled(
-            self.thumb_width,
-            self.thumb_height,
-            Qt.AspectRatioMode.KeepAspectRatio,
-            Qt.TransformationMode.SmoothTransformation,
-        )
+        scaled_pixmap = pixmap.scaled(self.thumb_width, self.thumb_height, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
         self.current_item.set_image(scaled_pixmap)
 
     def contextMenuEvent(self, event):

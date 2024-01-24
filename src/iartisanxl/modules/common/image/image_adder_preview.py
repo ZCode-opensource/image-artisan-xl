@@ -8,6 +8,7 @@ from iartisanxl.modules.common.drop_lightbox import DropLightBox
 class ImageAdderPreview(QGraphicsView):
     image_moved = pyqtSignal(float, float)
     image_scaled = pyqtSignal(float)
+    image_updated = pyqtSignal()
 
     def __init__(self, target_width: int, target_height: int, aspect_ratio: float, save_directory=None):
         super(ImageAdderPreview, self).__init__()
@@ -87,6 +88,7 @@ class ImageAdderPreview(QGraphicsView):
             # Emit signals for potential updates
             self.image_scaled.emit(scale_factor)
             self.image_moved.emit(-new_x, -new_y)
+            self.image_updated.emit()
 
     def set_image(self, image_path):
         pixmap = QPixmap(image_path)
@@ -110,16 +112,19 @@ class ImageAdderPreview(QGraphicsView):
             self.pixmap_item.setScale(scale_factor)
             self.image_was_scaled = True
             self.image_was_translated = True
+            self.image_updated.emit()
 
     def set_image_x(self, x_position):
         if self.pixmap_item is not None:
             self.pixmap_item.setX(x_position)
             self.image_was_translated = True
+            self.image_updated.emit()
 
     def set_image_y(self, y_position):
         if self.pixmap_item is not None:
             self.pixmap_item.setY(y_position)
             self.image_was_translated = True
+            self.image_updated.emit()
 
     def rotate_image(self, angle):
         if self.pixmap_item is not None:
@@ -127,6 +132,7 @@ class ImageAdderPreview(QGraphicsView):
             self.pixmap_item.setRotation(angle)
             self.image_was_rotated = True
             self.image_was_translated = True
+            self.image_updated.emit()
 
     @property
     def image_modified(self):
