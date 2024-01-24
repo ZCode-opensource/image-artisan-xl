@@ -87,7 +87,7 @@ class IpAdapterImageItemsView(QWidget):
     def update_current_item(self, image_data: ImageDataObject):
         pixmap = QPixmap(image_data.image_thumb)
         self.current_item.image_data = image_data
-        self.current_item.widget().set_image(pixmap)
+        self.current_item.set_image(pixmap)
 
     def on_loading_finished(self):
         self.item_count = self.flow_layout.count()
