@@ -20,6 +20,7 @@ class ControlNetDataObject:
     canny_low: int = attr.ib(default=100)
     canny_high: int = attr.ib(default=300)
     depth_type: str = attr.ib(default=None)
+    depth_type_index: int = attr.ib(default=0)
     node_id: int = attr.ib(default=None)
     generation_width: int = attr.ib(default=None)
     generation_height: int = attr.ib(default=None)

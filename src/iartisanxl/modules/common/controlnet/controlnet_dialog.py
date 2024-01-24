@@ -160,6 +160,7 @@ class ControlNetDialog(BaseDialog):
         self.source_widget.image_changed.connect(self.on_source_changed)
         source_layout.addWidget(self.source_widget)
         annotate_button = QPushButton("Annotate")
+        annotate_button.setObjectName("blue_button")
         annotate_button.clicked.connect(self.on_annotate)
         source_layout.addWidget(annotate_button)
         images_layout.addLayout(source_layout)
@@ -171,6 +172,7 @@ class ControlNetDialog(BaseDialog):
         annotator_layout.addWidget(self.annotator_widget)
 
         self.add_button = QPushButton("Add")
+        self.add_button.setObjectName("green_button")
         self.add_button.clicked.connect(self.on_controlnet_added)
 
         annotator_layout.addWidget(self.add_button)
@@ -231,6 +233,7 @@ class ControlNetDialog(BaseDialog):
             self.controlnet.adapter_type = self.annotator_combo.currentData()
             self.controlnet.type_index = self.annotator_combo.currentIndex()
             self.controlnet.depth_type = self.depth_type_combo.currentData()
+            self.controlnet.depth_type_index = self.depth_type_combo.currentIndex()
             self.controlnet.generation_width = self.image_generation_data.image_width
             self.controlnet.generation_height = self.image_generation_data.image_height
 
@@ -371,18 +374,26 @@ class ControlNetDialog(BaseDialog):
         self.conditioning_scale_slider.setValue(self.controlnet.conditioning_scale)
         self.conditioning_scale_value_label.setText(f"{self.controlnet.conditioning_scale:.2f}")
         self.guidance_slider.setValue((self.controlnet.guidance_start, self.controlnet.guidance_end))
-        self.canny_slider.setValue((self.controlnet.canny_low, self.controlnet.canny_high))
+
         self.annotator_combo.setCurrentIndex(self.controlnet.type_index)
+        self.canny_slider.setValue((self.controlnet.canny_low, self.controlnet.canny_high))
+        self.depth_type_combo.setCurrentIndex(self.controlnet.depth_type_index)
         self.on_annotator_changed()
 
         if self.controlnet.source_image:
             source_pixmap = QPixmap(self.controlnet.source_image.image_original)
             self.source_widget.image_editor.set_pixmap(source_pixmap)
+            self.source_widget.set_image_parameters(
+                self.controlnet.source_image.image_scale,
+                self.controlnet.source_image.image_x_pos,
+                self.controlnet.source_image.image_y_pos,
+                self.controlnet.source_image.image_rotation,
+            )
 
         annotator_pixmap = QPixmap(self.controlnet.annotator_image.image_filename)
         self.annotator_widget.image_editor.set_pixmap(annotator_pixmap)
 
-        if self.controlnet.adapter_id:
+        if self.controlnet.adapter_id is not None:
             self.add_button.setText("Update")
 
     def reset_ui(self):

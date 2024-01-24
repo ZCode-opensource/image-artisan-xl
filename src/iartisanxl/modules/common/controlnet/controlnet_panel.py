@@ -93,7 +93,6 @@ class ControlNetPanel(BasePanel):
 
         self.parent().controlnet_dialog.controlnet = controlnet
         self.parent().controlnet_dialog.update_ui()
-        self.parent().controlnet_dialog.raise_()
 
     def on_controlnet_enabled(self, controlet_id, enabled):
         self.controlnet_list.update_adapter(controlet_id, {"enabled": enabled})

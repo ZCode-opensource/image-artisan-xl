@@ -86,7 +86,6 @@ class T2IPanel(BasePanel):
 
         self.parent().t2i_dialog.adapter = adapter
         self.parent().t2i_dialog.update_ui()
-        self.parent().t2i_dialog.raise_()
 
     def on_enabled(self, adapter_id, enabled):
         self.t2i_adapter_list.update_adapter(adapter_id, {"enabled": enabled})

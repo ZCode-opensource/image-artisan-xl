@@ -199,10 +199,9 @@ class RightMenu(QFrame):
 
     def on_controlnet(self, data):
         if data["action"] == "add":
-            adapter_id = self.controlnet_list.add(data["controlnet"])
+            self.controlnet_list.add(data["controlnet"])
 
             if isinstance(self.current_panel, ControlNetPanel):
-                data["controlnet"].adapter_id = adapter_id
                 controlnet_widget = ControlNetAddedItem(data["controlnet"])
                 controlnet_widget.update_ui()
                 controlnet_widget.remove_clicked.connect(self.current_panel.on_remove_clicked)
@@ -223,10 +222,9 @@ class RightMenu(QFrame):
 
     def on_t2i_adapters(self, data):
         if data["action"] == "add":
-            adapter_id = self.t2i_adapter_list.add(data["t2i_adapter"])
+            self.t2i_adapter_list.add(data["t2i_adapter"])
 
             if isinstance(self.current_panel, T2IPanel):
-                data["t2i_adapter"].adapter_id = adapter_id
                 adapter_widget = AdapterAddedItem(data["t2i_adapter"])
                 adapter_widget.update_ui()
                 adapter_widget.remove_clicked.connect(self.current_panel.on_remove_clicked)
@@ -247,10 +245,9 @@ class RightMenu(QFrame):
 
     def on_ip_adapters(self, data):
         if data["action"] == "add":
-            adapter_id = self.ip_adapter_list.add(data["ip_adapter"])
+            self.ip_adapter_list.add(data["ip_adapter"])
 
             if isinstance(self.current_panel, IPAdapterPanel):
-                data["ip_adapter"].adapter_id = adapter_id
                 adapter_widget = IPAdapterAddedItem(data["ip_adapter"])
                 adapter_widget.update_ui()
                 adapter_widget.remove_clicked.connect(self.current_panel.on_remove_clicked)

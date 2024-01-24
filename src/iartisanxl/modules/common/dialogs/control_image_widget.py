@@ -170,6 +170,16 @@ class ControlImageWidget(QWidget):
         self.image_editor.set_color_pixmap(width, height)
         self.image_loaded.emit()
 
+    def set_image_parameters(self, scale, x, y, angle):
+        self.image_scale_control.set_value(scale)
+        self.image_editor.set_image_scale(scale)
+        self.image_x_pos_control.set_value(x)
+        self.image_editor.set_image_x(x)
+        self.image_y_pos_control.set_value(y)
+        self.image_editor.set_image_y(y)
+        self.image_rotation_control.set_value(angle)
+        self.image_editor.rotate_image(angle)
+
     def clear_image(self):
         self.image_scale_control.reset()
         self.image_x_pos_control.reset()

@@ -183,6 +183,7 @@ class T2IDialog(BaseDialog):
         self.source_widget.image_changed.connect(self.on_source_changed)
         source_layout.addWidget(self.source_widget)
         annotate_button = QPushButton("Annotate")
+        annotate_button.setObjectName("blue_button")
         annotate_button.clicked.connect(self.on_annotate)
         source_layout.addWidget(annotate_button)
         images_layout.addLayout(source_layout)
@@ -194,6 +195,7 @@ class T2IDialog(BaseDialog):
         annotator_layout.addWidget(self.annotator_widget)
 
         self.add_button = QPushButton("Add")
+        self.add_button.setObjectName("green_button")
         self.add_button.clicked.connect(self.on_t2i_adapter_added)
 
         annotator_layout.addWidget(self.add_button)
@@ -254,8 +256,11 @@ class T2IDialog(BaseDialog):
             self.adapter.adapter_type = self.annotator_combo.currentData()
             self.adapter.type_index = self.annotator_combo.currentIndex()
             self.adapter.depth_type = self.depth_type_combo.currentData()
+            self.adapter.depth_type_index = self.depth_type_combo.currentIndex()
             self.adapter.lineart_type = self.lineart_type_combo.currentData()
+            self.adapter.lineart_type_index = self.lineart_type_combo.currentIndex()
             self.adapter.sketch_type = self.sketch_type_combo.currentData()
+            self.adapter.sketch_type_index = self.sketch_type_combo.currentIndex()
             self.adapter.generation_width = self.image_generation_data.image_width
             self.adapter.generation_height = self.image_generation_data.image_height
 
@@ -410,18 +415,28 @@ class T2IDialog(BaseDialog):
         self.conditioning_scale_slider.setValue(self.adapter.conditioning_scale)
         self.conditioning_scale_value_label.setText(f"{self.adapter.conditioning_scale:.2f}")
         self.conditioning_factor_slider.setValue(self.adapter.conditioning_factor)
-        self.canny_slider.setValue((self.adapter.canny_low, self.adapter.canny_high))
+
         self.annotator_combo.setCurrentIndex(self.adapter.type_index)
+        self.canny_slider.setValue((self.adapter.canny_low, self.adapter.canny_high))
+        self.depth_type_combo.setCurrentIndex(self.adapter.depth_type_index)
+        self.lineart_type_combo.setCurrentIndex(self.adapter.lineart_type_index)
+        self.sketch_type_combo.setCurrentIndex(self.adapter.sketch_type_index)
         self.on_annotator_changed()
 
         if self.adapter.source_image:
             source_pixmap = QPixmap(self.adapter.source_image.image_original)
             self.source_widget.image_editor.set_pixmap(source_pixmap)
+            self.source_widget.set_image_parameters(
+                self.adapter.source_image.image_scale,
+                self.adapter.source_image.image_x_pos,
+                self.adapter.source_image.image_y_pos,
+                self.adapter.source_image.image_rotation,
+            )
 
         annotator_pixmap = QPixmap(self.adapter.annotator_image.image_filename)
         self.annotator_widget.image_editor.set_pixmap(annotator_pixmap)
 
-        if self.adapter.adapter_id:
+        if self.adapter.adapter_id is not None:
             self.add_button.setText("Update")
 
     def reset_ui(self):
