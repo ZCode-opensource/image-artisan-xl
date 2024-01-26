@@ -8,15 +8,15 @@ import numpy as np
 from PyQt6.QtCore import pyqtSignal, QThread, Qt
 from PyQt6.QtGui import QImage, QPixmap
 
-from iartisanxl.annotators.canny.canny_edges_detector import CannyEdgesDetector
-from iartisanxl.annotators.depth.depth_estimator import DepthEstimator
-from iartisanxl.annotators.openpose.open_pose_detector import OpenPoseDetector
-from iartisanxl.annotators.lineart.lineart_generator import LineArtGenerator
-from iartisanxl.annotators.pidinet.pidinet_generator import PidinetGenerator
+from iartisanxl.preprocessors.canny.canny_edges_detector import CannyEdgesDetector
+from iartisanxl.preprocessors.depth.depth_estimator import DepthEstimator
+from iartisanxl.preprocessors.openpose.open_pose_detector import OpenPoseDetector
+from iartisanxl.preprocessors.lineart.lineart_generator import LineArtGenerator
+from iartisanxl.preprocessors.pidinet.pidinet_generator import PidinetGenerator
 from iartisanxl.modules.common.t2i_adapter.t2i_adapter_data_object import T2IAdapterDataObject
 
 
-class T2IAnnotatorThread(QThread):
+class T2IPreprocessorThread(QThread):
     error = pyqtSignal(str)
 
     def __init__(
@@ -24,21 +24,21 @@ class T2IAnnotatorThread(QThread):
         adapter: T2IAdapterDataObject,
         drawings_pixmap: QPixmap,
         source_changed: bool,
-        annotate: bool,
-        save_annotator: bool = False,
-        annotator_drawings: QPixmap = None,
+        preprocess: bool,
+        save_preprocessor: bool = False,
+        preprocessor_drawings: QPixmap = None,
     ):
         super().__init__()
 
         self.source_thumb_pixmap = None
-        self.annotator_pixmap = None
+        self.preprocessor_pixmap = None
         self.adapter = adapter
         self.drawings_pixmap = drawings_pixmap
         self.source_changed = source_changed
-        self.annotate = annotate
-        self.save_annotator = save_annotator
-        self.annotator_drawings = annotator_drawings
-        self.annotator_thumb_path = None
+        self.preprocess = preprocess
+        self.save_preprocessor = save_preprocessor
+        self.preprocessor_drawings = preprocessor_drawings
+        self.preprocessor_thumb_path = None
 
         self.canny_detector = None
         self.depth_estimator = None
@@ -48,11 +48,11 @@ class T2IAnnotatorThread(QThread):
 
     def run(self):
         source_image = None
-        annotator_name = ""
+        preprocessor_name = ""
 
         source_resolution = (
-            int(self.adapter.generation_width * self.adapter.annotator_resolution),
-            int(self.adapter.generation_height * self.adapter.annotator_resolution),
+            int(self.adapter.generation_width * self.adapter.preprocessor_resolution),
+            int(self.adapter.generation_height * self.adapter.preprocessor_resolution),
         )
 
         if self.source_changed:
@@ -73,7 +73,7 @@ class T2IAnnotatorThread(QThread):
 
             new_width = round(width * self.adapter.source_image.image_scale)
             new_height = round(height * self.adapter.source_image.image_scale)
-            original_pil_image = original_pil_image.resize((new_width, new_height), Image.LANCZOS)
+            original_pil_image = original_pil_image.resize((new_width, new_height), Image.Resampling.LANCZOS)
 
             left = math.floor(new_width / 2 - (width / 2 + self.adapter.source_image.image_x_pos))
             top = math.floor(new_height / 2 - (height / 2 + self.adapter.source_image.image_y_pos))
@@ -108,13 +108,13 @@ class T2IAnnotatorThread(QThread):
             cv2.imwrite(thumb_path, source_numpy_thumb)  # pylint: disable=no-member
             self.adapter.source_image.image_thumb = thumb_path
 
-        annotator_image = None
-        annotator_loaded = False
+        preprocessor_image = None
+        preprocessor_loaded = False
 
-        # if there's not annotator path, we must create it
-        if self.annotate:
+        # if there's not preprocessor path, we must create it
+        if self.preprocess:
             if self.adapter.type_index == 0:
-                annotator_name = "canny"
+                preprocessor_name = "canny"
                 if self.canny_detector is None:
                     self.depth_estimator = None
                     self.openpose_detector = None
@@ -122,11 +122,11 @@ class T2IAnnotatorThread(QThread):
                     self.pidinet_generator = None
                     self.canny_detector = CannyEdgesDetector()
 
-                annotator_image = self.canny_detector.get_canny_edges(
+                preprocessor_image = self.canny_detector.get_canny_edges(
                     numpy_image, self.adapter.canny_low, self.adapter.canny_high, resolution=source_resolution
                 )
             elif self.adapter.type_index == 1:
-                annotator_name = "depth"
+                preprocessor_name = "depth"
                 try:
                     if self.depth_estimator is None:
                         self.canny_detector = None
@@ -135,12 +135,12 @@ class T2IAnnotatorThread(QThread):
 
                     self.depth_estimator.change_model(self.adapter.depth_type)
                 except OSError:
-                    self.error.emit("You need to download the annotators from the downloader menu first.")
+                    self.error.emit("You need to download the preprocessors from the downloader menu first.")
                     return
 
-                annotator_image = self.depth_estimator.get_depth_map(numpy_image, source_resolution)
+                preprocessor_image = self.depth_estimator.get_depth_map(numpy_image, source_resolution)
             elif self.adapter.type_index == 2:
-                annotator_name = "pose"
+                preprocessor_name = "pose"
                 try:
                     if self.openpose_detector is None:
                         self.canny_detector = None
@@ -149,10 +149,10 @@ class T2IAnnotatorThread(QThread):
                         self.pidinet_generator = None
                         self.openpose_detector = OpenPoseDetector()
                 except FileNotFoundError:
-                    self.error.emit("You need to download the annotators from the downloader menu first.")
+                    self.error.emit("You need to download the preprocessors from the downloader menu first.")
                     return
 
-                annotator_image = self.openpose_detector.get_open_pose(numpy_image, source_resolution)
+                preprocessor_image = self.openpose_detector.get_open_pose(numpy_image, source_resolution)
             elif self.adapter.type_index == 3:
                 try:
                     if self.lineart_generator is None:
@@ -164,10 +164,10 @@ class T2IAnnotatorThread(QThread):
 
                     self.lineart_generator.change_model(self.adapter.lineart_type)
                 except FileNotFoundError:
-                    self.error.emit("You need to download the annotators from the downloader menu first.")
+                    self.error.emit("You need to download the preprocessors from the downloader menu first.")
                     return
 
-                annotator_image = self.lineart_generator.get_lines(numpy_image, source_resolution)
+                preprocessor_image = self.lineart_generator.get_lines(numpy_image, source_resolution)
             elif self.adapter.type_index == 4:
                 try:
                     if self.pidinet_generator is None:
@@ -177,51 +177,51 @@ class T2IAnnotatorThread(QThread):
                         self.lineart_generator = None
                         self.pidinet_generator = PidinetGenerator(self.adapter.sketch_type)
                 except FileNotFoundError:
-                    self.error.emit("You need to download the annotators from the downloader menu first.")
+                    self.error.emit("You need to download the preprocessors from the downloader menu first.")
                     return
 
                 self.pidinet_generator.change_model(self.adapter.sketch_type)
-                annotator_image = self.pidinet_generator.get_edges(numpy_image, source_resolution)
+                preprocessor_image = self.pidinet_generator.get_edges(numpy_image, source_resolution)
 
-            if annotator_image is not None:
-                self.annotator_pixmap = self.convert_numpy_to_pixmap(annotator_image)
+            if preprocessor_image is not None:
+                self.preprocessor_pixmap = self.convert_numpy_to_pixmap(preprocessor_image)
         else:
-            # The annotator image was dropped or loaded, use it as is
-            self.annotator_pixmap = QPixmap(self.adapter.annotator_image.image_filename)
+            # The preprocessor image was dropped or loaded, use it as is
+            self.preprocessor_pixmap = QPixmap(self.adapter.preprocessor_image.image_filename)
 
-            if self.adapter.annotator_image.image_thumb is None:
-                annotator_thumb_filename = f"t2i_{annotator_name}_{timestamp}_thumb.png"
-                self.adapter.annotator_image.image_thumb = os.path.join("tmp/", annotator_thumb_filename)
-                thumbnail_pixmap = self.annotator_pixmap.scaled(80, 80, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
-                thumbnail_pixmap.save(self.adapter.annotator_image.image_thumb)
+            if self.adapter.preprocessor_image.image_thumb is None:
+                preprocessor_thumb_filename = f"t2i_{preprocessor_name}_{timestamp}_thumb.png"
+                self.adapter.preprocessor_image.image_thumb = os.path.join("tmp/", preprocessor_thumb_filename)
+                thumbnail_pixmap = self.preprocessor_pixmap.scaled(80, 80, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
+                thumbnail_pixmap.save(self.adapter.preprocessor_image.image_thumb)
 
-            annotator_loaded = True
+            preprocessor_loaded = True
 
-        if self.annotator_pixmap and not annotator_loaded:
-            if self.save_annotator:
-                if self.adapter.annotator_image.image_filename:
-                    os.remove(self.adapter.annotator_image.image_filename)
+        if self.preprocessor_pixmap and not preprocessor_loaded:
+            if self.save_preprocessor:
+                if self.adapter.preprocessor_image.image_filename:
+                    os.remove(self.adapter.preprocessor_image.image_filename)
 
                 timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
-                annotator_filename = f"t2i_{annotator_name}_{timestamp}.png"
-                self.adapter.annotator_image.image_filename = os.path.join("tmp/", annotator_filename)
+                preprocessor_filename = f"t2i_{preprocessor_name}_{timestamp}.png"
+                self.adapter.preprocessor_image.image_filename = os.path.join("tmp/", preprocessor_filename)
 
-                if annotator_image is not None:
-                    annotator_drawing_image = self.annotator_drawings.toImage()
-                    annotator_drawing_pip_image = ImageQt.fromqimage(annotator_drawing_image)
-                    annotator_pil_image = Image.fromarray(annotator_image)
-                    if annotator_pil_image.mode not in ("RGBA", "LA", "P"):
-                        annotator_pil_image = annotator_pil_image.convert("RGBA")
-                    merged_annotator = Image.alpha_composite(annotator_pil_image, annotator_drawing_pip_image)
-                    merged_annotator.save(self.adapter.annotator_image.image_filename)
+                if preprocessor_image is not None:
+                    preprocessor_drawing_image = self.preprocessor_drawings.toImage()
+                    preprocessor_drawing_pip_image = ImageQt.fromqimage(preprocessor_drawing_image)
+                    preprocessor_pil_image = Image.fromarray(preprocessor_image)
+                    if preprocessor_pil_image.mode not in ("RGBA", "LA", "P"):
+                        preprocessor_pil_image = preprocessor_pil_image.convert("RGBA")
+                    merged_preprocessor = Image.alpha_composite(preprocessor_pil_image, preprocessor_drawing_pip_image)
+                    merged_preprocessor.save(self.adapter.preprocessor_image.image_filename)
 
-                if self.adapter.annotator_image.image_thumb:
-                    os.remove(self.adapter.annotator_image.image_thumb)
+                if self.adapter.preprocessor_image.image_thumb:
+                    os.remove(self.adapter.preprocessor_image.image_thumb)
 
-                annotator_thumb_filename = f"t2i_{annotator_name}_{timestamp}_thumb.png"
-                self.adapter.annotator_image.image_thumb = os.path.join("tmp/", annotator_thumb_filename)
-                merged_annotator.thumbnail((80, 80))
-                merged_annotator.save(self.adapter.annotator_image.image_thumb)
+                preprocessor_thumb_filename = f"t2i_{preprocessor_name}_{timestamp}_thumb.png"
+                self.adapter.preprocessor_image.image_thumb = os.path.join("tmp/", preprocessor_thumb_filename)
+                merged_preprocessor.thumbnail((80, 80))
+                merged_preprocessor.save(self.adapter.preprocessor_image.image_thumb)
 
     def generate_thumbnail(self, numpy_image: np.array):
         height, width = numpy_image.shape[:2]

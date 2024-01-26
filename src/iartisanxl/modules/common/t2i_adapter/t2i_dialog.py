@@ -14,7 +14,7 @@ from iartisanxl.buttons.color_button import ColorButton
 from iartisanxl.modules.common.dialogs.base_dialog import BaseDialog
 from iartisanxl.modules.common.dialogs.control_image_widget import ControlImageWidget
 from iartisanxl.modules.common.t2i_adapter.t2i_adapter_data_object import T2IAdapterDataObject
-from iartisanxl.threads.t2i_annotator_thread import T2IAnnotatorThread
+from iartisanxl.threads.t2i_preprocessor_thread import T2IPreprocessorThread
 
 
 class T2IDialog(BaseDialog):
@@ -36,10 +36,10 @@ class T2IDialog(BaseDialog):
         self.adapter = T2IAdapterDataObject()
         self.updating = False
         self.source_changed = False
-        self.annotator_changed = True
-        self.annotating = False
-        self.annotate = True
-        self.annotator_thread = None
+        self.preprocessor_changed = True
+        self.preprocessing = False
+        self.preprocess = True
+        self.preprocessor_thread = None
 
         self.init_ui()
 
@@ -50,14 +50,14 @@ class T2IDialog(BaseDialog):
         control_layout.setContentsMargins(10, 0, 10, 0)
         control_layout.setSpacing(10)
 
-        self.annotator_combo = QComboBox()
-        self.annotator_combo.addItem("Canny", "t2i_adapter_canny_model")
-        self.annotator_combo.addItem("Depth", "t2i_adapter_depth_model")
-        self.annotator_combo.addItem("Pose", "t2i_adapter_pose_model")
-        self.annotator_combo.addItem("Line Art", "t2i_adapter_lineart_model")
-        self.annotator_combo.addItem("Sketch", "t2i_adapter_sketch_model")
-        self.annotator_combo.currentIndexChanged.connect(self.on_annotator_changed)
-        control_layout.addWidget(self.annotator_combo)
+        self.preprocessor_combo = QComboBox()
+        self.preprocessor_combo.addItem("Canny", "t2i_adapter_canny_model")
+        self.preprocessor_combo.addItem("Depth", "t2i_adapter_depth_model")
+        self.preprocessor_combo.addItem("Pose", "t2i_adapter_pose_model")
+        self.preprocessor_combo.addItem("Line Art", "t2i_adapter_lineart_model")
+        self.preprocessor_combo.addItem("Sketch", "t2i_adapter_sketch_model")
+        self.preprocessor_combo.currentIndexChanged.connect(self.on_preprocessor_changed)
+        control_layout.addWidget(self.preprocessor_combo)
 
         conditioning_scale_label = QLabel("Conditioning scale:")
         control_layout.addWidget(conditioning_scale_label)
@@ -108,7 +108,7 @@ class T2IDialog(BaseDialog):
         self.depth_type_combo.addItem("Depth Hybrid Midas", "dpt-hybrid-midas")
         self.depth_type_combo.addItem("Depth BEiT Base 384", "dpt-beit-base-384")
         self.depth_type_combo.addItem("Depth BEiT Large 512", "dpt-beit-large-512")
-        self.depth_type_combo.currentIndexChanged.connect(self.on_annotator_type_changed)
+        self.depth_type_combo.currentIndexChanged.connect(self.on_preprocessor_type_changed)
         depth_layout.addWidget(self.depth_type_combo)
         self.depth_widget.setVisible(False)
         second_control_layout.addWidget(self.depth_widget)
@@ -121,7 +121,7 @@ class T2IDialog(BaseDialog):
         self.lineart_type_combo.addItem("Anime", "anime_style")
         self.lineart_type_combo.addItem("Open Sketch", "opensketch_style")
         self.lineart_type_combo.addItem("Countour", "contour_style")
-        self.lineart_type_combo.currentIndexChanged.connect(self.on_annotator_type_changed)
+        self.lineart_type_combo.currentIndexChanged.connect(self.on_preprocessor_type_changed)
         lineart_layout.addWidget(self.lineart_type_combo)
         self.lineart_widget.setVisible(False)
         second_control_layout.addWidget(self.lineart_widget)
@@ -133,20 +133,20 @@ class T2IDialog(BaseDialog):
         self.sketch_type_combo = QComboBox()
         self.sketch_type_combo.addItem("Pidinet Table 5", "table5")
         self.sketch_type_combo.addItem("Pidinet Table 7", "table7")
-        self.sketch_type_combo.currentIndexChanged.connect(self.on_annotator_type_changed)
+        self.sketch_type_combo.currentIndexChanged.connect(self.on_preprocessor_type_changed)
         sketch_layout.addWidget(self.sketch_type_combo)
         self.sketch_widget.setVisible(False)
         second_control_layout.addWidget(self.sketch_widget)
 
-        annotator_resolution_label = QLabel("Annotator resolution:")
-        second_control_layout.addWidget(annotator_resolution_label)
-        self.annotator_resolution_slider = QDoubleSlider(Qt.Orientation.Horizontal)
-        self.annotator_resolution_slider.setRange(0.05, 1.0)
-        self.annotator_resolution_slider.setValue(self.adapter.annotator_resolution)
-        self.annotator_resolution_slider.valueChanged.connect(self.on_annotator_resolution_changed)
-        second_control_layout.addWidget(self.annotator_resolution_slider)
-        self.annotator_resolution_value_label = QLabel(f"{int(self.adapter.annotator_resolution * 100)}%")
-        second_control_layout.addWidget(self.annotator_resolution_value_label)
+        preprocessor_resolution_label = QLabel("Preprocessor resolution:")
+        second_control_layout.addWidget(preprocessor_resolution_label)
+        self.preprocessor_resolution_slider = QDoubleSlider(Qt.Orientation.Horizontal)
+        self.preprocessor_resolution_slider.setRange(0.05, 1.0)
+        self.preprocessor_resolution_slider.setValue(self.adapter.preprocessor_resolution)
+        self.preprocessor_resolution_slider.valueChanged.connect(self.on_preprocessor_resolution_changed)
+        second_control_layout.addWidget(self.preprocessor_resolution_slider)
+        self.preprocessor_resolution_value_label = QLabel(f"{int(self.adapter.preprocessor_resolution * 100)}%")
+        second_control_layout.addWidget(self.preprocessor_resolution_value_label)
 
         content_layout.addLayout(second_control_layout)
 
@@ -182,22 +182,22 @@ class T2IDialog(BaseDialog):
         self.source_widget.image_loaded.connect(lambda: self.on_image_loaded(0))
         self.source_widget.image_changed.connect(self.on_source_changed)
         source_layout.addWidget(self.source_widget)
-        annotate_button = QPushButton("Annotate")
-        annotate_button.clicked.connect(self.on_annotate)
-        source_layout.addWidget(annotate_button)
+        preprocessor_button = QPushButton("Preprocess")
+        preprocessor_button.clicked.connect(self.on_preprocess)
+        source_layout.addWidget(preprocessor_button)
         images_layout.addLayout(source_layout)
 
-        annotator_layout = QVBoxLayout()
-        self.annotator_widget = ControlImageWidget("Annotator", self.image_viewer, self.image_generation_data)
-        self.annotator_widget.image_loaded.connect(lambda: self.on_image_loaded(1))
-        self.annotator_widget.image_changed.connect(self.on_annotator_image_changed)
-        annotator_layout.addWidget(self.annotator_widget)
+        preprocessor_layout = QVBoxLayout()
+        self.preprocessor_widget = ControlImageWidget("Preprocessor", self.image_viewer, self.image_generation_data)
+        self.preprocessor_widget.image_loaded.connect(lambda: self.on_image_loaded(1))
+        self.preprocessor_widget.image_changed.connect(self.on_preprocessor_image_changed)
+        preprocessor_layout.addWidget(self.preprocessor_widget)
 
         self.add_button = QPushButton("Add")
         self.add_button.clicked.connect(self.on_t2i_adapter_added)
 
-        annotator_layout.addWidget(self.add_button)
-        images_layout.addLayout(annotator_layout)
+        preprocessor_layout.addWidget(self.add_button)
+        images_layout.addLayout(preprocessor_layout)
 
         content_layout.addLayout(images_layout)
 
@@ -212,16 +212,16 @@ class T2IDialog(BaseDialog):
         brush_size_slider.valueChanged.connect(self.source_widget.image_editor.set_brush_size)
         brush_hardness_slider.valueChanged.connect(self.source_widget.image_editor.set_brush_hardness)
 
-        color_button.color_changed.connect(self.annotator_widget.image_editor.set_brush_color)
-        brush_size_slider.valueChanged.connect(self.annotator_widget.image_editor.set_brush_size)
-        brush_hardness_slider.valueChanged.connect(self.annotator_widget.image_editor.set_brush_hardness)
+        color_button.color_changed.connect(self.preprocessor_widget.image_editor.set_brush_color)
+        brush_size_slider.valueChanged.connect(self.preprocessor_widget.image_editor.set_brush_size)
+        brush_hardness_slider.valueChanged.connect(self.preprocessor_widget.image_editor.set_brush_hardness)
 
     def closeEvent(self, event):
         self.settings.beginGroup("t2i_adapters_dialog")
         self.settings.setValue("geometry", self.saveGeometry())
         self.settings.endGroup()
 
-        self.annotator_thread = None
+        self.preprocessor_thread = None
         torch.cuda.empty_cache()
         torch.cuda.ipc_collect()
 
@@ -229,30 +229,30 @@ class T2IDialog(BaseDialog):
 
     def on_source_changed(self):
         self.source_changed = True
-        self.annotate = True
+        self.preprocess = True
 
-    def on_annotator_image_changed(self):
-        self.annotator_changed = True
+    def on_preprocessor_image_changed(self):
+        self.preprocessor_changed = True
 
-    def on_annotate(self):
-        if not self.annotating:
+    def on_preprocess(self):
+        if not self.preprocessing:
             if self.adapter.source_image.image_original is None:
-                self.show_error("You must load an image or create a new one to be able to use annotators.")
+                self.show_error("You must load an image or create a new one to be able to use preprocessors.")
                 return
 
-            if not self.annotate:
+            if not self.preprocess:
                 return
 
-            self.annotating = True
+            self.preprocessing = True
 
             self.adapter.source_image.image_scale = self.source_widget.image_scale_control.value
             self.adapter.source_image.image_x_pos = self.source_widget.image_x_pos_control.value
             self.adapter.source_image.image_y_pos = self.source_widget.image_y_pos_control.value
             self.adapter.source_image.image_rotation = self.source_widget.image_rotation_control.value
 
-            self.adapter.adapter_name = self.annotator_combo.currentText()
-            self.adapter.adapter_type = self.annotator_combo.currentData()
-            self.adapter.type_index = self.annotator_combo.currentIndex()
+            self.adapter.adapter_name = self.preprocessor_combo.currentText()
+            self.adapter.adapter_type = self.preprocessor_combo.currentData()
+            self.adapter.type_index = self.preprocessor_combo.currentIndex()
             self.adapter.depth_type = self.depth_type_combo.currentData()
             self.adapter.lineart_type = self.lineart_type_combo.currentData()
             self.adapter.sketch_type = self.sketch_type_combo.currentData()
@@ -261,21 +261,21 @@ class T2IDialog(BaseDialog):
 
             drawings_pixmap = self.source_widget.image_editor.get_layer(1)
 
-            self.annotator_thread = T2IAnnotatorThread(self.adapter, drawings_pixmap, self.source_changed, self.annotate)
-            self.annotator_thread.finished.connect(self.on_annotated)
-            self.annotator_thread.start()
+            self.preprocessor_thread = T2IPreprocessorThread(self.adapter, drawings_pixmap, self.source_changed, self.preprocess)
+            self.preprocessor_thread.finished.connect(self.on_preprocessed)
+            self.preprocessor_thread.start()
 
-    def on_annotated(self):
-        pixmap = self.annotator_thread.annotator_pixmap
-        self.annotator_thread = None
-        self.annotator_widget.image_editor.set_pixmap(pixmap)
+    def on_preprocessed(self):
+        pixmap = self.preprocessor_thread.preprocessor_pixmap
+        self.preprocessor_thread = None
+        self.preprocessor_widget.image_editor.set_pixmap(pixmap)
         self.source_changed = False
-        self.annotate = False
-        self.annotator_changed = True
-        self.annotating = False
+        self.preprocess = False
+        self.preprocessor_changed = True
+        self.preprocessing = False
 
     def on_image_loaded(self, image_type: int):
-        # types: 0 - source, 1 - annotator
+        # types: 0 - source, 1 - preprocess
         timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
 
         if image_type == 0:
@@ -296,47 +296,47 @@ class T2IDialog(BaseDialog):
 
             self.adapter.source_image.image_original = original_path
             self.source_changed = True
-            self.annotate = True
+            self.preprocess = True
         else:
-            # the annotator doesn't have a original, its just the annotated image
-            if self.adapter.annotator_image.image_filename is not None:
-                os.remove(self.adapter.annotator_image.image_filename)
+            # the preprocessor doesn't have a original, its just the preprocessed image
+            if self.adapter.preprocessor_image.image_filename is not None:
+                os.remove(self.adapter.preprocessor_image.image_filename)
 
-            if self.adapter.annotator_image.image_thumb is not None:
-                os.remove(self.adapter.annotator_image.image_thumb)
-                self.adapter.annotator_image.image_thumb = None
+            if self.adapter.preprocessor_image.image_thumb is not None:
+                os.remove(self.adapter.preprocessor_image.image_thumb)
+                self.adapter.preprocessor_image.image_thumb = None
 
-            annotated_filename = f"t2i_{timestamp}_annotated.png"
-            self.adapter.annotator_image.image_filename = os.path.join("tmp/", annotated_filename)
+            preprocessed_filename = f"t2i_{timestamp}_preprocessed.png"
+            self.adapter.preprocessor_image.image_filename = os.path.join("tmp/", preprocessed_filename)
 
-            if self.annotator_widget.image_path is not None:
-                shutil.copy2(self.annotator_widget.image_path, self.adapter.annotator_image.image_filename)
+            if self.preprocessor_widget.image_path is not None:
+                shutil.copy2(self.preprocessor_widget.image_path, self.adapter.preprocessor_image.image_filename)
             else:
                 # If there is no path in the widget, in means its a blank, so we need to create the image
                 pass
 
-            self.annotator_changed = True
+            self.preprocessor_changed = True
 
     def on_t2i_adapter_added(self):
         if self.updating:
             return
 
-        if not self.annotator_changed:
+        if not self.preprocessor_changed:
             return
 
         self.updating = True
 
         drawings_pixmap = self.source_widget.image_editor.get_layer(1)
-        annotator_drawings_pixmap = self.annotator_widget.image_editor.get_layer(1)
+        preprocessor_drawings_pixmap = self.preprocessor_widget.image_editor.get_layer(1)
 
-        self.annotator_thread = T2IAnnotatorThread(
-            self.adapter, drawings_pixmap, self.source_changed, True, save_annotator=True, annotator_drawings=annotator_drawings_pixmap
+        self.preprocessor_thread = T2IPreprocessorThread(
+            self.adapter, drawings_pixmap, self.source_changed, True, save_preprocessor=True, preprocessor_drawings=preprocessor_drawings_pixmap
         )
-        self.annotator_thread.finished.connect(self.on_adapter_image_saved)
-        self.annotator_thread.start()
+        self.preprocessor_thread.finished.connect(self.on_adapter_image_saved)
+        self.preprocessor_thread.start()
 
     def on_adapter_image_saved(self):
-        self.annotator_thread = None
+        self.preprocessor_thread = None
 
         if self.adapter.adapter_id is None:
             self.event_bus.publish("t2i_adapters", {"action": "add", "t2i_adapter": self.adapter})
@@ -344,7 +344,7 @@ class T2IDialog(BaseDialog):
         else:
             self.event_bus.publish("t2i_adapters", {"action": "update", "t2i_adapter": self.adapter})
 
-        self.annotator_changed = False
+        self.preprocessor_changed = False
         self.updating = False
 
     def on_conditional_scale_changed(self, value):
@@ -362,26 +362,26 @@ class T2IDialog(BaseDialog):
         self.canny_high_label.setText(f"{self.adapter.canny_high}")
 
         if self.source_widget.image_editor.pixmap_item is not None:
-            self.annotate = True
-            self.on_annotate()
+            self.preprocess = True
+            self.on_preprocess()
 
-    def on_annotator_changed(self):
-        if self.annotator_combo.currentIndex() == 0:
+    def on_preprocessor_changed(self):
+        if self.preprocessor_combo.currentIndex() == 0:
             self.canny_widget.setVisible(True)
             self.depth_widget.setVisible(False)
             self.lineart_widget.setVisible(False)
             self.sketch_widget.setVisible(False)
-        elif self.annotator_combo.currentIndex() == 1:
+        elif self.preprocessor_combo.currentIndex() == 1:
             self.canny_widget.setVisible(False)
             self.depth_widget.setVisible(True)
             self.lineart_widget.setVisible(False)
             self.sketch_widget.setVisible(False)
-        elif self.annotator_combo.currentIndex() == 3:
+        elif self.preprocessor_combo.currentIndex() == 3:
             self.canny_widget.setVisible(False)
             self.depth_widget.setVisible(False)
             self.lineart_widget.setVisible(True)
             self.sketch_widget.setVisible(False)
-        elif self.annotator_combo.currentIndex() == 4:
+        elif self.preprocessor_combo.currentIndex() == 4:
             self.canny_widget.setVisible(False)
             self.depth_widget.setVisible(False)
             self.lineart_widget.setVisible(False)
@@ -392,52 +392,52 @@ class T2IDialog(BaseDialog):
             self.lineart_widget.setVisible(False)
             self.sketch_widget.setVisible(False)
 
-        self.annotate = True
+        self.preprocess = True
 
-    def on_annotator_type_changed(self):
-        self.annotate = True
+    def on_preprocessor_type_changed(self):
+        self.preprocess = True
 
-    def on_annotator_resolution_changed(self, value):
-        self.adapter.annotator_resolution = value
-        self.annotator_resolution_value_label.setText(f"{int(value * 100)}%")
-        self.annotate = True
+    def on_preprocessor_resolution_changed(self, value):
+        self.adapter.preprocessor_resolution = value
+        self.preprocessor_resolution_value_label.setText(f"{int(value * 100)}%")
+        self.preprocess = True
 
     def update_ui(self):
-        self.annotate = False
+        self.preprocess = False
         self.source_changed = False
-        self.annotator_changed = False
+        self.preprocessor_changed = False
 
         self.conditioning_scale_slider.setValue(self.adapter.conditioning_scale)
         self.conditioning_scale_value_label.setText(f"{self.adapter.conditioning_scale:.2f}")
         self.conditioning_factor_slider.setValue(self.adapter.conditioning_factor)
         self.canny_slider.setValue((self.adapter.canny_low, self.adapter.canny_high))
-        self.annotator_combo.setCurrentIndex(self.adapter.type_index)
-        self.on_annotator_changed()
+        self.preprocessor_combo.setCurrentIndex(self.adapter.type_index)
+        self.on_preprocessor_changed()
 
         if self.adapter.source_image:
             source_pixmap = QPixmap(self.adapter.source_image.image_original)
             self.source_widget.image_editor.set_pixmap(source_pixmap)
 
-        annotator_pixmap = QPixmap(self.adapter.annotator_image.image_filename)
-        self.annotator_widget.image_editor.set_pixmap(annotator_pixmap)
+        preprocessor_pixmap = QPixmap(self.adapter.preprocessor_image.image_filename)
+        self.preprocessor_widget.image_editor.set_pixmap(preprocessor_pixmap)
 
         if self.adapter.adapter_id:
             self.add_button.setText("Update")
 
     def reset_ui(self):
         self.source_widget.clear_image()
-        self.annotator_widget.clear_image()
+        self.preprocessor_widget.clear_image()
 
         self.adapter = T2IAdapterDataObject()
         self.source_changed = False
-        self.annotator_changed = True
-        self.annotate = True
+        self.preprocessor_changed = True
+        self.preprocess = True
 
         self.conditioning_scale_slider.setValue(self.adapter.conditioning_scale)
         self.conditioning_scale_value_label.setText(f"{self.adapter.conditioning_scale:.2f}")
         self.conditioning_factor_slider.setValue(self.adapter.conditioning_factor)
         self.canny_slider.setValue((self.adapter.canny_low, self.adapter.canny_high))
-        self.annotator_combo.setCurrentIndex(self.adapter.type_index)
-        self.on_annotator_changed()
+        self.preprocessor_combo.setCurrentIndex(self.adapter.type_index)
+        self.on_preprocessor_changed()
 
         self.add_button.setText("Add")

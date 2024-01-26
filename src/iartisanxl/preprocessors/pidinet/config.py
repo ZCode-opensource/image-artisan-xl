@@ -1,4 +1,4 @@
-from iartisanxl.annotators.pidinet.ops import createConvFunc
+from iartisanxl.preprocessors.pidinet.ops import createConvFunc
 
 nets = {
     "baseline": {

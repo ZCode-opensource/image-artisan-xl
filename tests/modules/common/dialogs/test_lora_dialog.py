@@ -35,7 +35,7 @@ class TestLoraDialog(unittest.TestCase):
             sequential_offload=False,
             model_offload=False,
             save_image_metadata=False,
-            save_image_control_annotators=False,
+            save_image_control_preprocessors=False,
             save_image_control_sources=False,
             hide_nsfw=False,
         )

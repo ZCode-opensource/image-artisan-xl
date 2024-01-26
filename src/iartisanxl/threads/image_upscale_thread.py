@@ -128,7 +128,7 @@ class ImageUpscaleThread(QThread):
 
             output_image = cv2.cvtColor(output_image, cv2.COLOR_BGR2RGB)  # pylint: disable=no-member
             image = Image.fromarray(output_image)
-            image = image.resize((image.size[0] // 2, image.size[1] // 2), Image.LANCZOS)
+            image = image.resize((image.size[0] // 2, image.size[1] // 2), Image.Resampling.LANCZOS)
 
             qimage = QImage(image.tobytes(), image.size[0], image.size[1], QImage.Format.Format_RGB888)
             qpixmap = QPixmap.fromImage(qimage)

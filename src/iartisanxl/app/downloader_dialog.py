@@ -67,6 +67,11 @@ class DownloaderDialog(QDialog):
         self.t2i_items_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
         t2i_widget.setLayout(self.t2i_items_layout)
 
+        ip_adapter_widget = QWidget()
+        self.ip_adapter_items_layout = QGridLayout()
+        self.ip_adapter_items_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+        ip_adapter_widget.setLayout(self.ip_adapter_items_layout)
+
         captions_widget = QWidget()
         self.captions_items_layout = QGridLayout()
         self.captions_items_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
@@ -75,6 +80,7 @@ class DownloaderDialog(QDialog):
         tab_widget.addTab(essentials_widget, "Essentials")
         tab_widget.addTab(controlnets_widget, "ControlNet")
         tab_widget.addTab(t2i_widget, "T2I Adapters")
+        tab_widget.addTab(ip_adapter_widget, "IP Adapters")
         tab_widget.addTab(captions_widget, "Captions")
         self.main_layout.addWidget(tab_widget)
 
@@ -109,6 +115,7 @@ class DownloaderDialog(QDialog):
                 "essential_items": self.essentials_items_layout,
                 "controlnet_items": self.controlnets_items_layout,
                 "t2i_items": self.t2i_items_layout,
+                "ip_adapter_items": self.ip_adapter_items_layout,
                 "captions_items": self.captions_items_layout,
             }
 
@@ -155,6 +162,8 @@ class DownloaderDialog(QDialog):
             root_directory = self.directories.models_controlnets
         elif destination_directory == "t2i_adapters":
             root_directory = self.directories.models_t2i_adapters
+        elif destination_directory == "ip-adapter":
+            root_directory = self.directories.models_ip_adapters
 
         if root_directory is not None:
             if root_directory is not None:
@@ -163,7 +172,7 @@ class DownloaderDialog(QDialog):
         return final_directory
 
     def on_start_download(self):
-        layouts = [self.essentials_items_layout, self.controlnets_items_layout, self.t2i_items_layout, self.captions_items_layout]
+        layouts = [self.essentials_items_layout, self.controlnets_items_layout, self.t2i_items_layout, self.ip_adapter_items_layout, self.captions_items_layout]
         for layout in layouts:
             for i in range(layout.count()):
                 item = layout.itemAt(i).widget()
