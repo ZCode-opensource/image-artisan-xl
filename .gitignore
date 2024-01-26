@@ -2,9 +2,9 @@
 .vscode/
 htmlcov/
 **/__pycache__/
-models/
-outputs/
-datasets/
+/models/
+/outputs/
+/datasets/
 .coverage
 .directory
 *.egg-info
