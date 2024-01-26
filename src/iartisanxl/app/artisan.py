@@ -1,5 +1,6 @@
 import ctypes
 import os
+import platform
 
 from importlib.resources import files
 
@@ -19,7 +20,9 @@ class ArtisanApplication(QApplication):
 
     def __init__(self, *args, **kwargs):
         myappid = "zcode.imageartisanxl.010"
-        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
+
+        if platform.system() == 'Windows':
+            ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
 
         super(ArtisanApplication, self).__init__(*args, **kwargs)
 
