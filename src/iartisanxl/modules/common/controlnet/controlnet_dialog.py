@@ -35,7 +35,7 @@ class ControlNetDialog(BaseDialog):
         self.controlnet = ControlNetDataObject()
         self.updating = False
         self.source_changed = False
-        self.prepocessor_changed = True
+        self.preprocessor_changed = True
         self.preprocessing = False
         self.preprocess = True
         self.preprocessor_thread = None
@@ -49,13 +49,13 @@ class ControlNetDialog(BaseDialog):
         control_layout.setContentsMargins(10, 0, 10, 0)
         control_layout.setSpacing(10)
 
-        self.prepocessor_combo = QComboBox()
-        self.prepocessor_combo.addItem("Canny", "controlnet_canny_model")
-        self.prepocessor_combo.addItem("Depth", "controlnet_depth_model")
-        self.prepocessor_combo.addItem("Pose", "controlnet_pose_model")
-        self.prepocessor_combo.addItem("Inpaint", "controlnet_inpaint_model")
-        self.prepocessor_combo.currentIndexChanged.connect(self.on_preprocessor_changed)
-        control_layout.addWidget(self.prepocessor_combo)
+        self.preprocessor_combo = QComboBox()
+        self.preprocessor_combo.addItem("Canny", "controlnet_canny_model")
+        self.preprocessor_combo.addItem("Depth", "controlnet_depth_model")
+        self.preprocessor_combo.addItem("Pose", "controlnet_pose_model")
+        self.preprocessor_combo.addItem("Inpaint", "controlnet_inpaint_model")
+        self.preprocessor_combo.currentIndexChanged.connect(self.on_preprocessor_changed)
+        control_layout.addWidget(self.preprocessor_combo)
 
         conditioning_scale_label = QLabel("Conditioning scale:")
         control_layout.addWidget(conditioning_scale_label)
@@ -211,7 +211,7 @@ class ControlNetDialog(BaseDialog):
         self.preprocess = True
 
     def on_preprocessor_image_changed(self):
-        self.prepocessor_changed = True
+        self.preprocessor_changed = True
 
     def on_preprocess(self):
         if not self.preprocessing:
@@ -229,9 +229,9 @@ class ControlNetDialog(BaseDialog):
             self.controlnet.source_image.image_y_pos = self.source_widget.image_y_pos_control.value
             self.controlnet.source_image.image_rotation = self.source_widget.image_rotation_control.value
 
-            self.controlnet.adapter_name = self.prepocessor_combo.currentText()
-            self.controlnet.adapter_type = self.prepocessor_combo.currentData()
-            self.controlnet.type_index = self.prepocessor_combo.currentIndex()
+            self.controlnet.adapter_name = self.preprocessor_combo.currentText()
+            self.controlnet.adapter_type = self.preprocessor_combo.currentData()
+            self.controlnet.type_index = self.preprocessor_combo.currentIndex()
             self.controlnet.depth_type = self.depth_type_combo.currentData()
             self.controlnet.depth_type_index = self.depth_type_combo.currentIndex()
             self.controlnet.generation_width = self.image_generation_data.image_width
@@ -249,11 +249,11 @@ class ControlNetDialog(BaseDialog):
         self.preprocessor_widget.image_editor.set_pixmap(pixmap)
         self.source_changed = False
         self.preprocess = False
-        self.prepocessor_changed = True
+        self.preprocessor_changed = True
         self.preprocessing = False
 
     def on_image_loaded(self, image_type: int):
-        # types: 0 - source, 1 - prepocessor
+        # types: 0 - source, 1 - preprocessor
         timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
 
         if image_type == 0:
@@ -293,22 +293,22 @@ class ControlNetDialog(BaseDialog):
                 # If there is no path in the widget, in means its a blank, so we need to create the image
                 pass
 
-            self.prepocessor_changed = True
+            self.preprocessor_changed = True
 
     def on_controlnet_added(self):
         if self.updating:
             return
 
-        if not self.prepocessor_changed:
+        if not self.preprocessor_changed:
             return
 
         self.updating = True
 
         drawings_pixmap = self.source_widget.image_editor.get_layer(1)
-        prepocessor_drawings_pixmap = self.preprocessor_widget.image_editor.get_layer(1)
+        preprocessor_drawings_pixmap = self.preprocessor_widget.image_editor.get_layer(1)
 
         self.preprocessor_thread = PreprocessorThread(
-            self.controlnet, drawings_pixmap, self.source_changed, True, save_preprocessor=True, preprocessor_drawings=prepocessor_drawings_pixmap
+            self.controlnet, drawings_pixmap, self.source_changed, True, save_preprocessor=True, preprocessor_drawings=preprocessor_drawings_pixmap
         )
         self.preprocessor_thread.finished.connect(self.on_controlnet_image_saved)
         self.preprocessor_thread.start()
@@ -322,7 +322,7 @@ class ControlNetDialog(BaseDialog):
         else:
             self.event_bus.publish("controlnet", {"action": "update", "controlnet": self.controlnet})
 
-        self.prepocessor_changed = False
+        self.preprocessor_changed = False
         self.updating = False
 
     def on_conditional_scale_changed(self, value):
@@ -346,10 +346,10 @@ class ControlNetDialog(BaseDialog):
             self.on_preprocess()
 
     def on_preprocessor_changed(self):
-        if self.prepocessor_combo.currentIndex() == 0:
+        if self.preprocessor_combo.currentIndex() == 0:
             self.canny_widget.setVisible(True)
             self.depth_widget.setVisible(False)
-        elif self.prepocessor_combo.currentIndex() == 1:
+        elif self.preprocessor_combo.currentIndex() == 1:
             self.canny_widget.setVisible(False)
             self.depth_widget.setVisible(True)
         else:
@@ -369,13 +369,13 @@ class ControlNetDialog(BaseDialog):
     def update_ui(self):
         self.preprocess = False
         self.source_changed = False
-        self.prepocessor_changed = False
+        self.preprocessor_changed = False
 
         self.conditioning_scale_slider.setValue(self.controlnet.conditioning_scale)
         self.conditioning_scale_value_label.setText(f"{self.controlnet.conditioning_scale:.2f}")
         self.guidance_slider.setValue((self.controlnet.guidance_start, self.controlnet.guidance_end))
 
-        self.annotator_combo.setCurrentIndex(self.controlnet.type_index)
+        self.preprocessor_combo.setCurrentIndex(self.controlnet.type_index)
         self.canny_slider.setValue((self.controlnet.canny_low, self.controlnet.canny_high))
         self.depth_type_combo.setCurrentIndex(self.controlnet.depth_type_index)
         self.on_preprocessor_changed()
@@ -402,14 +402,14 @@ class ControlNetDialog(BaseDialog):
 
         self.controlnet = ControlNetDataObject()
         self.source_changed = False
-        self.prepocessor_changed = True
+        self.preprocessor_changed = True
         self.preprocess = True
 
         self.conditioning_scale_slider.setValue(self.controlnet.conditioning_scale)
         self.conditioning_scale_value_label.setText(f"{self.controlnet.conditioning_scale:.2f}")
         self.guidance_slider.setValue((self.controlnet.guidance_start, self.controlnet.guidance_end))
         self.canny_slider.setValue((self.controlnet.canny_low, self.controlnet.canny_high))
-        self.prepocessor_combo.setCurrentIndex(self.controlnet.type_index)
+        self.preprocessor_combo.setCurrentIndex(self.controlnet.type_index)
         self.on_preprocessor_changed()
 
         self.add_button.setText("Add")
