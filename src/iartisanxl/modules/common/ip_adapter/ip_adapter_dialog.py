@@ -54,7 +54,7 @@ class ImageProcessThread(QThread):
 
         new_width = round(self.image_editor.pixmap_item.sceneBoundingRect().width())
         new_height = round(self.image_editor.pixmap_item.sceneBoundingRect().height())
-        pil_image = pil_image.resize((new_width, new_height), Image.LANCZOS)
+        pil_image = pil_image.resize((new_width, new_height), Image.Resampling.LANCZOS)
 
         left = math.floor(new_width / 2 - (width / 2 + dx))
         top = math.floor(new_height / 2 - (height / 2 + dy))

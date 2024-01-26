@@ -13,7 +13,7 @@ from iartisanxl.buttons.color_button import ColorButton
 from iartisanxl.modules.common.dialogs.base_dialog import BaseDialog
 from iartisanxl.modules.common.dialogs.control_image_widget import ControlImageWidget
 from iartisanxl.modules.common.controlnet.controlnet_data_object import ControlNetDataObject
-from iartisanxl.threads.annotator_thread import AnnotatorThread
+from iartisanxl.threads.preprocessor_thread import PreprocessorThread
 
 
 class ControlNetDialog(BaseDialog):
@@ -35,10 +35,10 @@ class ControlNetDialog(BaseDialog):
         self.controlnet = ControlNetDataObject()
         self.updating = False
         self.source_changed = False
-        self.annotator_changed = True
-        self.annotating = False
-        self.annotate = True
-        self.annotator_thread = None
+        self.prepocessor_changed = True
+        self.preprocessing = False
+        self.preprocess = True
+        self.preprocessor_thread = None
 
         self.init_ui()
 
@@ -49,13 +49,13 @@ class ControlNetDialog(BaseDialog):
         control_layout.setContentsMargins(10, 0, 10, 0)
         control_layout.setSpacing(10)
 
-        self.annotator_combo = QComboBox()
-        self.annotator_combo.addItem("Canny", "controlnet_canny_model")
-        self.annotator_combo.addItem("Depth", "controlnet_depth_model")
-        self.annotator_combo.addItem("Pose", "controlnet_pose_model")
-        self.annotator_combo.addItem("Inpaint", "controlnet_inpaint_model")
-        self.annotator_combo.currentIndexChanged.connect(self.on_annotator_changed)
-        control_layout.addWidget(self.annotator_combo)
+        self.prepocessor_combo = QComboBox()
+        self.prepocessor_combo.addItem("Canny", "controlnet_canny_model")
+        self.prepocessor_combo.addItem("Depth", "controlnet_depth_model")
+        self.prepocessor_combo.addItem("Pose", "controlnet_pose_model")
+        self.prepocessor_combo.addItem("Inpaint", "controlnet_inpaint_model")
+        self.prepocessor_combo.currentIndexChanged.connect(self.on_preprocessor_changed)
+        control_layout.addWidget(self.prepocessor_combo)
 
         conditioning_scale_label = QLabel("Conditioning scale:")
         control_layout.addWidget(conditioning_scale_label)
@@ -110,20 +110,20 @@ class ControlNetDialog(BaseDialog):
         self.depth_type_combo.addItem("Depth Hybrid Midas", "dpt-hybrid-midas")
         self.depth_type_combo.addItem("Depth BEiT Base 384", "dpt-beit-base-384")
         self.depth_type_combo.addItem("Depth BEiT Large 512", "dpt-beit-large-512")
-        self.depth_type_combo.currentIndexChanged.connect(self.on_annotator_type_changed)
+        self.depth_type_combo.currentIndexChanged.connect(self.on_preprocessor_type_changed)
         depth_layout.addWidget(self.depth_type_combo)
         self.depth_widget.setVisible(False)
         second_control_layout.addWidget(self.depth_widget)
 
-        annotator_resolution_label = QLabel("Annotator resolution:")
-        second_control_layout.addWidget(annotator_resolution_label)
-        self.annotator_resolution_slider = QDoubleSlider(Qt.Orientation.Horizontal)
-        self.annotator_resolution_slider.setRange(0.05, 1.0)
-        self.annotator_resolution_slider.setValue(self.controlnet.annotator_resolution)
-        self.annotator_resolution_slider.valueChanged.connect(self.on_annotator_resolution_changed)
-        second_control_layout.addWidget(self.annotator_resolution_slider)
-        self.annotator_resolution_value_label = QLabel(f"{int(self.controlnet.annotator_resolution * 100)}%")
-        second_control_layout.addWidget(self.annotator_resolution_value_label)
+        preprocessor_resolution_label = QLabel("Preprocessor resolution:")
+        second_control_layout.addWidget(preprocessor_resolution_label)
+        self.preprocessor_resolution_slider = QDoubleSlider(Qt.Orientation.Horizontal)
+        self.preprocessor_resolution_slider.setRange(0.05, 1.0)
+        self.preprocessor_resolution_slider.setValue(self.controlnet.preprocessor_resolution)
+        self.preprocessor_resolution_slider.valueChanged.connect(self.on_preprocessor_resolution_changed)
+        second_control_layout.addWidget(self.preprocessor_resolution_slider)
+        self.preprocessor_resolution_value_label = QLabel(f"{int(self.controlnet.preprocessor_resolution * 100)}%")
+        second_control_layout.addWidget(self.preprocessor_resolution_value_label)
 
         content_layout.addLayout(second_control_layout)
 
@@ -159,24 +159,24 @@ class ControlNetDialog(BaseDialog):
         self.source_widget.image_loaded.connect(lambda: self.on_image_loaded(0))
         self.source_widget.image_changed.connect(self.on_source_changed)
         source_layout.addWidget(self.source_widget)
-        annotate_button = QPushButton("Annotate")
-        annotate_button.setObjectName("blue_button")
-        annotate_button.clicked.connect(self.on_annotate)
-        source_layout.addWidget(annotate_button)
+        preprocess_button = QPushButton("Preprocess")
+        preprocess_button.setObjectName("blue_button")
+        preprocess_button.clicked.connect(self.on_preprocess)
+        source_layout.addWidget(preprocess_button)
         images_layout.addLayout(source_layout)
 
-        annotator_layout = QVBoxLayout()
-        self.annotator_widget = ControlImageWidget("Annotator", self.image_viewer, self.image_generation_data)
-        self.annotator_widget.image_loaded.connect(lambda: self.on_image_loaded(1))
-        self.annotator_widget.image_changed.connect(self.on_annotator_image_changed)
-        annotator_layout.addWidget(self.annotator_widget)
+        preprocessor_layout = QVBoxLayout()
+        self.preprocessor_widget = ControlImageWidget("Preprocessor", self.image_viewer, self.image_generation_data)
+        self.preprocessor_widget.image_loaded.connect(lambda: self.on_image_loaded(1))
+        self.preprocessor_widget.image_changed.connect(self.on_preprocessor_image_changed)
+        preprocessor_layout.addWidget(self.preprocessor_widget)
 
         self.add_button = QPushButton("Add")
         self.add_button.setObjectName("green_button")
         self.add_button.clicked.connect(self.on_controlnet_added)
 
-        annotator_layout.addWidget(self.add_button)
-        images_layout.addLayout(annotator_layout)
+        preprocessor_layout.addWidget(self.add_button)
+        images_layout.addLayout(preprocessor_layout)
 
         content_layout.addLayout(images_layout)
 
@@ -191,16 +191,16 @@ class ControlNetDialog(BaseDialog):
         brush_size_slider.valueChanged.connect(self.source_widget.image_editor.set_brush_size)
         brush_hardness_slider.valueChanged.connect(self.source_widget.image_editor.set_brush_hardness)
 
-        color_button.color_changed.connect(self.annotator_widget.image_editor.set_brush_color)
-        brush_size_slider.valueChanged.connect(self.annotator_widget.image_editor.set_brush_size)
-        brush_hardness_slider.valueChanged.connect(self.annotator_widget.image_editor.set_brush_hardness)
+        color_button.color_changed.connect(self.preprocessor_widget.image_editor.set_brush_color)
+        brush_size_slider.valueChanged.connect(self.preprocessor_widget.image_editor.set_brush_size)
+        brush_hardness_slider.valueChanged.connect(self.preprocessor_widget.image_editor.set_brush_hardness)
 
     def closeEvent(self, event):
         self.settings.beginGroup("controlnet_dialog")
         self.settings.setValue("geometry", self.saveGeometry())
         self.settings.endGroup()
 
-        self.annotator_thread = None
+        self.preprocessor_thread = None
         torch.cuda.empty_cache()
         torch.cuda.ipc_collect()
 
@@ -208,30 +208,30 @@ class ControlNetDialog(BaseDialog):
 
     def on_source_changed(self):
         self.source_changed = True
-        self.annotate = True
+        self.preprocess = True
 
-    def on_annotator_image_changed(self):
-        self.annotator_changed = True
+    def on_preprocessor_image_changed(self):
+        self.prepocessor_changed = True
 
-    def on_annotate(self):
-        if not self.annotating:
+    def on_preprocess(self):
+        if not self.preprocessing:
             if self.controlnet.source_image.image_original is None:
-                self.show_error("You must load an image or create a new one to be able to use annotators.")
+                self.show_error("You must load an image or create a new one to be able to use preprocessors.")
                 return
 
-            if not self.annotate:
+            if not self.preprocess:
                 return
 
-            self.annotating = True
+            self.preprocessing = True
 
             self.controlnet.source_image.image_scale = self.source_widget.image_scale_control.value
             self.controlnet.source_image.image_x_pos = self.source_widget.image_x_pos_control.value
             self.controlnet.source_image.image_y_pos = self.source_widget.image_y_pos_control.value
             self.controlnet.source_image.image_rotation = self.source_widget.image_rotation_control.value
 
-            self.controlnet.adapter_name = self.annotator_combo.currentText()
-            self.controlnet.adapter_type = self.annotator_combo.currentData()
-            self.controlnet.type_index = self.annotator_combo.currentIndex()
+            self.controlnet.adapter_name = self.prepocessor_combo.currentText()
+            self.controlnet.adapter_type = self.prepocessor_combo.currentData()
+            self.controlnet.type_index = self.prepocessor_combo.currentIndex()
             self.controlnet.depth_type = self.depth_type_combo.currentData()
             self.controlnet.depth_type_index = self.depth_type_combo.currentIndex()
             self.controlnet.generation_width = self.image_generation_data.image_width
@@ -239,21 +239,21 @@ class ControlNetDialog(BaseDialog):
 
             drawings_pixmap = self.source_widget.image_editor.get_layer(1)
 
-            self.annotator_thread = AnnotatorThread(self.controlnet, drawings_pixmap, self.source_changed, self.annotate)
-            self.annotator_thread.finished.connect(self.on_annotated)
-            self.annotator_thread.start()
+            self.preprocessor_thread = PreprocessorThread(self.controlnet, drawings_pixmap, self.source_changed, self.preprocess)
+            self.preprocessor_thread.finished.connect(self.on_preprocessed)
+            self.preprocessor_thread.start()
 
-    def on_annotated(self):
-        pixmap = self.annotator_thread.annotator_pixmap
-        self.annotator_thread = None
-        self.annotator_widget.image_editor.set_pixmap(pixmap)
+    def on_preprocessed(self):
+        pixmap = self.preprocessor_thread.preprocessor_pixmap
+        self.preprocessor_thread = None
+        self.preprocessor_widget.image_editor.set_pixmap(pixmap)
         self.source_changed = False
-        self.annotate = False
-        self.annotator_changed = True
-        self.annotating = False
+        self.preprocess = False
+        self.prepocessor_changed = True
+        self.preprocessing = False
 
     def on_image_loaded(self, image_type: int):
-        # types: 0 - source, 1 - annotator
+        # types: 0 - source, 1 - prepocessor
         timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
 
         if image_type == 0:
@@ -274,47 +274,47 @@ class ControlNetDialog(BaseDialog):
 
             self.controlnet.source_image.image_original = original_path
             self.source_changed = True
-            self.annotate = True
+            self.preprocess = True
         else:
-            # the annotator doesn't have a original, its just the annotated image
-            if self.controlnet.annotator_image.image_filename is not None:
-                os.remove(self.controlnet.annotator_image.image_filename)
+            # the preprocessor doesn't have a original, its just the preprocessed image
+            if self.controlnet.preprocessor_image.image_filename is not None:
+                os.remove(self.controlnet.preprocessor_image.image_filename)
 
-            if self.controlnet.annotator_image.image_thumb is not None:
-                os.remove(self.controlnet.annotator_image.image_thumb)
-                self.controlnet.annotator_image.image_thumb = None
+            if self.controlnet.preprocessor_image.image_thumb is not None:
+                os.remove(self.controlnet.preprocessor_image.image_thumb)
+                self.controlnet.preprocessor_image.image_thumb = None
 
-            annotated_filename = f"cn_{timestamp}_annotated.png"
-            self.controlnet.annotator_image.image_filename = os.path.join("tmp/", annotated_filename)
+            preprocessed_filename = f"cn_{timestamp}_preprocessed.png"
+            self.controlnet.preprocessor_image.image_filename = os.path.join("tmp/", preprocessed_filename)
 
-            if self.annotator_widget.image_path is not None:
-                shutil.copy2(self.annotator_widget.image_path, self.controlnet.annotator_image.image_filename)
+            if self.preprocessor_widget.image_path is not None:
+                shutil.copy2(self.preprocessor_widget.image_path, self.controlnet.preprocessor_image.image_filename)
             else:
                 # If there is no path in the widget, in means its a blank, so we need to create the image
                 pass
 
-            self.annotator_changed = True
+            self.prepocessor_changed = True
 
     def on_controlnet_added(self):
         if self.updating:
             return
 
-        if not self.annotator_changed:
+        if not self.prepocessor_changed:
             return
 
         self.updating = True
 
         drawings_pixmap = self.source_widget.image_editor.get_layer(1)
-        annotator_drawings_pixmap = self.annotator_widget.image_editor.get_layer(1)
+        prepocessor_drawings_pixmap = self.preprocessor_widget.image_editor.get_layer(1)
 
-        self.annotator_thread = AnnotatorThread(
-            self.controlnet, drawings_pixmap, self.source_changed, True, save_annotator=True, annotator_drawings=annotator_drawings_pixmap
+        self.preprocessor_thread = PreprocessorThread(
+            self.controlnet, drawings_pixmap, self.source_changed, True, save_preprocessor=True, preprocessor_drawings=prepocessor_drawings_pixmap
         )
-        self.annotator_thread.finished.connect(self.on_controlnet_image_saved)
-        self.annotator_thread.start()
+        self.preprocessor_thread.finished.connect(self.on_controlnet_image_saved)
+        self.preprocessor_thread.start()
 
     def on_controlnet_image_saved(self):
-        self.annotator_thread = None
+        self.preprocessor_thread = None
 
         if self.controlnet.adapter_id is None:
             self.event_bus.publish("controlnet", {"action": "add", "controlnet": self.controlnet})
@@ -322,7 +322,7 @@ class ControlNetDialog(BaseDialog):
         else:
             self.event_bus.publish("controlnet", {"action": "update", "controlnet": self.controlnet})
 
-        self.annotator_changed = False
+        self.prepocessor_changed = False
         self.updating = False
 
     def on_conditional_scale_changed(self, value):
@@ -342,34 +342,34 @@ class ControlNetDialog(BaseDialog):
         self.canny_high_label.setText(f"{self.controlnet.canny_high}")
 
         if self.source_widget.image_editor.pixmap_item is not None:
-            self.annotate = True
-            self.on_annotate()
+            self.preprocess = True
+            self.on_preprocess()
 
-    def on_annotator_changed(self):
-        if self.annotator_combo.currentIndex() == 0:
+    def on_preprocessor_changed(self):
+        if self.prepocessor_combo.currentIndex() == 0:
             self.canny_widget.setVisible(True)
             self.depth_widget.setVisible(False)
-        elif self.annotator_combo.currentIndex() == 1:
+        elif self.prepocessor_combo.currentIndex() == 1:
             self.canny_widget.setVisible(False)
             self.depth_widget.setVisible(True)
         else:
             self.canny_widget.setVisible(False)
             self.depth_widget.setVisible(False)
 
-        self.annotate = True
+        self.preprocess = True
 
-    def on_annotator_type_changed(self):
-        self.annotate = True
+    def on_preprocessor_type_changed(self):
+        self.preprocess = True
 
-    def on_annotator_resolution_changed(self, value):
-        self.controlnet.annotator_resolution = value
-        self.annotator_resolution_value_label.setText(f"{int(value * 100)}%")
-        self.annotate = True
+    def on_preprocessor_resolution_changed(self, value):
+        self.controlnet.preprocessor_resolution = value
+        self.preprocessor_resolution_value_label.setText(f"{int(value * 100)}%")
+        self.preprocess = True
 
     def update_ui(self):
-        self.annotate = False
+        self.preprocess = False
         self.source_changed = False
-        self.annotator_changed = False
+        self.prepocessor_changed = False
 
         self.conditioning_scale_slider.setValue(self.controlnet.conditioning_scale)
         self.conditioning_scale_value_label.setText(f"{self.controlnet.conditioning_scale:.2f}")
@@ -378,7 +378,7 @@ class ControlNetDialog(BaseDialog):
         self.annotator_combo.setCurrentIndex(self.controlnet.type_index)
         self.canny_slider.setValue((self.controlnet.canny_low, self.controlnet.canny_high))
         self.depth_type_combo.setCurrentIndex(self.controlnet.depth_type_index)
-        self.on_annotator_changed()
+        self.on_preprocessor_changed()
 
         if self.controlnet.source_image:
             source_pixmap = QPixmap(self.controlnet.source_image.image_original)
@@ -390,26 +390,26 @@ class ControlNetDialog(BaseDialog):
                 self.controlnet.source_image.image_rotation,
             )
 
-        annotator_pixmap = QPixmap(self.controlnet.annotator_image.image_filename)
-        self.annotator_widget.image_editor.set_pixmap(annotator_pixmap)
+        preprocessor_pixmap = QPixmap(self.controlnet.preprocessor_image.image_filename)
+        self.preprocessor_widget.image_editor.set_pixmap(preprocessor_pixmap)
 
         if self.controlnet.adapter_id is not None:
             self.add_button.setText("Update")
 
     def reset_ui(self):
         self.source_widget.clear_image()
-        self.annotator_widget.clear_image()
+        self.preprocessor_widget.clear_image()
 
         self.controlnet = ControlNetDataObject()
         self.source_changed = False
-        self.annotator_changed = True
-        self.annotate = True
+        self.prepocessor_changed = True
+        self.preprocess = True
 
         self.conditioning_scale_slider.setValue(self.controlnet.conditioning_scale)
         self.conditioning_scale_value_label.setText(f"{self.controlnet.conditioning_scale:.2f}")
         self.guidance_slider.setValue((self.controlnet.guidance_start, self.controlnet.guidance_end))
         self.canny_slider.setValue((self.controlnet.canny_low, self.controlnet.canny_high))
-        self.annotator_combo.setCurrentIndex(self.controlnet.type_index)
-        self.on_annotator_changed()
+        self.prepocessor_combo.setCurrentIndex(self.controlnet.type_index)
+        self.on_preprocessor_changed()
 
         self.add_button.setText("Add")

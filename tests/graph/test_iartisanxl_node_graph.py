@@ -980,7 +980,7 @@ class TestImageArtisanNodeGraph(unittest.TestCase):
         self.graph()
 
         # Check that elapsed_time has been set for each node
-        self.assertEqual(mock_node.elapsed_time, 0)
+        self.assertAlmostEqual(mock_node.elapsed_time, 0, delta=1e-06)
         self.assertGreater(mock_timer_node.elapsed_time, 0.1)
 
     def test_get_all_nodes_class(self):

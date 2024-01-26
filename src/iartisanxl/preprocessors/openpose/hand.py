@@ -4,8 +4,8 @@ from scipy.ndimage import gaussian_filter
 import torch
 from skimage.measure import label  # pylint: disable=no-name-in-module
 
-from iartisanxl.annotators.openpose.model import handpose_model
-from iartisanxl.annotators.openpose import util
+from iartisanxl.preprocessors.openpose.model import handpose_model
+from iartisanxl.preprocessors.openpose import util
 
 
 class Hand(object):

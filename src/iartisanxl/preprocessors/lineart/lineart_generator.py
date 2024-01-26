@@ -4,7 +4,7 @@ import numpy as np
 import cv2
 import torch
 
-from iartisanxl.annotators.lineart.model import Generator
+from iartisanxl.preprocessors.lineart.model import Generator
 
 
 class LineArtGenerator:
@@ -18,7 +18,7 @@ class LineArtGenerator:
         self.model = Generator(3, 1, 3)
         self.model.cuda()
 
-        self.model.load_state_dict(torch.load(os.path.join("./models/annotators/lineart", self.model_type, "netG_A_latest.pth")))
+        self.model.load_state_dict(torch.load(os.path.join("./models/preprocessors/lineart", self.model_type, "netG_A_latest.pth")))
         self.model.eval()
 
     def change_model(self, model_type):

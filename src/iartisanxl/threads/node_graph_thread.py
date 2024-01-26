@@ -181,7 +181,7 @@ class NodeGraphThread(QThread):
 
             if len(added_controlnets) > 0:
                 for controlnet in added_controlnets:
-                    controlnet_image_node = ImageLoadNode(path=controlnet.annotator_image.image_filename)
+                    controlnet_image_node = ImageLoadNode(path=controlnet.preprocessor_image.image_filename)
                     controlnet_node = ControlnetNode(
                         controlnet.type_index, controlnet.adapter_type, controlnet.conditioning_scale, controlnet.guidance_start, controlnet.guidance_end
                     )
@@ -222,7 +222,7 @@ class NodeGraphThread(QThread):
 
                     # update image
                     control_image_node = self.node_graph.get_node_by_name(f"control_image_{controlnet.node_id}")
-                    control_image_node.update_path(controlnet.annotator_image.image_filename)
+                    control_image_node.update_path(controlnet.preprocessor_image.image_filename)
 
         removed_controlnets = self.controlnet_list.get_removed()
         if len(removed_controlnets) > 0:
@@ -245,7 +245,7 @@ class NodeGraphThread(QThread):
 
             if len(added_t2i_adapters) > 0:
                 for t2i_adapter in added_t2i_adapters:
-                    t2i_adapter_image_node = ImageLoadNode(path=t2i_adapter.annotator_image.image_filename)
+                    t2i_adapter_image_node = ImageLoadNode(path=t2i_adapter.preprocessor_image.image_filename)
                     t2i_adapter_node = T2IAdapterNode(
                         t2i_adapter.type_index, t2i_adapter.adapter_type, t2i_adapter.conditioning_scale, t2i_adapter.conditioning_factor
                     )
@@ -285,7 +285,7 @@ class NodeGraphThread(QThread):
 
                     # update image
                     t2i_adapter_image_node = self.node_graph.get_node_by_name(f"adapter_image_{t2i_adapter.node_id}")
-                    t2i_adapter_image_node.update_path(t2i_adapter.annotator_image.image_filename)
+                    t2i_adapter_image_node.update_path(t2i_adapter.preprocessor_image.image_filename)
 
         removed_t2i_adapters = self.t2i_adapter_list.get_removed()
         if len(removed_t2i_adapters) > 0:
@@ -397,11 +397,12 @@ class NodeGraphThread(QThread):
             self.node_graph()
         except KeyError:
             self.generation_error.emit("There was an error while generating.", False)
-        except FileNotFoundError:
+        except FileNotFoundError:            
             self.generation_error.emit(
                 "There's a missing model file in the generation, choose a different one or download missing models from the downloader", False
             )
-        except OSError:
+        except OSError as e:
+            print(f"{e}")
             self.generation_error.emit(
                 "There's a missing model file in the generation, choose a different one or download missing models from the downloader", False
             )
@@ -469,7 +470,7 @@ class NodeGraphThread(QThread):
         if ip_adapter_model_node is None:
             ip_adapter_model_file = ip_adapter_dict.get(ip_adapter_type, "")
 
-            ip_adapter_model_node = IPAdapterModelNode(path=os.path.join(self.directories.models_ip_adapters, ip_adapter_model_file))
+            ip_adapter_model_node = IPAdapterModelNode(path=os.path.join(self.directories.models_ip_adapters, ip_adapter_type, ip_adapter_model_file))
             self.node_graph.add_node(ip_adapter_model_node, ip_adapter_type)
 
         return ip_adapter_model_node

@@ -4,8 +4,8 @@ import math
 from scipy.ndimage import gaussian_filter
 import torch
 
-from iartisanxl.annotators.openpose import util
-from iartisanxl.annotators.openpose.model import bodypose_model
+from iartisanxl.preprocessors.openpose import util
+from iartisanxl.preprocessors.openpose.model import bodypose_model
 
 
 class Body(object):

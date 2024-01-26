@@ -67,7 +67,7 @@ class WelcomePanel(BaseSetupPanel):
         sub_dirs = {
             "models_diffusers": os.path.join("models", "diffusers"),
             "models_safetensors": os.path.join("models", "safetensors"),
-            "vaes": os.path.join("models", "vae"),
+            "models_vaes": os.path.join("models", "vae"),
             "models_loras": os.path.join("models", "loras"),
             "models_controlnets": os.path.join("models", "controlnet"),
             "models_t2i_adapters": os.path.join("models", "t2i-adapter"),

@@ -2,15 +2,15 @@ import cv2
 import numpy as np
 import torch
 
-from iartisanxl.annotators.openpose.body import Body
-from iartisanxl.annotators.openpose.hand import Hand
-from iartisanxl.annotators.openpose import util
+from iartisanxl.preprocessors.openpose.body import Body
+from iartisanxl.preprocessors.openpose.hand import Hand
+from iartisanxl.preprocessors.openpose import util
 
 
 class OpenPoseDetector:
     def __init__(self):
-        self.body_estimation = Body("./models/annotators/openpose/body_pose_model.pth")
-        self.hand_estimation = Hand("./models/annotators/openpose//hand_pose_model.pth")
+        self.body_estimation = Body("./models/preprocessors/openpose/body_pose_model.pth")
+        self.hand_estimation = Hand("./models/preprocessors/openpose//hand_pose_model.pth")
 
     # pylint: disable=no-member
     def get_open_pose(self, image, resolution=None):
