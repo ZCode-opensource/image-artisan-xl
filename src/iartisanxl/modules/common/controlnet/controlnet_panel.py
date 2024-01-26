@@ -77,11 +77,11 @@ class ControlNetPanel(BasePanel):
         if controlnet_widget.controlnet.source_image.image_thumb:
             os.remove(controlnet_widget.controlnet.source_image.image_thumb)
 
-        if controlnet_widget.controlnet.annotator_image.image_filename:
-            os.remove(controlnet_widget.controlnet.annotator_image.image_filename)
+        if controlnet_widget.controlnet.preprocessor_image.image_filename:
+            os.remove(controlnet_widget.controlnet.preprocessor_image.image_filename)
 
-        if controlnet_widget.controlnet.annotator_image.image_thumb:
-            os.remove(controlnet_widget.controlnet.annotator_image.image_thumb)
+        if controlnet_widget.controlnet.preprocessor_image.image_thumb:
+            os.remove(controlnet_widget.controlnet.preprocessor_image.image_thumb)
 
         self.controlnet_list.remove(controlnet_widget.controlnet)
         self.controlnets_layout.removeWidget(controlnet_widget)

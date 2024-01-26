@@ -39,9 +39,9 @@ class ControlNetAddedItem(QWidget):
         self.source_thumb = QLabel()
         self.source_thumb.setFixedSize(80, 80)
         lower_layout.addWidget(self.source_thumb)
-        self.annotator_thumb = QLabel()
-        self.annotator_thumb.setFixedSize(80, 80)
-        lower_layout.addWidget(self.annotator_thumb)
+        self.preprocessor_thumb = QLabel()
+        self.preprocessor_thumb.setFixedSize(80, 80)
+        lower_layout.addWidget(self.preprocessor_thumb)
 
         main_layout.addLayout(upper_layout)
         main_layout.addLayout(lower_layout)
@@ -55,8 +55,8 @@ class ControlNetAddedItem(QWidget):
         source_thumb_pixmap = QPixmap(self.controlnet.source_image.image_thumb)
         self.source_thumb.setPixmap(source_thumb_pixmap)
 
-        annotator_thumb_pixmap = QPixmap(self.controlnet.annotator_image.image_thumb)
-        self.annotator_thumb.setPixmap(annotator_thumb_pixmap)
+        preprocessor_thumb_pixmap = QPixmap(self.controlnet.preprocessor_image.image_thumb)
+        self.preprocessor_thumb.setPixmap(preprocessor_thumb_pixmap)
 
     def on_check_enabled(self):
         self.enabled.emit(self.controlnet.adapter_id, self.enabled_checkbox.isChecked())

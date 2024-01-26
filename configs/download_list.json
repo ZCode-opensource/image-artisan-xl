@@ -1,5 +1,5 @@
 {
-    "essential_items":[
+    "essential_items": [
         {
             "title": "SDXL 1.0",
             "description": "Stable Diffusion XL 1.0: This is the base model required for image generation. The model size is approximately 6.46 GB.",
@@ -7,94 +7,94 @@
             "destination_subdirectory": "stable-diffusion-xl-base-1.0",
             "files": [
                 {
-                    "file": "model_index.json", 
-                    "url":"https://huggingface.co/OzzyGT/stable-diffusion-xl-base-1.0/raw/main/model_index.json"
+                    "file": "model_index.json",
+                    "url": "https://huggingface.co/OzzyGT/stable-diffusion-xl-base-1.0/raw/main/model_index.json"
                 },
                 {
                     "file": "scheduler_config.json",
-                    "destination_directory": "scheduler", 
-                    "url":"https://huggingface.co/OzzyGT/stable-diffusion-xl-base-1.0/raw/main/scheduler/scheduler_config.json"
+                    "destination_directory": "scheduler",
+                    "url": "https://huggingface.co/OzzyGT/stable-diffusion-xl-base-1.0/raw/main/scheduler/scheduler_config.json"
                 },
                 {
                     "file": "config.json",
-                    "destination_directory": "text_encoder", 
-                    "url":"https://huggingface.co/OzzyGT/stable-diffusion-xl-base-1.0/raw/main/text_encoder/config.json"
+                    "destination_directory": "text_encoder",
+                    "url": "https://huggingface.co/OzzyGT/stable-diffusion-xl-base-1.0/raw/main/text_encoder/config.json"
                 },
                 {
                     "file": "model.fp16.safetensors",
-                    "destination_directory": "text_encoder", 
-                    "url":"https://huggingface.co/OzzyGT/stable-diffusion-xl-base-1.0/resolve/main/text_encoder/model.fp16.safetensors?download=true"
+                    "destination_directory": "text_encoder",
+                    "url": "https://huggingface.co/OzzyGT/stable-diffusion-xl-base-1.0/resolve/main/text_encoder/model.fp16.safetensors?download=true"
                 },
                 {
                     "file": "config.json",
-                    "destination_directory": "text_encoder_2", 
-                    "url":"https://huggingface.co/OzzyGT/stable-diffusion-xl-base-1.0/raw/main/text_encoder_2/config.json"
+                    "destination_directory": "text_encoder_2",
+                    "url": "https://huggingface.co/OzzyGT/stable-diffusion-xl-base-1.0/raw/main/text_encoder_2/config.json"
                 },
                 {
                     "file": "model.fp16.safetensors",
-                    "destination_directory": "text_encoder_2", 
-                    "url":"https://huggingface.co/OzzyGT/stable-diffusion-xl-base-1.0/resolve/main/text_encoder_2/model.fp16.safetensors?download=true"
+                    "destination_directory": "text_encoder_2",
+                    "url": "https://huggingface.co/OzzyGT/stable-diffusion-xl-base-1.0/resolve/main/text_encoder_2/model.fp16.safetensors?download=true"
                 },
                 {
                     "file": "merges.txt",
-                    "destination_directory": "tokenizer", 
-                    "url":"https://huggingface.co/OzzyGT/stable-diffusion-xl-base-1.0/raw/main/tokenizer/merges.txt"
+                    "destination_directory": "tokenizer",
+                    "url": "https://huggingface.co/OzzyGT/stable-diffusion-xl-base-1.0/raw/main/tokenizer/merges.txt"
                 },
                 {
                     "file": "special_tokens_map.json",
-                    "destination_directory": "tokenizer", 
-                    "url":"https://huggingface.co/OzzyGT/stable-diffusion-xl-base-1.0/raw/main/tokenizer/special_tokens_map.json"
+                    "destination_directory": "tokenizer",
+                    "url": "https://huggingface.co/OzzyGT/stable-diffusion-xl-base-1.0/raw/main/tokenizer/special_tokens_map.json"
                 },
                 {
                     "file": "tokenizer_config.json",
-                    "destination_directory": "tokenizer", 
-                    "url":"https://huggingface.co/OzzyGT/stable-diffusion-xl-base-1.0/raw/main/tokenizer/tokenizer_config.json"
+                    "destination_directory": "tokenizer",
+                    "url": "https://huggingface.co/OzzyGT/stable-diffusion-xl-base-1.0/raw/main/tokenizer/tokenizer_config.json"
                 },
                 {
                     "file": "vocab.json",
-                    "destination_directory": "tokenizer", 
-                    "url":"https://huggingface.co/OzzyGT/stable-diffusion-xl-base-1.0/raw/main/tokenizer/vocab.json"
+                    "destination_directory": "tokenizer",
+                    "url": "https://huggingface.co/OzzyGT/stable-diffusion-xl-base-1.0/raw/main/tokenizer/vocab.json"
                 },
                 {
                     "file": "merges.txt",
-                    "destination_directory": "tokenizer_2", 
-                    "url":"https://huggingface.co/OzzyGT/stable-diffusion-xl-base-1.0/raw/main/tokenizer_2/merges.txt"
+                    "destination_directory": "tokenizer_2",
+                    "url": "https://huggingface.co/OzzyGT/stable-diffusion-xl-base-1.0/raw/main/tokenizer_2/merges.txt"
                 },
                 {
                     "file": "special_tokens_map.json",
-                    "destination_directory": "tokenizer_2", 
-                    "url":"https://huggingface.co/OzzyGT/stable-diffusion-xl-base-1.0/raw/main/tokenizer_2/special_tokens_map.json"
+                    "destination_directory": "tokenizer_2",
+                    "url": "https://huggingface.co/OzzyGT/stable-diffusion-xl-base-1.0/raw/main/tokenizer_2/special_tokens_map.json"
                 },
                 {
                     "file": "tokenizer_config.json",
-                    "destination_directory": "tokenizer_2", 
-                    "url":"https://huggingface.co/OzzyGT/stable-diffusion-xl-base-1.0/raw/main/tokenizer_2/tokenizer_config.json"
+                    "destination_directory": "tokenizer_2",
+                    "url": "https://huggingface.co/OzzyGT/stable-diffusion-xl-base-1.0/raw/main/tokenizer_2/tokenizer_config.json"
                 },
                 {
                     "file": "vocab.json",
-                    "destination_directory": "tokenizer_2", 
-                    "url":"https://huggingface.co/OzzyGT/stable-diffusion-xl-base-1.0/raw/main/tokenizer_2/vocab.json"
-                },                                                                                                                                                                             
-                {
-                    "file": "config.json", 
-                    "destination_directory": "unet", 
-                    "url":"https://huggingface.co/OzzyGT/stable-diffusion-xl-base-1.0/raw/main/unet/config.json"
-                },                
-                {
-                    "file": "diffusion_pytorch_model.fp16.safetensors", 
-                    "destination_directory": "unet", 
-                    "url":"https://huggingface.co/OzzyGT/stable-diffusion-xl-base-1.0/resolve/main/unet/diffusion_pytorch_model.fp16.safetensors?download=true"
+                    "destination_directory": "tokenizer_2",
+                    "url": "https://huggingface.co/OzzyGT/stable-diffusion-xl-base-1.0/raw/main/tokenizer_2/vocab.json"
                 },
                 {
-                    "file": "config.json", 
-                    "destination_directory": "vae", 
-                    "url":"https://huggingface.co/OzzyGT/stable-diffusion-xl-base-1.0/raw/main/vae/config.json"
+                    "file": "config.json",
+                    "destination_directory": "unet",
+                    "url": "https://huggingface.co/OzzyGT/stable-diffusion-xl-base-1.0/raw/main/unet/config.json"
                 },
                 {
-                    "file": "diffusion_pytorch_model.fp16.safetensors", 
-                    "destination_directory": "vae", 
-                    "url":"https://huggingface.co/OzzyGT/stable-diffusion-xl-base-1.0/resolve/main/vae/diffusion_pytorch_model.fp16.safetensors?download=true"
-                }                                            
+                    "file": "diffusion_pytorch_model.fp16.safetensors",
+                    "destination_directory": "unet",
+                    "url": "https://huggingface.co/OzzyGT/stable-diffusion-xl-base-1.0/resolve/main/unet/diffusion_pytorch_model.fp16.safetensors?download=true"
+                },
+                {
+                    "file": "config.json",
+                    "destination_directory": "vae",
+                    "url": "https://huggingface.co/OzzyGT/stable-diffusion-xl-base-1.0/raw/main/vae/config.json"
+                },
+                {
+                    "file": "diffusion_pytorch_model.fp16.safetensors",
+                    "destination_directory": "vae",
+                    "url": "https://huggingface.co/OzzyGT/stable-diffusion-xl-base-1.0/resolve/main/vae/diffusion_pytorch_model.fp16.safetensors?download=true"
+                }
             ]
         },
         {
@@ -104,7 +104,7 @@
             "destination_subdirectory": "taesd",
             "files": [
                 {
-                    "file": "taesdxl_decoder.pth", 
+                    "file": "taesdxl_decoder.pth",
                     "url": "https://github.com/madebyollin/taesd/raw/main/taesdxl_decoder.pth"
                 }
             ]
@@ -116,92 +116,92 @@
             "destination_subdirectory": "vae-16fp-fix",
             "files": [
                 {
-                    "file": "config.json", 
-                    "url": "https://huggingface.co/madebyollin/sdxl-vae-fp16-fix/raw/main/config.json"                    
+                    "file": "config.json",
+                    "url": "https://huggingface.co/madebyollin/sdxl-vae-fp16-fix/raw/main/config.json"
                 },
                 {
-                    "file": "diffusion_pytorch_model.fp16.safetensors", 
-                    "url": "https://huggingface.co/madebyollin/sdxl-vae-fp16-fix/resolve/main/diffusion_pytorch_model.safetensors?download=true"                    
-                }                
+                    "file": "diffusion_pytorch_model.fp16.safetensors",
+                    "url": "https://huggingface.co/madebyollin/sdxl-vae-fp16-fix/resolve/main/diffusion_pytorch_model.safetensors?download=true"
+                }
             ]
         },
         {
-            "title": "Annotators - Depth MiDaS",
-            "description": "Dense Prediction Transformer: This is the 'hybrid' version of the model as stated in the paper. It is the standard annotator for the Depth Controlnets and T2I Adapters. The model size is approximately 466 MB.",
+            "title": "Preprocessors - Depth MiDaS",
+            "description": "Dense Prediction Transformer: This is the 'hybrid' version of the model as stated in the paper. It is the standard preprocessor for the Depth Controlnets and T2I Adapters. The model size is approximately 466 MB.",
             "destination_directory": "app_models",
-            "destination_subdirectory": "annotators/depth",
+            "destination_subdirectory": "preprocessors/depth",
             "check_directory": "dpt-hybrid-midas",
             "files": [
                 {
                     "file": "config.json",
-                    "destination_directory": "dpt-hybrid-midas", 
-                    "url": "https://huggingface.co/Intel/dpt-hybrid-midas/raw/main/config.json"  
+                    "destination_directory": "dpt-hybrid-midas",
+                    "url": "https://huggingface.co/Intel/dpt-hybrid-midas/raw/main/config.json"
                 },
                 {
                     "file": "preprocessor_config.json",
-                    "destination_directory": "dpt-hybrid-midas", 
-                    "url": "https://huggingface.co/Intel/dpt-hybrid-midas/raw/main/preprocessor_config.json"  
+                    "destination_directory": "dpt-hybrid-midas",
+                    "url": "https://huggingface.co/Intel/dpt-hybrid-midas/raw/main/preprocessor_config.json"
                 },
                 {
                     "file": "pytorch_model.bin",
-                    "destination_directory": "dpt-hybrid-midas", 
-                    "url": "https://huggingface.co/Intel/dpt-hybrid-midas/resolve/main/pytorch_model.bin?download=true"  
-                }                                                                           
+                    "destination_directory": "dpt-hybrid-midas",
+                    "url": "https://huggingface.co/Intel/dpt-hybrid-midas/resolve/main/pytorch_model.bin?download=true"
+                }
             ]
         },
         {
-            "title": "Annotators - Depth BEiT 384",
+            "title": "Preprocessors - Depth BEiT 384",
             "description": "Intel Depth Model: This is the latest depth model from Intel. The model size is approximately 422 MB.",
             "destination_directory": "app_models",
-            "destination_subdirectory": "annotators/depth",
+            "destination_subdirectory": "preprocessors/depth",
             "check_directory": "dpt-beit-base-384",
             "files": [
                 {
                     "file": "config.json",
-                    "destination_directory": "dpt-beit-base-384", 
-                    "url": "https://huggingface.co/Intel/dpt-beit-base-384/raw/main/config.json"  
+                    "destination_directory": "dpt-beit-base-384",
+                    "url": "https://huggingface.co/Intel/dpt-beit-base-384/raw/main/config.json"
                 },
                 {
                     "file": "preprocessor_config.json",
-                    "destination_directory": "dpt-beit-base-384", 
-                    "url": "https://huggingface.co/Intel/dpt-beit-base-384/raw/main/preprocessor_config.json"  
+                    "destination_directory": "dpt-beit-base-384",
+                    "url": "https://huggingface.co/Intel/dpt-beit-base-384/raw/main/preprocessor_config.json"
                 },
                 {
                     "file": "model.safetensors",
-                    "destination_directory": "dpt-beit-base-384", 
-                    "url": "https://huggingface.co/Intel/dpt-beit-base-384/resolve/main/model.safetensors?download=true"  
+                    "destination_directory": "dpt-beit-base-384",
+                    "url": "https://huggingface.co/Intel/dpt-beit-base-384/resolve/main/model.safetensors?download=true"
                 }
             ]
         },
         {
-            "title": "Annotators - Depth BEiT 512",
+            "title": "Preprocessors - Depth BEiT 512",
             "description": "This is the most recent depth model from Intel. The model size is approximately 1.28 GB.",
             "destination_directory": "app_models",
-            "destination_subdirectory": "annotators/depth",
+            "destination_subdirectory": "preprocessors/depth",
             "check_directory": "dpt-beit-large-512",
             "files": [
                 {
                     "file": "config.json",
-                    "destination_directory": "dpt-beit-large-512", 
-                    "url": "https://huggingface.co/Intel/dpt-beit-large-512/raw/main/config.json"  
+                    "destination_directory": "dpt-beit-large-512",
+                    "url": "https://huggingface.co/Intel/dpt-beit-large-512/raw/main/config.json"
                 },
                 {
                     "file": "preprocessor_config.json",
-                    "destination_directory": "dpt-beit-large-512", 
-                    "url": "https://huggingface.co/Intel/dpt-beit-large-512/raw/main/preprocessor_config.json"  
+                    "destination_directory": "dpt-beit-large-512",
+                    "url": "https://huggingface.co/Intel/dpt-beit-large-512/raw/main/preprocessor_config.json"
                 },
                 {
                     "file": "model.safetensors",
-                    "destination_directory": "dpt-beit-large-512", 
-                    "url": "https://huggingface.co/Intel/dpt-beit-large-512/resolve/main/model.safetensors?download=true"  
+                    "destination_directory": "dpt-beit-large-512",
+                    "url": "https://huggingface.co/Intel/dpt-beit-large-512/resolve/main/model.safetensors?download=true"
                 }
             ]
         },
         {
-            "title": "Annotators - Line Art",
+            "title": "Preprocessors - Line Art",
             "description": "Line Art: These are the models necessary for using the line art version of the T2I Adapters. The total size is approximately 49.1 MB.",
             "destination_directory": "app_models",
-            "destination_subdirectory": "annotators/lineart",
+            "destination_subdirectory": "preprocessors/lineart",
             "files": [
                 {
                     "file": "netG_A_latest.pth",
@@ -221,10 +221,10 @@
             ]
         },
         {
-            "title": "Annotators - OpenPose",
+            "title": "Preprocessors - OpenPose",
             "description": "OpenPose: These are the models necessary for using the OpenPose Controlnet and T2I adapters. The total size is approximately 340 MB.",
             "destination_directory": "app_models",
-            "destination_subdirectory": "annotators",
+            "destination_subdirectory": "preprocessors",
             "files": [
                 {
                     "file": "body_pose_model.pth",
@@ -239,10 +239,10 @@
             ]
         },
         {
-            "title": "Annotators - Sketch",
+            "title": "Preprocessors - Sketch",
             "description": "Sketch: These are the models necessary for using the sketch Controlnet and T2I adapters. The total size is approximately 5.47 MB.",
             "destination_directory": "app_models",
-            "destination_subdirectory": "annotators",
+            "destination_subdirectory": "preprocessors",
             "files": [
                 {
                     "file": "table5_pidinet.pth",
@@ -253,14 +253,14 @@
                     "file": "table7_pidinet.pth",
                     "destination_directory": "pidinet",
                     "url": "https://github.com/hellozhuo/pidinet/raw/master/trained_models/table7_pidinet.pth"
-                } 
+                }
             ]
-        }                  
+        }
     ],
     "controlnet_items": [
         {
             "title": "ControlNet - Canny",
-            "description": "ControlNet model to use with the canny annotator or with an image with canny edges. The total size is approximately 305 MB.",
+            "description": "ControlNet model to use with the canny preprocessor or with an image with canny edges. The total size is approximately 305 MB.",
             "destination_directory": "controlnets",
             "destination_subdirectory": "controlnet-canny-sdxl-1.0-small",
             "files": [
@@ -271,12 +271,12 @@
                 {
                     "file": "diffusion_pytorch_model.fp16.safetensors",
                     "url": "https://huggingface.co/diffusers/controlnet-canny-sdxl-1.0-small/resolve/main/diffusion_pytorch_model.fp16.safetensors?download=true"
-                }                             
+                }
             ]
         },
         {
             "title": "ControlNet - Depth",
-            "description": "ControlNet model to use with the depth annotator or with a depthmap image. The total size is approximately 305 MB.",
+            "description": "ControlNet model to use with the depth preprocessor or with a depthmap image. The total size is approximately 305 MB.",
             "destination_directory": "controlnets",
             "destination_subdirectory": "controlnet-depth-sdxl-1.0-small",
             "files": [
@@ -287,12 +287,12 @@
                 {
                     "file": "diffusion_pytorch_model.fp16.safetensors",
                     "url": "https://huggingface.co/diffusers/controlnet-depth-sdxl-1.0-small/resolve/main/diffusion_pytorch_model.fp16.safetensors?download=true"
-                }                             
+                }
             ]
         },
         {
             "title": "ControlNet - OpenPose",
-            "description": "ControlNet model to use with the OpenPose annotator or with an image that has an openpose skeleton. The total size is approximately 2.33 GB.",
+            "description": "ControlNet model to use with the OpenPose preprocessor or with an image that has an openpose skeleton. The total size is approximately 2.33 GB.",
             "destination_directory": "controlnets",
             "destination_subdirectory": "controlnet-openpose-sdxl-1.0",
             "files": [
@@ -303,14 +303,14 @@
                 {
                     "file": "diffusion_pytorch_model.fp16.safetensors",
                     "url": "https://huggingface.co/OzzyGT/controlnet-openpose-sdxl-1.0/resolve/main/diffusion_pytorch_model.fp16.safetensors?download=true"
-                }                             
+                }
             ]
-        }              
+        }
     ],
     "t2i_items": [
         {
             "title": "T2I Adapter - Canny",
-            "description": "T2I Adapter model to use with the canny annotator or with an image with canny edges. The total size is approximately 150 MB.",
+            "description": "T2I Adapter model to use with the canny preprocessor or with an image with canny edges. The total size is approximately 150 MB.",
             "destination_directory": "t2i_adapters",
             "destination_subdirectory": "t2i-adapter-canny-sdxl-1.0",
             "files": [
@@ -321,12 +321,12 @@
                 {
                     "file": "diffusion_pytorch_model.fp16.safetensors",
                     "url": "https://huggingface.co/TencentARC/t2i-adapter-canny-sdxl-1.0/resolve/main/diffusion_pytorch_model.fp16.safetensors?download=true"
-                }                             
-            ]            
+                }
+            ]
         },
         {
             "title": "T2I Adapter - Depth",
-            "description": "T2I Adapter model to use with the depth annotator or with a depthmap image. The total size is approximately 150 MB.",
+            "description": "T2I Adapter model to use with the depth preprocessor or with a depthmap image. The total size is approximately 150 MB.",
             "destination_directory": "t2i_adapters",
             "destination_subdirectory": "t2i-adapter-depth-midas-sdxl-1.0",
             "files": [
@@ -337,12 +337,12 @@
                 {
                     "file": "diffusion_pytorch_model.fp16.safetensors",
                     "url": "https://huggingface.co/TencentARC/t2i-adapter-depth-midas-sdxl-1.0/resolve/main/diffusion_pytorch_model.fp16.safetensors?download=true"
-                }                             
-            ]            
+                }
+            ]
         },
         {
             "title": "T2I Adapter - Line Art",
-            "description": "T2I Adapter model to use with the Line Art annotator or with image that has line drawings. The total size is approximately 150 MB.",
+            "description": "T2I Adapter model to use with the Line Art preprocessor or with image that has line drawings. The total size is approximately 150 MB.",
             "destination_directory": "t2i_adapters",
             "destination_subdirectory": "t2i-adapter-lineart-sdxl-1.0",
             "files": [
@@ -353,12 +353,12 @@
                 {
                     "file": "diffusion_pytorch_model.fp16.safetensors",
                     "url": "https://huggingface.co/TencentARC/t2i-adapter-lineart-sdxl-1.0/resolve/main/diffusion_pytorch_model.fp16.safetensors?download=true"
-                }                             
-            ]            
+                }
+            ]
         },
         {
             "title": "T2I Adapter - Open Pose",
-            "description": "T2I Adapter model to use with the OpenPose annotator or with an image that has an openpose skeleton. The total size is approximately 300 MB.",
+            "description": "T2I Adapter model to use with the OpenPose preprocessor or with an image that has an openpose skeleton. The total size is approximately 300 MB.",
             "destination_directory": "t2i_adapters",
             "destination_subdirectory": "t2i-adapter-openpose-sdxl-1.0",
             "files": [
@@ -369,12 +369,12 @@
                 {
                     "file": "diffusion_pytorch_model.fp16.safetensors",
                     "url": "https://huggingface.co/TencentARC/t2i-adapter-openpose-sdxl-1.0/resolve/main/diffusion_pytorch_model.safetensors?download=true"
-                }                             
-            ]            
+                }
+            ]
         },
         {
             "title": "T2I Adapter - Sketch",
-            "description": "T2I Adapter model to use with the sketch annotator or with an image that has a sketch on it. The total size is approximately 150 MB.",
+            "description": "T2I Adapter model to use with the sketch preprocessor or with an image that has a sketch on it. The total size is approximately 150 MB.",
             "destination_directory": "t2i_adapters",
             "destination_subdirectory": "t2i-adapter-sketch-sdxl-1.0",
             "files": [
@@ -385,10 +385,64 @@
                 {
                     "file": "diffusion_pytorch_model.fp16.safetensors",
                     "url": "https://huggingface.co/TencentARC/t2i-adapter-sketch-sdxl-1.0/resolve/main/diffusion_pytorch_model.fp16.safetensors?download=true"
-                }                             
-            ]            
-        }                                     
-    ], 
+                }
+            ]
+        }
+    ],
+    "ip_adapter_items": [
+        {
+            "title": "Image Encoder",
+            "description": "Image encoder for IP Adapters, this is a requirement to be able to use the IP Adapters.",
+            "destination_directory": "ip-adapter",
+            "destination_subdirectory": "image_encoder",
+            "files": [
+                {
+                    "file": "config.json",
+                    "url": "https://huggingface.co/OzzyGT/sdxl-ip-adapter/resolve/main/image_encoder/config.json?download=true"
+                },
+                {
+                    "file": "model.safetensors",
+                    "url": "https://huggingface.co/OzzyGT/sdxl-ip-adapter/resolve/main/image_encoder/model.safetensors?download=true"
+                }
+            ]
+        },
+        {
+            "title": "IP adapter",
+            "description": "Uses global image embedding from OpenCLIP-ViT-H-14 as condition.",
+            "destination_directory": "ip-adapter",
+            "destination_subdirectory": "ip_adapter_vit_h",
+            "files": [
+                {
+                    "file": "ip-adapter_sdxl_vit-h.safetensors",
+                    "url": "https://huggingface.co/OzzyGT/sdxl-ip-adapter/resolve/main/ip-adapter_sdxl_vit-h.safetensors?download=true"
+                }
+            ]
+        },
+        {
+            "title": "IP adapter PLUS",
+            "description": "Uses patch image embeddings from OpenCLIP-ViT-H-14 as condition, closer to the reference image than the normal IP Adapter",
+            "destination_directory": "ip-adapter",
+            "destination_subdirectory": "ip_adapter_plus",
+            "files": [
+                {
+                    "file": "ip-adapter-plus_sdxl_vit-h.safetensors",
+                    "url": "https://huggingface.co/OzzyGT/sdxl-ip-adapter/resolve/main/ip-adapter-plus_sdxl_vit-h.safetensors?download=true"
+                }
+            ]
+        },
+        {
+            "title": "IP adapter PLUS Face",
+            "description": "Same as IP adapter PLUS but uses cropped face image as condition.",
+            "destination_directory": "ip-adapter",
+            "destination_subdirectory": "ip_adapter_plus_face",
+            "files": [
+                {
+                    "file": "ip-adapter-plus-face_sdxl_vit-h.safetensors",
+                    "url": "https://huggingface.co/OzzyGT/sdxl-ip-adapter/resolve/main/ip-adapter-plus-face_sdxl_vit-h.safetensors?download=true"
+                }
+            ]
+        }
+    ],
     "captions_items": [
         {
             "title": "FuseCap",
@@ -423,7 +477,7 @@
                 {
                     "file": "vocab.txt",
                     "url": "https://huggingface.co/noamrot/FuseCap_Image_Captioning/raw/main/vocab.txt?download=true"
-                }                                                                                           
+                }
             ]
         }
     ]

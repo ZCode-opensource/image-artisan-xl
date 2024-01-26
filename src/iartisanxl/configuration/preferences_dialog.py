@@ -153,10 +153,10 @@ class PreferencesDialog(QDialog):
         self.save_image_metadata_checkbox.setChecked(self.preferences.save_image_metadata)
         self.save_image_metadata_checkbox.stateChanged.connect(self.on_checkbox_state_changed)
         image_options_layout.addWidget(self.save_image_metadata_checkbox, 0, 0)
-        self.save_image_control_annotators_checkbox = QCheckBox("Save image control annotators")
-        self.save_image_control_annotators_checkbox.setChecked(self.preferences.save_image_control_annotators)
-        self.save_image_control_annotators_checkbox.stateChanged.connect(self.on_checkbox_state_changed)
-        image_options_layout.addWidget(self.save_image_control_annotators_checkbox, 0, 1)
+        self.save_image_control_preprocessors_checkbox = QCheckBox("Save image control preprocessors")
+        self.save_image_control_preprocessors_checkbox.setChecked(self.preferences.save_image_control_preprocessors)
+        self.save_image_control_preprocessors_checkbox.stateChanged.connect(self.on_checkbox_state_changed)
+        image_options_layout.addWidget(self.save_image_control_preprocessors_checkbox, 0, 1)
         self.save_image_control_sources_checkbox = QCheckBox("Save image control sources")
         self.save_image_control_sources_checkbox.setChecked(self.preferences.save_image_control_sources)
         self.save_image_control_sources_checkbox.stateChanged.connect(self.on_checkbox_state_changed)
@@ -201,9 +201,9 @@ class PreferencesDialog(QDialog):
         elif sender == self.save_image_metadata_checkbox:
             settings.setValue("save_image_metadata", sender.isChecked())
             self.preferences.save_image_metadata = sender.isChecked()
-        elif sender == self.save_image_control_annotators_checkbox:
-            settings.setValue("save_image_control_annotators", sender.isChecked())
-            self.preferences.save_image_control_annotators = sender.isChecked()
+        elif sender == self.save_image_control_preprocessors_checkbox:
+            settings.setValue("save_image_control_preprocessors", sender.isChecked())
+            self.preferences.save_image_control_preprocessors = sender.isChecked()
         elif sender == self.save_image_control_sources_checkbox:
             settings.setValue("save_image_control_sources", sender.isChecked())
             self.preferences.save_image_control_sources = sender.isChecked()

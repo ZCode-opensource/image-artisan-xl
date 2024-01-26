@@ -4,7 +4,7 @@ import numpy as np
 import cv2
 import torch
 
-from iartisanxl.annotators.pidinet.pidinet import pidinet
+from iartisanxl.preprocessors.pidinet.pidinet import pidinet
 
 
 class Args:
@@ -25,7 +25,7 @@ class PidinetGenerator:
         self.model = pidinet(args)
 
         checkpoint_filename = f"{self.model_type}_pidinet.pth"
-        checkpoint = torch.load(os.path.join("./models/annotators/pidinet/", checkpoint_filename), map_location="cpu")
+        checkpoint = torch.load(os.path.join("./models/preprocessors/pidinet/", checkpoint_filename), map_location="cpu")
         state_dict = checkpoint["state_dict"]
         new_state_dict = {}
 

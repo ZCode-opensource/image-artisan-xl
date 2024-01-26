@@ -7,8 +7,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from iartisanxl.annotators.pidinet.ops import Conv2d
-from iartisanxl.annotators.pidinet.config import config_model, config_model_converted
+from iartisanxl.preprocessors.pidinet.ops import Conv2d
+from iartisanxl.preprocessors.pidinet.config import config_model, config_model_converted
 
 
 class CSAM(nn.Module):

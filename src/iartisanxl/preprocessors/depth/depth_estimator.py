@@ -11,7 +11,7 @@ class DepthEstimator:
         self.load_model()
 
     def load_model(self):
-        model_path = os.path.join("./models/annotators/depth", self.model_name)
+        model_path = os.path.join("./models/preprocessors/depth", self.model_name)
         self.depth_estimator = DPTForDepthEstimation.from_pretrained(model_path).to("cuda")
         self.image_processor = DPTImageProcessor.from_pretrained(model_path)
 

@@ -54,7 +54,7 @@ class ArtisanApplication(QApplication):
         sequential_offload = settings.value("sequential_offload", False, type=bool)
         model_offload = settings.value("model_offload", False, type=bool)
         save_image_metadata = settings.value("save_image_metadata", False, type=bool)
-        save_image_control_annotators = settings.value("save_image_control_annotators", False, type=bool)
+        save_image_control_preprocessors = settings.value("save_image_control_preprocessors", False, type=bool)
         save_image_control_sources = settings.value("save_image_control_sources", False, type=bool)
         hide_nsfw = settings.value("hide_nsfw", True, type=bool)
 
@@ -64,7 +64,7 @@ class ArtisanApplication(QApplication):
             sequential_offload=sequential_offload,
             model_offload=model_offload,
             save_image_metadata=save_image_metadata,
-            save_image_control_annotators=save_image_control_annotators,
+            save_image_control_preprocessors=save_image_control_preprocessors,
             save_image_control_sources=save_image_control_sources,
             hide_nsfw=hide_nsfw,
         )
