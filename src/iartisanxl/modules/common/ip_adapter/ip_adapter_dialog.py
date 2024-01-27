@@ -308,5 +308,5 @@ class IPAdapterDialog(BaseDialog):
 
     def on_images_finished_loading(self):
         self.image_widget.new_image_button.setEnabled(True)
-        self.on_item_selected(self.image_items_view.current_item.widget().image_data)
+        self.on_item_selected(self.image_items_view.current_item.image_data)
         self.dataset_items_count_label.setText(f"{self.image_items_view.current_item_index + 1}/{self.image_items_view.item_count}")

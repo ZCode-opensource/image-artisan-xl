@@ -68,12 +68,6 @@ class IpAdapterImageItemsView(QWidget):
         dataset_item.clicked.connect(self.on_item_selected)
         self.flow_layout.addWidget(dataset_item)
 
-        if self.image_data is None:
-            self.image_data = image_data
-            self.current_item_index = 0
-            self.current_item = dataset_item
-            dataset_item.set_selected(True)
-
     def add_item_data_object(self, image_data: ImageDataObject):
         pixmap = QPixmap(image_data.image_thumb)
         image_item = ImageItem(image_data, pixmap)
@@ -92,7 +86,10 @@ class IpAdapterImageItemsView(QWidget):
     def on_loading_finished(self):
         self.item_count = self.flow_layout.count()
         self.current_item_index = 0
-        self.current_item = self.flow_layout.itemAt(0)
+        widget: ImageItem = self.flow_layout.itemAt(0).widget()
+        self.current_item = widget
+        widget.set_selected(True)
+        self.image_data = widget.image_data
         self.finished_loading.emit()
 
     def clear_selection(self):
@@ -164,10 +161,6 @@ class IpAdapterImageItemsView(QWidget):
             self.get_prev_item()
         elif event.key() == Qt.Key.Key_Right:
             self.get_next_item()
-
-    def update_current_item_image(self, pixmap):
-        scaled_pixmap = pixmap.scaled(self.thumb_width, self.thumb_height, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
-        self.current_item.set_image(scaled_pixmap)
 
     def contextMenuEvent(self, event):
         pos = self.flow_widget.mapFrom(self, event.pos())
