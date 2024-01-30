@@ -33,6 +33,8 @@ class ControlNetDialog(BaseDialog):
         self.event_bus = EventBus()
 
         self.controlnet = ControlNetDataObject()
+        self.controlnet.generation_width = self.image_generation_data.image_width
+        self.controlnet.generation_height = self.image_generation_data.image_height
         self.updating = False
         self.source_changed = False
         self.preprocessor_changed = True
@@ -234,8 +236,6 @@ class ControlNetDialog(BaseDialog):
             self.controlnet.type_index = self.preprocessor_combo.currentIndex()
             self.controlnet.depth_type = self.depth_type_combo.currentData()
             self.controlnet.depth_type_index = self.depth_type_combo.currentIndex()
-            self.controlnet.generation_width = self.image_generation_data.image_width
-            self.controlnet.generation_height = self.image_generation_data.image_height
 
             drawings_pixmap = self.source_widget.image_editor.get_layer(1)
 
@@ -276,19 +276,14 @@ class ControlNetDialog(BaseDialog):
             self.source_changed = True
             self.preprocess = True
         else:
-            # the preprocessor doesn't have a original, its just the preprocessed image
-            if self.controlnet.preprocessor_image.image_filename is not None:
-                os.remove(self.controlnet.preprocessor_image.image_filename)
+            if self.controlnet.preprocessor_image.image_original is not None:
+                os.remove(self.controlnet.preprocessor_image.image_original)
 
-            if self.controlnet.preprocessor_image.image_thumb is not None:
-                os.remove(self.controlnet.preprocessor_image.image_thumb)
-                self.controlnet.preprocessor_image.image_thumb = None
-
-            preprocessed_filename = f"cn_{timestamp}_preprocessed.png"
-            self.controlnet.preprocessor_image.image_filename = os.path.join("tmp/", preprocessed_filename)
+            preprocessed_original_filename = f"cn_{timestamp}_preprocessed_original.png"
+            self.controlnet.preprocessor_image.image_original = os.path.join("tmp/", preprocessed_original_filename)
 
             if self.preprocessor_widget.image_path is not None:
-                shutil.copy2(self.preprocessor_widget.image_path, self.controlnet.preprocessor_image.image_filename)
+                shutil.copy2(self.preprocessor_widget.image_path, self.controlnet.preprocessor_image.image_original)
             else:
                 # If there is no path in the widget, in means its a blank, so we need to create the image
                 pass
@@ -307,14 +302,35 @@ class ControlNetDialog(BaseDialog):
         drawings_pixmap = self.source_widget.image_editor.get_layer(1)
         preprocessor_drawings_pixmap = self.preprocessor_widget.image_editor.get_layer(1)
 
+        self.preprocess = True
+
+        if self.controlnet.source_image.image_filename is None and self.controlnet.preprocessor_image:
+            self.controlnet.preprocessor_image.image_scale = self.preprocessor_widget.image_scale_control.value
+            self.controlnet.preprocessor_image.image_x_pos = self.preprocessor_widget.image_x_pos_control.value
+            self.controlnet.preprocessor_image.image_y_pos = self.preprocessor_widget.image_y_pos_control.value
+            self.controlnet.preprocessor_image.image_rotation = self.preprocessor_widget.image_rotation_control.value
+
+            self.preprocess = False
+
         self.preprocessor_thread = PreprocessorThread(
-            self.controlnet, drawings_pixmap, self.source_changed, True, save_preprocessor=True, preprocessor_drawings=preprocessor_drawings_pixmap
+            self.controlnet,
+            drawings_pixmap,
+            self.source_changed,
+            self.preprocess,
+            save_preprocessor=True,
+            preprocessor_drawings=preprocessor_drawings_pixmap,
         )
         self.preprocessor_thread.finished.connect(self.on_controlnet_image_saved)
         self.preprocessor_thread.start()
 
     def on_controlnet_image_saved(self):
         self.preprocessor_thread = None
+
+        self.controlnet.adapter_name = self.preprocessor_combo.currentText()
+        self.controlnet.adapter_type = self.preprocessor_combo.currentData()
+        self.controlnet.type_index = self.preprocessor_combo.currentIndex()
+        self.controlnet.depth_type = self.depth_type_combo.currentData()
+        self.controlnet.depth_type_index = self.depth_type_combo.currentIndex()
 
         if self.controlnet.adapter_id is None:
             self.event_bus.publish("controlnet", {"action": "add", "controlnet": self.controlnet})
@@ -401,6 +417,8 @@ class ControlNetDialog(BaseDialog):
         self.preprocessor_widget.clear_image()
 
         self.controlnet = ControlNetDataObject()
+        self.controlnet.generation_width = self.image_generation_data.image_width
+        self.controlnet.generation_height = self.image_generation_data.image_height
         self.source_changed = False
         self.preprocessor_changed = True
         self.preprocess = True

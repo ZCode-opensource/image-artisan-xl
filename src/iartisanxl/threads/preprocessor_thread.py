@@ -5,13 +5,14 @@ from datetime import datetime
 import cv2
 from PIL import Image, ImageQt
 import numpy as np
-from PyQt6.QtCore import pyqtSignal, QThread, Qt
+from PyQt6.QtCore import pyqtSignal, QThread
 from PyQt6.QtGui import QImage, QPixmap
 
 from iartisanxl.preprocessors.canny.canny_edges_detector import CannyEdgesDetector
 from iartisanxl.preprocessors.depth.depth_estimator import DepthEstimator
 from iartisanxl.preprocessors.openpose.open_pose_detector import OpenPoseDetector
 from iartisanxl.modules.common.controlnet.controlnet_data_object import ControlNetDataObject
+from iartisanxl.modules.common.image.image_data_object import ImageDataObject
 
 
 class PreprocessorThread(QThread):
@@ -59,37 +60,12 @@ class PreprocessorThread(QThread):
                     os.remove(self.controlnet.source_image.image_thumb)
                     self.controlnet.source_image.image_thumb = None
 
-            original_pil_image = Image.open(self.controlnet.source_image.image_original)
-            width, height = original_pil_image.size
-            if original_pil_image.mode not in ("RGBA", "LA", "P"):
-                original_pil_image = original_pil_image.convert("RGBA")
-
-            center = (width / 2, height / 2)
-            original_pil_image = original_pil_image.rotate(
-                -self.controlnet.source_image.image_rotation, Image.Resampling.BICUBIC, center=center, expand=True
-            )
-
-            new_width = round(width * self.controlnet.source_image.image_scale)
-            new_height = round(height * self.controlnet.source_image.image_scale)
-            original_pil_image = original_pil_image.resize((new_width, new_height), Image.Resampling.LANCZOS)
-
-            left = math.floor(new_width / 2 - (width / 2 + self.controlnet.source_image.image_x_pos))
-            top = math.floor(new_height / 2 - (height / 2 + self.controlnet.source_image.image_y_pos))
-            right = self.controlnet.generation_width + left
-            bottom = self.controlnet.generation_height + top
-            original_pil_image = original_pil_image.crop((left, top, right, bottom))
-
-            drawing_image = self.drawings_pixmap.toImage()
-            drawing_pil_image = ImageQt.fromqimage(drawing_image)
-            merged_image = Image.alpha_composite(original_pil_image, drawing_pil_image)
-
             timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
             source_filename = f"cn_source_{timestamp}.png"
             source_path = os.path.join("tmp/", source_filename)
-            merged_image.save(source_path)
-
+            source_image = self.prepare_image(self.controlnet.source_image)
+            source_image.save(source_path)
             self.controlnet.source_image.image_filename = source_path
-            source_image = merged_image
             source_image = source_image.convert("RGB")
             numpy_image = np.array(source_image)
         else:
@@ -151,14 +127,18 @@ class PreprocessorThread(QThread):
             if preprocessor_image is not None:
                 self.preprocessor_pixmap = self.convert_numpy_to_pixmap(preprocessor_image)
         else:
-            # The preprocessor image was dropped or loaded, use it as is
-            self.preprocessor_pixmap = QPixmap(self.controlnet.preprocessor_image.image_filename)
+            timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+            preprocessor_filename = f"cn_{preprocessor_name}_{timestamp}.png"
+            preprocessor_path = os.path.join("tmp/", preprocessor_filename)
+            preprocessor_image = self.prepare_image(self.controlnet.preprocessor_image)
+            preprocessor_image.save(preprocessor_path)
+            self.controlnet.preprocessor_image.image_filename = preprocessor_path
 
-            if self.controlnet.preprocessor_image.image_thumb is None:
-                preprocessor_thumb_filename = f"cn_{preprocessor_name}_{timestamp}_thumb.png"
-                self.controlnet.preprocessor_image.image_thumb = os.path.join("tmp/", preprocessor_thumb_filename)
-                thumbnail_pixmap = self.preprocessor_pixmap.scaled(80, 80, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
-                thumbnail_pixmap.save(self.controlnet.preprocessor_image.image_thumb)
+            thumb_image = preprocessor_image.copy()
+            thumb_image.thumbnail((80, 80))
+            preprocessor_thumb_filename = f"cn_{preprocessor_name}_{timestamp}_thumb.png"
+            self.controlnet.preprocessor_image.image_thumb = os.path.join("tmp/", preprocessor_thumb_filename)
+            thumb_image.save(self.controlnet.preprocessor_image.image_thumb)
 
             preprocessor_loaded = True
 
@@ -219,3 +199,29 @@ class PreprocessorThread(QThread):
         pixmap = QPixmap.fromImage(qimage)
 
         return pixmap
+
+    def prepare_image(self, image_data: ImageDataObject):
+        original_pil_image = Image.open(image_data.image_original)
+        width, height = original_pil_image.size
+
+        if original_pil_image.mode not in ("RGBA", "LA", "P"):
+            original_pil_image = original_pil_image.convert("RGBA")
+
+        center = (width / 2, height / 2)
+        original_pil_image = original_pil_image.rotate(-image_data.image_rotation, Image.Resampling.BICUBIC, center=center, expand=True)
+
+        new_width = round(width * image_data.image_scale)
+        new_height = round(height * image_data.image_scale)
+        original_pil_image = original_pil_image.resize((new_width, new_height), Image.Resampling.LANCZOS)
+
+        left = math.floor(new_width / 2 - (width / 2 + image_data.image_x_pos))
+        top = math.floor(new_height / 2 - (height / 2 + image_data.image_y_pos))
+        right = self.controlnet.generation_width + left
+        bottom = self.controlnet.generation_height + top
+        original_pil_image = original_pil_image.crop((left, top, right, bottom))
+
+        drawing_image = self.drawings_pixmap.toImage()
+        drawing_pil_image = ImageQt.fromqimage(drawing_image)
+        merged_image = Image.alpha_composite(original_pil_image, drawing_pil_image)
+
+        return merged_image

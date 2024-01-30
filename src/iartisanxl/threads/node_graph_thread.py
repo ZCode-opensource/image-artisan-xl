@@ -397,7 +397,7 @@ class NodeGraphThread(QThread):
             self.node_graph()
         except KeyError:
             self.generation_error.emit("There was an error while generating.", False)
-        except FileNotFoundError:            
+        except FileNotFoundError:
             self.generation_error.emit(
                 "There's a missing model file in the generation, choose a different one or download missing models from the downloader", False
             )
