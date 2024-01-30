@@ -103,13 +103,13 @@ class GenerationPanel(BasePanel):
 
         base_model_layout = QHBoxLayout()
         base_model_label = QLabel("Model: ")
-        base_model_layout.addWidget(base_model_label)
+        base_model_layout.addWidget(base_model_label, 0)
 
         model_name = "no model selected"
         if self.image_generation_data.model is not None and self.image_generation_data.model.name is not None:
             model_name = self.image_generation_data.model.name
         self.selected_base_model_label = QLabel(model_name)
-        base_model_layout.addWidget(self.selected_base_model_label)
+        base_model_layout.addWidget(self.selected_base_model_label, 1, alignment=Qt.AlignmentFlag.AlignRight)
         main_layout.addLayout(base_model_layout)
 
         main_layout.addSpacerItem(QSpacerItem(0, 8))
