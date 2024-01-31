@@ -1,32 +1,39 @@
+import os
+from datetime import datetime
+
+from PIL import Image
 from PyQt6.QtWidgets import QVBoxLayout, QHBoxLayout, QLabel, QWidget, QPushButton, QSpacerItem, QSizePolicy, QFileDialog
-from PyQt6.QtCore import Qt, pyqtSignal
-from PyQt6.QtGui import QImageReader, QPixmap
+from PyQt6.QtCore import Qt, pyqtSignal, QUrl, QMimeData
+from PyQt6.QtGui import QImageReader, QPixmap, QGuiApplication
 
 from iartisanxl.modules.common.image.image_editor import ImageEditor
 from iartisanxl.modules.common.image_viewer_simple import ImageViewerSimple
 from iartisanxl.modules.common.image_control import ImageControl
-from iartisanxl.generation.image_generation_data import ImageGenerationData
 from iartisanxl.layouts.aspect_ratio_layout import AspectRatioLayout
+from iartisanxl.threads.save_merged_image_thread import SaveMergedImageThread
+from iartisanxl.modules.common.image.image_data_object import ImageDataObject
 
 
 class ControlImageWidget(QWidget):
     image_loaded = pyqtSignal()
     image_changed = pyqtSignal()
 
-    def __init__(self, text: str, image_viewer: ImageViewerSimple, image_generation_data: ImageGenerationData, *args, **kwargs):
+    def __init__(self, text: str, prefix: str, image_viewer: ImageViewerSimple, editor_width: int, editor_height: int, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
         self.setObjectName("control_image_widget")
         self.text = text
         self.image_viewer = image_viewer
-        self.image_generation_data = image_generation_data
         self.image_path = None
 
         self.setAcceptDrops(True)
 
-        self.editor_width = self.image_generation_data.image_width
-        self.editor_height = self.image_generation_data.image_height
+        self.prefix = prefix
+        self.editor_width = editor_width
+        self.editor_height = editor_height
         self.aspect_ratio = float(self.editor_width) / float(self.editor_height)
+
+        self.image_copy_thread = None
 
         self.init_ui()
 
@@ -57,6 +64,9 @@ class ControlImageWidget(QWidget):
         self.image_editor.image_changed.connect(self.on_image_changed)
         self.image_editor.image_scaled.connect(self.update_image_scale)
         self.image_editor.image_moved.connect(self.update_image_position)
+        self.image_editor.image_pasted.connect(self.create_original_image)
+        self.image_editor.image_copy.connect(self.on_image_copy)
+        self.image_editor.image_save.connect(self.on_image_save)
         editor_layout = AspectRatioLayout(image_widget, self.aspect_ratio)
         editor_layout.addWidget(self.image_editor)
         image_widget.setLayout(editor_layout)
@@ -140,34 +150,56 @@ class ControlImageWidget(QWidget):
             reader = QImageReader(path)
 
             if reader.canRead():
-                self.image_path = path
-                pixmap = QPixmap(self.image_path)
-                self.image_editor.set_pixmap(pixmap)
-                self.image_loaded.emit()
+                self.create_original_image(path)
 
     def on_load_image(self):
         options = QFileDialog.Options()
         options |= QFileDialog.ReadOnly
-        image_path, _ = QFileDialog.getOpenFileName(self, "Load Image", "", "Images (*.png *.jpg)", options=options)
-        if image_path:
-            self.image_path = image_path
-            self.clear_image()
-            pixmap = QPixmap(self.image_path)
-            self.image_editor.set_pixmap(pixmap)
-            self.image_loaded.emit()
+        selected_path, _ = QFileDialog.getOpenFileName(self, "Load Image", "", "Images (*.png *.jpg)", options=options)
+        if selected_path:
+            self.create_original_image(selected_path)
 
     def set_current_image(self):
         if self.image_viewer.pixmap_item is not None:
-            self.image_path = None
             self.clear_image()
+
+            timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+            filename = f"{self.prefix}_{timestamp}_original.png"
+            filepath = os.path.join("tmp/", filename)
+
             pixmap = self.image_viewer.pixmap_item.pixmap()
-            self.image_editor.set_pixmap(pixmap)
-            self.image_loaded.emit()
+            pixmap.save(filepath)
+            self.image_editor.image_path = filepath
+
+            self.set_editor_image_by_path(filepath)
 
     def set_color_image(self):
-        width = self.image_generation_data.image_width
-        height = self.image_generation_data.image_height
-        self.image_editor.set_color_pixmap(width, height)
+        self.clear_image()
+
+        timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+        filename = f"{self.prefix}_{timestamp}_original.png"
+        filepath = os.path.join("tmp/", filename)
+
+        color_pixmap = QPixmap(self.editor_width, self.editor_height)
+        color_pixmap.fill(self.image_editor.brush_color)
+        color_pixmap.save(filepath)
+
+        self.set_editor_image_by_path(filepath)
+
+    def create_original_image(self, path):
+        self.clear_image()
+
+        timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+        filename = f"{self.prefix}_{timestamp}_original.png"
+        image_path = os.path.join("tmp/", filename)
+        pil_image = Image.open(path)
+        pil_image.save(image_path, format="PNG")
+
+        self.set_editor_image_by_path(image_path)
+
+    def set_editor_image_by_path(self, image_path):
+        self.image_editor.set_image(image_path)
+        self.image_path = image_path
         self.image_loaded.emit()
 
     def set_image_parameters(self, scale, x, y, angle):
@@ -181,6 +213,12 @@ class ControlImageWidget(QWidget):
         self.image_editor.rotate_image(angle)
 
     def clear_image(self):
+        if self.image_path is not None and os.path.isfile(self.image_path):
+            os.remove(self.image_path)
+            self.image_path = None
+
+        self.image_editor.image_path = None
+
         self.image_scale_control.reset()
         self.image_x_pos_control.reset()
         self.image_y_pos_control.reset()
@@ -189,3 +227,34 @@ class ControlImageWidget(QWidget):
 
     def on_image_changed(self):
         self.image_changed.emit()
+
+    def on_image_copy(self):
+        self.prepare_copy_thread()
+        self.image_copy_thread.image_done.connect(self.on_copy_image_done)
+        self.image_copy_thread.start()
+
+    def prepare_copy_thread(self, save_path: str = None):
+        image_data = ImageDataObject()
+        image_data.image_original = self.image_path
+        image_data.image_scale = self.image_scale_control.value
+        image_data.image_x_pos = self.image_x_pos_control.value
+        image_data.image_y_pos = self.image_y_pos_control.value
+        image_data.image_rotation = self.image_rotation_control.value
+
+        drawing_image = self.image_editor.get_layer(1)
+
+        self.image_copy_thread = SaveMergedImageThread(self.editor_width, self.editor_height, image_data, drawing_image, save_path=save_path)
+        self.image_copy_thread.finished.connect(self.on_copy_thread_finished)
+
+    def on_copy_image_done(self, image_path):
+        clipboard = QGuiApplication.clipboard()
+        mime_data = QMimeData()
+        mime_data.setUrls([QUrl.fromLocalFile(image_path)])
+        clipboard.setMimeData(mime_data)
+
+    def on_image_save(self, image_path):
+        self.prepare_copy_thread(save_path=image_path)
+        self.image_copy_thread.start()
+
+    def on_copy_thread_finished(self):
+        self.image_copy_thread = None

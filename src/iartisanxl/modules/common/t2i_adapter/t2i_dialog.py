@@ -12,7 +12,7 @@ from superqt import QDoubleRangeSlider, QDoubleSlider
 from iartisanxl.app.event_bus import EventBus
 from iartisanxl.buttons.color_button import ColorButton
 from iartisanxl.modules.common.dialogs.base_dialog import BaseDialog
-from iartisanxl.modules.common.dialogs.control_image_widget import ControlImageWidget
+from iartisanxl.modules.common.controlnet.control_image_widget import ControlImageWidget
 from iartisanxl.modules.common.t2i_adapter.t2i_adapter_data_object import T2IAdapterDataObject
 from iartisanxl.threads.t2i_preprocessor_thread import T2IPreprocessorThread
 

@@ -1,6 +1,8 @@
+import os
+from datetime import datetime
 from importlib.resources import files
 
-from PyQt6.QtWidgets import QGraphicsScene, QGraphicsPixmapItem, QGraphicsView, QGraphicsPathItem, QApplication, QMenu
+from PyQt6.QtWidgets import QGraphicsScene, QGraphicsPixmapItem, QGraphicsView, QGraphicsPathItem, QApplication, QMenu, QFileDialog
 from PyQt6.QtCore import Qt, QPoint, QTimer, QSize, pyqtSignal, QLineF
 from PyQt6.QtGui import QPixmap, QPainter, QPainterPath, QColor, QRadialGradient, QBrush, QPen, QCursor, QGuiApplication, QAction
 from PyQt6.QtSvg import QSvgRenderer
@@ -17,6 +19,9 @@ class ImageEditor(QGraphicsView):
     image_changed = pyqtSignal()
     image_moved = pyqtSignal(float, float)
     image_scaled = pyqtSignal(float)
+    image_pasted = pyqtSignal(str)
+    image_copy = pyqtSignal()
+    image_save = pyqtSignal(str)
 
     def __init__(self, target_width: int, target_height: int, aspect_ratio: float, save_directory=None):
         super(ImageEditor, self).__init__()
@@ -30,6 +35,7 @@ class ImageEditor(QGraphicsView):
         self.original_y = 0
         self.original_rotation = 0
 
+        self.image_path = None
         self.original_pixmap = None
         self.pixmap_item = None
         self.target_width = target_width
@@ -108,6 +114,7 @@ class ImageEditor(QGraphicsView):
             self.image_changed.emit()
 
     def set_image(self, image_path):
+        self.image_path = image_path
         pixmap = QPixmap(image_path)
         self.set_pixmap(pixmap)
 
@@ -127,10 +134,11 @@ class ImageEditor(QGraphicsView):
         self.update_cursor()
         self.image_changed.emit()
 
-    def set_color_pixmap(self, width, height):
-        color_pixmap = QPixmap(width, height)
-        color_pixmap.fill(self.brush_color)
-        self.set_pixmap(color_pixmap)
+    def set_drawing_image(self, image_path: str):
+        pixmap = QPixmap(image_path)
+        pixmap_item = QGraphicsPixmapItem(pixmap)
+        pixmap_item.setZValue(1)
+        self.scene.addItem(pixmap_item)
 
     def set_image_scale(self, scale_factor):
         if self.pixmap_item is not None:
@@ -260,6 +268,7 @@ class ImageEditor(QGraphicsView):
         self.redo_stack.clear()
         self.pixmap_item = None
         self.original_pixmap = None
+        self.image_path = None
 
     def create_cursor(self, svg_path, use_crosshair, pixmap_size):
         if use_crosshair:
@@ -324,30 +333,63 @@ class ImageEditor(QGraphicsView):
 
         copy_action = QAction("Copy Image", self)
         copy_action.triggered.connect(self.copy_image)
+
+        if self.image_path is None:
+            copy_action.setDisabled(True)
+
         context_menu.addAction(copy_action)
 
         paste_action = QAction("Paste Image", self)
         paste_action.triggered.connect(self.paste_image)
+
+        clipboard = QGuiApplication.clipboard()
+        mime_data = clipboard.mimeData()
+        paste_action.setDisabled(True)
+        if mime_data.hasUrls():
+            url = mime_data.urls()[0]
+            if url.isLocalFile():
+                file_path = url.toLocalFile()
+                if file_path.endswith(".png") and os.path.isfile(file_path):
+                    paste_action.setEnabled(True)
+
         context_menu.addAction(paste_action)
 
         save_action = QAction("Save Image", self)
         save_action.triggered.connect(self.save_image)
+
+        if self.pixmap_item is None:
+            save_action.setDisabled(True)
+
         context_menu.addAction(save_action)
 
         context_menu.exec(event.globalPos())
 
     def paste_image(self):
         clipboard = QApplication.clipboard()
-        pixmap = clipboard.pixmap()
-        if not pixmap.isNull():
-            self.set_pixmap(pixmap)
-            self.image_changed.emit()
+        mime_data = clipboard.mimeData()
+
+        mime_data = clipboard.mimeData()
+        url = mime_data.urls()[0]
+        file_path = url.toLocalFile()
+
+        self.image_pasted.emit(file_path)
 
     def copy_image(self):
-        pass
+        self.image_copy.emit()
 
     def save_image(self):
-        pass
+        timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+        home_dir = os.path.expanduser("~")
+        pictures_dir = os.path.join(home_dir, "Pictures")
+
+        save_path, _ = QFileDialog.getSaveFileName(
+            self,
+            "Save image",
+            os.path.join(pictures_dir, f"{timestamp}.png"),
+            "Images (*.png *.jpg)",
+        )
+
+        self.image_save.emit(save_path)
 
     def get_layer(self, layer_z):
         layer_items = [item for item in self.scene.items() if item.zValue() == layer_z]

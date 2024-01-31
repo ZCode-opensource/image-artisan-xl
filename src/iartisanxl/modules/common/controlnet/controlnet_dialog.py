@@ -1,8 +1,7 @@
 import os
-import shutil
-from datetime import datetime
 
 import torch
+
 from PyQt6.QtWidgets import QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QSlider, QComboBox, QWidget
 from PyQt6.QtCore import QSettings, Qt
 from PyQt6.QtGui import QPixmap
@@ -11,7 +10,7 @@ from superqt import QDoubleRangeSlider, QDoubleSlider
 from iartisanxl.app.event_bus import EventBus
 from iartisanxl.buttons.color_button import ColorButton
 from iartisanxl.modules.common.dialogs.base_dialog import BaseDialog
-from iartisanxl.modules.common.dialogs.control_image_widget import ControlImageWidget
+from iartisanxl.modules.common.controlnet.control_image_widget import ControlImageWidget
 from iartisanxl.modules.common.controlnet.controlnet_data_object import ControlNetDataObject
 from iartisanxl.threads.preprocessor_thread import PreprocessorThread
 
@@ -157,7 +156,9 @@ class ControlNetDialog(BaseDialog):
         images_layout.setSpacing(2)
 
         source_layout = QVBoxLayout()
-        self.source_widget = ControlImageWidget("Source image", self.image_viewer, self.image_generation_data)
+        self.source_widget = ControlImageWidget(
+            "Source image", "cn_source", self.image_viewer, self.controlnet.generation_width, self.controlnet.generation_height
+        )
         self.source_widget.image_loaded.connect(lambda: self.on_image_loaded(0))
         self.source_widget.image_changed.connect(self.on_source_changed)
         source_layout.addWidget(self.source_widget)
@@ -168,7 +169,9 @@ class ControlNetDialog(BaseDialog):
         images_layout.addLayout(source_layout)
 
         preprocessor_layout = QVBoxLayout()
-        self.preprocessor_widget = ControlImageWidget("Preprocessor", self.image_viewer, self.image_generation_data)
+        self.preprocessor_widget = ControlImageWidget(
+            "Preprocessor", "cn_preprocessor", self.image_viewer, self.controlnet.generation_width, self.controlnet.generation_height
+        )
         self.preprocessor_widget.image_loaded.connect(lambda: self.on_image_loaded(1))
         self.preprocessor_widget.image_changed.connect(self.on_preprocessor_image_changed)
         preprocessor_layout.addWidget(self.preprocessor_widget)
@@ -254,40 +257,21 @@ class ControlNetDialog(BaseDialog):
 
     def on_image_loaded(self, image_type: int):
         # types: 0 - source, 1 - preprocessor
-        timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
-
         if image_type == 0:
-            if self.controlnet.source_image.image_original is not None:
-                os.remove(self.controlnet.source_image.image_original)
+            if self.controlnet.source_image.image_filename is not None and os.path.isfile(self.controlnet.source_image.image_filename):
+                os.remove(self.controlnet.source_image.image_filename)
+                self.controlnet.source_image.image_filename = None
 
-            original_filename = f"cn_{timestamp}_original.png"
-            original_path = os.path.join("tmp/", original_filename)
+            if self.controlnet.source_image.image_thumb is not None and os.path.isfile(self.controlnet.source_image.image_thumb):
+                os.remove(self.controlnet.source_image.image_thumb)
+                self.controlnet.source_image.image_thumb = None
 
-            if self.source_widget.image_path is not None:
-                shutil.copy2(self.source_widget.image_path, original_path)
-            else:
-                # If there is no path in the widget, in means its a blank or the current image, so we need to create the image
-                pixmap = self.image_viewer.pixmap_item.pixmap()
-                original_filename = f"cn_{timestamp}_original.png"
-                original_path = os.path.join("tmp/", original_filename)
-                pixmap.save(original_path)
+            self.controlnet.source_image.image_original = self.source_widget.image_path
 
-            self.controlnet.source_image.image_original = original_path
             self.source_changed = True
             self.preprocess = True
         else:
-            if self.controlnet.preprocessor_image.image_original is not None:
-                os.remove(self.controlnet.preprocessor_image.image_original)
-
-            preprocessed_original_filename = f"cn_{timestamp}_preprocessed_original.png"
-            self.controlnet.preprocessor_image.image_original = os.path.join("tmp/", preprocessed_original_filename)
-
-            if self.preprocessor_widget.image_path is not None:
-                shutil.copy2(self.preprocessor_widget.image_path, self.controlnet.preprocessor_image.image_original)
-            else:
-                # If there is no path in the widget, in means its a blank, so we need to create the image
-                pass
-
+            self.controlnet.preprocessor_image.image_original = self.preprocessor_widget.image_path
             self.preprocessor_changed = True
 
     def on_controlnet_added(self):
@@ -295,6 +279,10 @@ class ControlNetDialog(BaseDialog):
             return
 
         if not self.preprocessor_changed:
+            return
+
+        if self.preprocessor_widget.image_editor.pixmap_item is None:
+            self.show_error("You'll need to either preprocess an image or load an image in the preprocessor to add the controlnet.")
             return
 
         self.updating = True
@@ -383,10 +371,6 @@ class ControlNetDialog(BaseDialog):
         self.preprocess = True
 
     def update_ui(self):
-        self.preprocess = False
-        self.source_changed = False
-        self.preprocessor_changed = False
-
         self.conditioning_scale_slider.setValue(self.controlnet.conditioning_scale)
         self.conditioning_scale_value_label.setText(f"{self.controlnet.conditioning_scale:.2f}")
         self.guidance_slider.setValue((self.controlnet.guidance_start, self.controlnet.guidance_end))
@@ -406,11 +390,32 @@ class ControlNetDialog(BaseDialog):
                 self.controlnet.source_image.image_rotation,
             )
 
-        preprocessor_pixmap = QPixmap(self.controlnet.preprocessor_image.image_filename)
-        self.preprocessor_widget.image_editor.set_pixmap(preprocessor_pixmap)
+            if self.controlnet.source_image.image_drawings:
+                self.source_widget.image_editor.set_drawing_image(self.controlnet.source_image.image_drawings)
+
+        if self.controlnet.preprocessor_image:
+            if self.controlnet.preprocessor_image.image_original:
+                preprocessor_pixmap = QPixmap(self.controlnet.preprocessor_image.image_original)
+                self.preprocessor_widget.set_image_parameters(
+                    self.controlnet.preprocessor_image.image_scale,
+                    self.controlnet.preprocessor_image.image_x_pos,
+                    self.controlnet.preprocessor_image.image_y_pos,
+                    self.controlnet.preprocessor_image.image_rotation,
+                )
+                self.preprocessor_widget.image_editor.set_pixmap(preprocessor_pixmap)
+
+                if self.controlnet.preprocessor_image.image_drawings:
+                    self.preprocessor_widget.image_editor.set_drawing_image(self.controlnet.preprocessor_image.image_drawings)
+            else:
+                preprocessor_pixmap = QPixmap(self.controlnet.preprocessor_image.image_filename)
+                self.preprocessor_widget.image_editor.set_pixmap(preprocessor_pixmap)
 
         if self.controlnet.adapter_id is not None:
             self.add_button.setText("Update")
+
+        self.preprocess = False
+        self.source_changed = False
+        self.preprocessor_changed = False
 
     def reset_ui(self):
         self.source_widget.clear_image()
@@ -419,9 +424,6 @@ class ControlNetDialog(BaseDialog):
         self.controlnet = ControlNetDataObject()
         self.controlnet.generation_width = self.image_generation_data.image_width
         self.controlnet.generation_height = self.image_generation_data.image_height
-        self.source_changed = False
-        self.preprocessor_changed = True
-        self.preprocess = True
 
         self.conditioning_scale_slider.setValue(self.controlnet.conditioning_scale)
         self.conditioning_scale_value_label.setText(f"{self.controlnet.conditioning_scale:.2f}")
@@ -429,5 +431,9 @@ class ControlNetDialog(BaseDialog):
         self.canny_slider.setValue((self.controlnet.canny_low, self.controlnet.canny_high))
         self.preprocessor_combo.setCurrentIndex(self.controlnet.type_index)
         self.on_preprocessor_changed()
+
+        self.source_changed = False
+        self.preprocessor_changed = True
+        self.preprocess = True
 
         self.add_button.setText("Add")

@@ -3,7 +3,7 @@ import math
 from datetime import datetime
 
 import cv2
-from PIL import Image, ImageQt
+from PIL import Image
 import numpy as np
 from PyQt6.QtCore import pyqtSignal, QThread
 from PyQt6.QtGui import QImage, QPixmap
@@ -61,6 +61,14 @@ class PreprocessorThread(QThread):
                     self.controlnet.source_image.image_thumb = None
 
             timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+
+            drawings_filename = f"cn_source_{timestamp}_drawings.png"
+            drawings_path = os.path.join("tmp/", drawings_filename)
+            self.drawings_pixmap.save(drawings_path)
+            if self.controlnet.source_image.image_drawings and os.path.isfile(self.controlnet.source_image.image_drawings):
+                os.remove(self.controlnet.source_image.image_drawings)
+            self.controlnet.source_image.image_drawings = drawings_path
+
             source_filename = f"cn_source_{timestamp}.png"
             source_path = os.path.join("tmp/", source_filename)
             source_image = self.prepare_image(self.controlnet.source_image)
@@ -85,7 +93,6 @@ class PreprocessorThread(QThread):
         preprocessor_image = None
         preprocessor_loaded = False
 
-        # if there's no preprocessor path, we must create it
         if self.preprocess:
             if self.controlnet.type_index == 0:
                 preprocessor_name = "canny"
@@ -125,9 +132,29 @@ class PreprocessorThread(QThread):
                 preprocessor_image = self.openpose_detector.get_open_pose(numpy_image, source_resolution)
 
             if preprocessor_image is not None:
-                self.preprocessor_pixmap = self.convert_numpy_to_pixmap(preprocessor_image)
+                if self.save_preprocessor:
+                    timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+                    preprocessor_filename = f"cn_{preprocessor_name}_{timestamp}_original.png"
+                    preprocessor_path = os.path.join("tmp/", preprocessor_filename)
+                    cv2.imwrite(preprocessor_path, preprocessor_image)  # pylint: disable=no-member
+
+                    if self.controlnet.preprocessor_image.image_original is not None and os.path.isfile(self.controlnet.preprocessor_image.image_original):
+                        os.remove(self.controlnet.preprocessor_image.image_original)
+
+                    self.controlnet.preprocessor_image.image_original = preprocessor_path
+                    self.preprocessor_pixmap = QPixmap(preprocessor_path)
+                else:
+                    self.preprocessor_pixmap = self.convert_numpy_to_pixmap(preprocessor_image)
         else:
             timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+
+            drawings_filename = f"cn_{preprocessor_name}_{timestamp}_drawings.png"
+            drawings_path = os.path.join("tmp/", drawings_filename)
+            self.preprocessor_drawings.save(drawings_path)
+            if self.controlnet.preprocessor_image.image_drawings and os.path.isfile(self.controlnet.preprocessor_image.image_drawings):
+                os.remove(self.controlnet.preprocessor_image.image_drawings)
+            self.controlnet.preprocessor_image.image_drawings = drawings_path
+
             preprocessor_filename = f"cn_{preprocessor_name}_{timestamp}.png"
             preprocessor_path = os.path.join("tmp/", preprocessor_filename)
             preprocessor_image = self.prepare_image(self.controlnet.preprocessor_image)
@@ -148,16 +175,23 @@ class PreprocessorThread(QThread):
                     os.remove(self.controlnet.preprocessor_image.image_filename)
 
                 timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+
+                drawings_filename = f"cn_{preprocessor_name}_{timestamp}_drawings.png"
+                drawings_path = os.path.join("tmp/", drawings_filename)
+                self.preprocessor_drawings.save(drawings_path)
+                if self.controlnet.preprocessor_image.image_drawings and os.path.isfile(self.controlnet.preprocessor_image.image_drawings):
+                    os.remove(self.controlnet.preprocessor_image.image_drawings)
+                self.controlnet.preprocessor_image.image_drawings = drawings_path
+
                 preprocessor_filename = f"cn_{preprocessor_name}_{timestamp}.png"
                 self.controlnet.preprocessor_image.image_filename = os.path.join("tmp/", preprocessor_filename)
 
                 if preprocessor_image is not None:
-                    preprocessor_drawing_image = self.preprocessor_drawings.toImage()
-                    preprocessor_drawing_pip_image = ImageQt.fromqimage(preprocessor_drawing_image)
+                    preprocessor_drawing_image = Image.open(self.controlnet.preprocessor_image.image_drawings)
                     preprocessor_pil_image = Image.fromarray(preprocessor_image)
                     if preprocessor_pil_image.mode not in ("RGBA", "LA", "P"):
                         preprocessor_pil_image = preprocessor_pil_image.convert("RGBA")
-                    merged_preprocessor = Image.alpha_composite(preprocessor_pil_image, preprocessor_drawing_pip_image)
+                    merged_preprocessor = Image.alpha_composite(preprocessor_pil_image, preprocessor_drawing_image)
                     merged_preprocessor.save(self.controlnet.preprocessor_image.image_filename)
 
                 if self.controlnet.preprocessor_image.image_thumb:
@@ -220,8 +254,7 @@ class PreprocessorThread(QThread):
         bottom = self.controlnet.generation_height + top
         original_pil_image = original_pil_image.crop((left, top, right, bottom))
 
-        drawing_image = self.drawings_pixmap.toImage()
-        drawing_pil_image = ImageQt.fromqimage(drawing_image)
-        merged_image = Image.alpha_composite(original_pil_image, drawing_pil_image)
+        drawing_image = Image.open(image_data.image_drawings)
+        merged_image = Image.alpha_composite(original_pil_image, drawing_image)
 
         return merged_image
