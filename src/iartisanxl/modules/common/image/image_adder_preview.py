@@ -1,6 +1,9 @@
+import os
+from datetime import datetime
+
 from PyQt6.QtWidgets import QGraphicsView, QGraphicsScene, QGraphicsPixmapItem, QFileDialog, QMenu, QApplication
 from PyQt6.QtCore import Qt, QSize, QPointF, pyqtSignal
-from PyQt6.QtGui import QPixmap, QAction, QPainter
+from PyQt6.QtGui import QPixmap, QAction, QPainter, QGuiApplication
 
 from iartisanxl.modules.common.drop_lightbox import DropLightBox
 
@@ -9,6 +12,9 @@ class ImageAdderPreview(QGraphicsView):
     image_moved = pyqtSignal(float, float)
     image_scaled = pyqtSignal(float)
     image_updated = pyqtSignal()
+    image_pasted = pyqtSignal(str)
+    image_copy = pyqtSignal()
+    image_save = pyqtSignal(str)
 
     def __init__(self, target_width: int, target_height: int, aspect_ratio: float, save_directory=None):
         super(ImageAdderPreview, self).__init__()
@@ -173,40 +179,59 @@ class ImageAdderPreview(QGraphicsView):
 
         copy_action = QAction("Copy Image", self)
         copy_action.triggered.connect(self.copy_image)
+        if self.pixmap_item is None:
+            copy_action.setDisabled(True)
         context_menu.addAction(copy_action)
 
         paste_action = QAction("Paste Image", self)
         paste_action.triggered.connect(self.paste_image)
+
+        clipboard = QGuiApplication.clipboard()
+        mime_data = clipboard.mimeData()
+        paste_action.setDisabled(True)
+        if mime_data.hasUrls():
+            url = mime_data.urls()[0]
+            if url.isLocalFile():
+                file_path = url.toLocalFile()
+                if file_path.endswith(".png") and os.path.isfile(file_path):
+                    paste_action.setEnabled(True)
+
         context_menu.addAction(paste_action)
 
         save_action = QAction("Save Image", self)
         save_action.triggered.connect(self.on_save_image)
+        if self.pixmap_item is None:
+            save_action.setDisabled(True)
         context_menu.addAction(save_action)
 
         context_menu.exec(event.globalPos())
 
     def paste_image(self):
         clipboard = QApplication.clipboard()
-        pixmap = clipboard.pixmap()
-        if not pixmap.isNull():
-            self.set_pixmap(pixmap)
+        mime_data = clipboard.mimeData()
+
+        mime_data = clipboard.mimeData()
+        url = mime_data.urls()[0]
+        file_path = url.toLocalFile()
+
+        self.image_pasted.emit(file_path)
 
     def copy_image(self):
-        if self.pixmap_item is not None:
-            pixmap = self.get_current_view_as_pixmap()
-            clipboard = QApplication.clipboard()
-            clipboard.setPixmap(pixmap)
+        self.image_copy.emit()
 
     def on_save_image(self):
-        if self.pixmap_item is not None:
-            file_dialog = QFileDialog()
-            export_path, _ = file_dialog.getSaveFileName(self, "Save image", self.save_directory, "Images (*.png *.jpg)")
+        timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+        home_dir = os.path.expanduser("~")
+        pictures_dir = os.path.join(home_dir, "Pictures")
 
-            if export_path:
-                if "." not in export_path:
-                    export_path += ".png"
+        save_path, _ = QFileDialog.getSaveFileName(
+            self,
+            "Save image",
+            os.path.join(pictures_dir, f"{timestamp}.png"),
+            "Images (*.png *.jpg)",
+        )
 
-                self.save_image(export_path)
+        self.image_save.emit(save_path)
 
     def get_current_view_as_pixmap(self):
         size = self.size()
@@ -216,10 +241,6 @@ class ImageAdderPreview(QGraphicsView):
         self.render(painter)
         painter.end()
         return pixmap
-
-    def save_image(self, path):
-        pixmap = self.get_cropped_image()
-        pixmap.save(path)
 
     def dragMoveEvent(self, event):
         pass

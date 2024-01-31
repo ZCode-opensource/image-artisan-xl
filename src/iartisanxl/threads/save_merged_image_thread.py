@@ -45,14 +45,17 @@ class SaveMergedImageThread(QThread):
         bottom = self.image_height + top
         original_pil_image = original_pil_image.crop((left, top, right, bottom))
 
-        qimage = self.drawings_pixmap.toImage()
-        byte_array = QByteArray()
-        buffer = QBuffer(byte_array)
-        buffer.open(QIODevice.OpenModeFlag.WriteOnly)
-        qimage.save(buffer, "PNG")
-        drawing_image = Image.open(io.BytesIO(byte_array.data()))
+        if self.drawings_pixmap:
+            qimage = self.drawings_pixmap.toImage()
+            byte_array = QByteArray()
+            buffer = QBuffer(byte_array)
+            buffer.open(QIODevice.OpenModeFlag.WriteOnly)
+            qimage.save(buffer, "PNG")
+            drawing_image = Image.open(io.BytesIO(byte_array.data()))
 
-        merged_image = Image.alpha_composite(original_pil_image, drawing_image)
+            merged_image = Image.alpha_composite(original_pil_image, drawing_image)
+        else:
+            merged_image = original_pil_image
 
         if self.save_path:
             merged_image.save(self.save_path)

@@ -1,12 +1,18 @@
+import os
+from datetime import datetime
+
+from PIL import Image
 from PyQt6.QtWidgets import QVBoxLayout, QHBoxLayout, QWidget, QPushButton, QFileDialog, QLabel
-from PyQt6.QtGui import QImageReader, QPixmap
-from PyQt6.QtCore import pyqtSignal, QTimer, Qt
+from PyQt6.QtGui import QImageReader, QPixmap, QGuiApplication
+from PyQt6.QtCore import pyqtSignal, QTimer, Qt, QUrl, QMimeData
 from superqt import QLabeledDoubleSlider
 
 from iartisanxl.modules.common.image.image_adder_preview import ImageAdderPreview
 from iartisanxl.modules.common.image_viewer_simple import ImageViewerSimple
 from iartisanxl.modules.common.image_control import ImageControl
 from iartisanxl.layouts.aspect_ratio_layout import AspectRatioLayout
+from iartisanxl.threads.save_merged_image_thread import SaveMergedImageThread
+from iartisanxl.modules.common.image.image_data_object import ImageDataObject
 
 
 class IPAdapterImageWidget(QWidget):
@@ -27,6 +33,8 @@ class IPAdapterImageWidget(QWidget):
         self.editor_width = 224
         self.editor_height = 224
         self.aspect_ratio = float(self.editor_width) / float(self.editor_height)
+
+        self.image_copy_thread = None
 
         self.init_ui()
 
@@ -54,6 +62,9 @@ class IPAdapterImageWidget(QWidget):
         self.image_editor.image_updated.connect(self.on_image_updated)
         self.image_editor.image_moved.connect(self.update_image_position)
         self.image_editor.image_scaled.connect(self.update_image_scale)
+        self.image_editor.image_pasted.connect(self.create_original_image)
+        self.image_editor.image_copy.connect(self.on_image_copy)
+        self.image_editor.image_save.connect(self.on_image_save)
         editor_layout = AspectRatioLayout(image_widget, self.aspect_ratio)
         editor_layout.addWidget(self.image_editor)
         main_layout.addWidget(image_widget)
@@ -232,3 +243,47 @@ class IPAdapterImageWidget(QWidget):
         self.add_image_button.setDisabled(True)
         self.delete_image_button.setDisabled(True)
         self.new_image_button.setDisabled(True)
+
+    def set_editor_image_by_path(self, image_path):
+        self.image_editor.set_image(image_path)
+        self.image_path = image_path
+
+    def create_original_image(self, path):
+        self.clear_image()
+
+        timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+        filename = f"ip_{timestamp}_original.png"
+        image_path = os.path.join("tmp/", filename)
+        pil_image = Image.open(path)
+        pil_image.save(image_path, format="PNG")
+
+        self.set_editor_image_by_path(image_path)
+
+    def on_image_copy(self):
+        self.prepare_copy_thread()
+        self.image_copy_thread.image_done.connect(self.on_copy_image_done)
+        self.image_copy_thread.start()
+
+    def prepare_copy_thread(self, save_path: str = None):
+        image_data = ImageDataObject()
+        image_data.image_original = self.image_path
+        image_data.image_scale = self.image_scale_control.value
+        image_data.image_x_pos = self.image_x_pos_control.value
+        image_data.image_y_pos = self.image_y_pos_control.value
+        image_data.image_rotation = self.image_rotation_control.value
+
+        self.image_copy_thread = SaveMergedImageThread(self.editor_width, self.editor_height, image_data, None, save_path=save_path)
+        self.image_copy_thread.finished.connect(self.on_copy_thread_finished)
+
+    def on_copy_image_done(self, image_path):
+        clipboard = QGuiApplication.clipboard()
+        mime_data = QMimeData()
+        mime_data.setUrls([QUrl.fromLocalFile(image_path)])
+        clipboard.setMimeData(mime_data)
+
+    def on_image_save(self, image_path):
+        self.prepare_copy_thread(save_path=image_path)
+        self.image_copy_thread.start()
+
+    def on_copy_thread_finished(self):
+        self.image_copy_thread = None
