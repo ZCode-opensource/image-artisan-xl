@@ -1,6 +1,4 @@
 import os
-import shutil
-from datetime import datetime
 
 import torch
 
@@ -12,7 +10,7 @@ from superqt import QDoubleRangeSlider, QDoubleSlider
 from iartisanxl.app.event_bus import EventBus
 from iartisanxl.buttons.color_button import ColorButton
 from iartisanxl.modules.common.dialogs.base_dialog import BaseDialog
-from iartisanxl.modules.common.controlnet.control_image_widget import ControlImageWidget
+from iartisanxl.modules.common.image.image_widget import ImageWidget
 from iartisanxl.modules.common.t2i_adapter.t2i_adapter_data_object import T2IAdapterDataObject
 from iartisanxl.threads.t2i_preprocessor_thread import T2IPreprocessorThread
 
@@ -34,6 +32,8 @@ class T2IDialog(BaseDialog):
         self.event_bus = EventBus()
 
         self.adapter = T2IAdapterDataObject()
+        self.adapter.generation_width = self.image_generation_data.image_width
+        self.adapter.generation_height = self.image_generation_data.image_height
         self.updating = False
         self.source_changed = False
         self.preprocessor_changed = True
@@ -178,7 +178,7 @@ class T2IDialog(BaseDialog):
         images_layout.setSpacing(2)
 
         source_layout = QVBoxLayout()
-        self.source_widget = ControlImageWidget("Source image", self.image_viewer, self.image_generation_data)
+        self.source_widget = ImageWidget("Source image", "t2i_source", self.image_viewer, self.adapter.generation_width, self.adapter.generation_height)
         self.source_widget.image_loaded.connect(lambda: self.on_image_loaded(0))
         self.source_widget.image_changed.connect(self.on_source_changed)
         source_layout.addWidget(self.source_widget)
@@ -189,7 +189,9 @@ class T2IDialog(BaseDialog):
         images_layout.addLayout(source_layout)
 
         preprocessor_layout = QVBoxLayout()
-        self.preprocessor_widget = ControlImageWidget("Preprocessor", self.image_viewer, self.image_generation_data)
+        self.preprocessor_widget = ImageWidget(
+            "Preprocessor", "t2i_preprocessor", self.image_viewer, self.adapter.generation_width, self.adapter.generation_height
+        )
         self.preprocessor_widget.image_loaded.connect(lambda: self.on_image_loaded(1))
         self.preprocessor_widget.image_changed.connect(self.on_preprocessor_image_changed)
         preprocessor_layout.addWidget(self.preprocessor_widget)
@@ -281,45 +283,20 @@ class T2IDialog(BaseDialog):
 
     def on_image_loaded(self, image_type: int):
         # types: 0 - source, 1 - preprocess
-        timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
-
         if image_type == 0:
-            if self.adapter.source_image.image_original is not None:
-                os.remove(self.adapter.source_image.image_original)
+            if self.adapter.source_image.image_filename is not None and os.path.isfile(self.adapter.source_image.image_filename):
+                os.remove(self.adapter.source_image.image_filename)
+                self.adapter.source_image.image_filename = None
 
-            original_filename = f"t2i_{timestamp}_original.png"
-            original_path = os.path.join("tmp/", original_filename)
+            if self.adapter.source_image.image_thumb is not None and os.path.isfile(self.adapter.source_image.image_thumb):
+                os.remove(self.adapter.source_image.image_thumb)
+                self.adapter.source_image.image_thumb = None
 
-            if self.source_widget.image_path is not None:
-                shutil.copy2(self.source_widget.image_path, original_path)
-            else:
-                # If there is no path in the widget, in means its a blank or the current image, so we need to create the image
-                pixmap = self.image_viewer.pixmap_item.pixmap()
-                original_filename = f"t2i_{timestamp}_original.png"
-                original_path = os.path.join("tmp/", original_filename)
-                pixmap.save(original_path)
-
-            self.adapter.source_image.image_original = original_path
+            self.adapter.source_image.image_original = self.source_widget.image_path
             self.source_changed = True
             self.preprocess = True
         else:
-            # the preprocessor doesn't have a original, its just the preprocessed image
-            if self.adapter.preprocessor_image.image_filename is not None:
-                os.remove(self.adapter.preprocessor_image.image_filename)
-
-            if self.adapter.preprocessor_image.image_thumb is not None:
-                os.remove(self.adapter.preprocessor_image.image_thumb)
-                self.adapter.preprocessor_image.image_thumb = None
-
-            preprocessed_filename = f"t2i_{timestamp}_preprocessed.png"
-            self.adapter.preprocessor_image.image_filename = os.path.join("tmp/", preprocessed_filename)
-
-            if self.preprocessor_widget.image_path is not None:
-                shutil.copy2(self.preprocessor_widget.image_path, self.adapter.preprocessor_image.image_filename)
-            else:
-                # If there is no path in the widget, in means its a blank, so we need to create the image
-                pass
-
+            self.adapter.preprocessor_image.image_original = self.preprocessor_widget.image_path
             self.preprocessor_changed = True
 
     def on_t2i_adapter_added(self):
@@ -329,19 +306,45 @@ class T2IDialog(BaseDialog):
         if not self.preprocessor_changed:
             return
 
+        if self.preprocessor_widget.image_editor.pixmap_item is None:
+            self.show_error("You'll need to either preprocess an image or load an image in the preprocessor to add the adapter.")
+            return
+
         self.updating = True
 
         drawings_pixmap = self.source_widget.image_editor.get_layer(1)
         preprocessor_drawings_pixmap = self.preprocessor_widget.image_editor.get_layer(1)
 
+        self.preprocess = True
+
+        if self.adapter.source_image.image_filename is None and self.adapter.preprocessor_image:
+            self.adapter.preprocessor_image.image_scale = self.preprocessor_widget.image_scale_control.value
+            self.adapter.preprocessor_image.image_x_pos = self.preprocessor_widget.image_x_pos_control.value
+            self.adapter.preprocessor_image.image_y_pos = self.preprocessor_widget.image_y_pos_control.value
+            self.adapter.preprocessor_image.image_rotation = self.preprocessor_widget.image_rotation_control.value
+
+            self.preprocess = False
+
         self.preprocessor_thread = T2IPreprocessorThread(
-            self.adapter, drawings_pixmap, self.source_changed, True, save_preprocessor=True, preprocessor_drawings=preprocessor_drawings_pixmap
+            self.adapter, drawings_pixmap, self.source_changed, self.preprocess, save_preprocessor=True, preprocessor_drawings=preprocessor_drawings_pixmap
         )
         self.preprocessor_thread.finished.connect(self.on_adapter_image_saved)
         self.preprocessor_thread.start()
 
     def on_adapter_image_saved(self):
         self.preprocessor_thread = None
+
+        self.adapter.adapter_name = self.preprocessor_combo.currentText()
+        self.adapter.adapter_type = self.preprocessor_combo.currentData()
+        self.adapter.type_index = self.preprocessor_combo.currentIndex()
+        self.adapter.depth_type = self.depth_type_combo.currentData()
+        self.adapter.depth_type_index = self.depth_type_combo.currentIndex()
+        self.adapter.lineart_type = self.lineart_type_combo.currentData()
+        self.adapter.lineart_type_index = self.lineart_type_combo.currentIndex()
+        self.adapter.sketch_type = self.sketch_type_combo.currentData()
+        self.adapter.sketch_type_index = self.sketch_type_combo.currentIndex()
+        self.adapter.generation_width = self.image_generation_data.image_width
+        self.adapter.generation_height = self.image_generation_data.image_height
 
         if self.adapter.adapter_id is None:
             self.event_bus.publish("t2i_adapters", {"action": "add", "t2i_adapter": self.adapter})
@@ -408,10 +411,6 @@ class T2IDialog(BaseDialog):
         self.preprocess = True
 
     def update_ui(self):
-        self.preprocess = False
-        self.source_changed = False
-        self.preprocessor_changed = False
-
         self.conditioning_scale_slider.setValue(self.adapter.conditioning_scale)
         self.conditioning_scale_value_label.setText(f"{self.adapter.conditioning_scale:.2f}")
         self.conditioning_factor_slider.setValue(self.adapter.conditioning_factor)
@@ -433,26 +432,51 @@ class T2IDialog(BaseDialog):
                 self.adapter.source_image.image_rotation,
             )
 
-        preprocessor_pixmap = QPixmap(self.adapter.preprocessor_image.image_filename)
-        self.preprocessor_widget.image_editor.set_pixmap(preprocessor_pixmap)
+        if self.adapter.preprocessor_image:
+            if self.adapter.preprocessor_image.image_original:
+                preprocessor_pixmap = QPixmap(self.adapter.preprocessor_image.image_original)
+                self.preprocessor_widget.set_image_parameters(
+                    self.adapter.preprocessor_image.image_scale,
+                    self.adapter.preprocessor_image.image_x_pos,
+                    self.adapter.preprocessor_image.image_y_pos,
+                    self.adapter.preprocessor_image.image_rotation,
+                )
+                self.preprocessor_widget.image_editor.set_pixmap(preprocessor_pixmap)
+
+                if self.adapter.preprocessor_image.image_drawings:
+                    self.preprocessor_widget.image_editor.set_drawing_image(self.adapter.preprocessor_image.image_drawings)
+            else:
+                preprocessor_pixmap = QPixmap(self.adapter.preprocessor_image.image_filename)
+                self.preprocessor_widget.image_editor.set_pixmap(preprocessor_pixmap)
 
         if self.adapter.adapter_id is not None:
             self.add_button.setText("Update")
+
+        self.preprocess = False
+        self.source_changed = False
+        self.preprocessor_changed = False
 
     def reset_ui(self):
         self.source_widget.clear_image()
         self.preprocessor_widget.clear_image()
 
         self.adapter = T2IAdapterDataObject()
-        self.source_changed = False
-        self.preprocessor_changed = True
-        self.preprocess = True
+        self.adapter.generation_width = self.image_generation_data.image_width
+        self.adapter.generation_height = self.image_generation_data.image_height
 
         self.conditioning_scale_slider.setValue(self.adapter.conditioning_scale)
         self.conditioning_scale_value_label.setText(f"{self.adapter.conditioning_scale:.2f}")
         self.conditioning_factor_slider.setValue(self.adapter.conditioning_factor)
-        self.canny_slider.setValue((self.adapter.canny_low, self.adapter.canny_high))
+
         self.preprocessor_combo.setCurrentIndex(self.adapter.type_index)
+        self.canny_slider.setValue((self.adapter.canny_low, self.adapter.canny_high))
+        self.depth_type_combo.setCurrentIndex(self.adapter.depth_type_index)
+        self.lineart_type_combo.setCurrentIndex(self.adapter.lineart_type_index)
+        self.sketch_type_combo.setCurrentIndex(self.adapter.sketch_type_index)
         self.on_preprocessor_changed()
+
+        self.source_changed = False
+        self.preprocessor_changed = True
+        self.preprocess = True
 
         self.add_button.setText("Add")

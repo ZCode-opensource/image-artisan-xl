@@ -10,7 +10,7 @@ from superqt import QDoubleRangeSlider, QDoubleSlider
 from iartisanxl.app.event_bus import EventBus
 from iartisanxl.buttons.color_button import ColorButton
 from iartisanxl.modules.common.dialogs.base_dialog import BaseDialog
-from iartisanxl.modules.common.controlnet.control_image_widget import ControlImageWidget
+from iartisanxl.modules.common.image.image_widget import ImageWidget
 from iartisanxl.modules.common.controlnet.controlnet_data_object import ControlNetDataObject
 from iartisanxl.threads.preprocessor_thread import PreprocessorThread
 
@@ -156,7 +156,7 @@ class ControlNetDialog(BaseDialog):
         images_layout.setSpacing(2)
 
         source_layout = QVBoxLayout()
-        self.source_widget = ControlImageWidget(
+        self.source_widget = ImageWidget(
             "Source image", "cn_source", self.image_viewer, self.controlnet.generation_width, self.controlnet.generation_height
         )
         self.source_widget.image_loaded.connect(lambda: self.on_image_loaded(0))
@@ -169,7 +169,7 @@ class ControlNetDialog(BaseDialog):
         images_layout.addLayout(source_layout)
 
         preprocessor_layout = QVBoxLayout()
-        self.preprocessor_widget = ControlImageWidget(
+        self.preprocessor_widget = ImageWidget(
             "Preprocessor", "cn_preprocessor", self.image_viewer, self.controlnet.generation_width, self.controlnet.generation_height
         )
         self.preprocessor_widget.image_loaded.connect(lambda: self.on_image_loaded(1))
@@ -267,7 +267,6 @@ class ControlNetDialog(BaseDialog):
                 self.controlnet.source_image.image_thumb = None
 
             self.controlnet.source_image.image_original = self.source_widget.image_path
-
             self.source_changed = True
             self.preprocess = True
         else:

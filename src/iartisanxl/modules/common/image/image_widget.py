@@ -14,14 +14,14 @@ from iartisanxl.threads.save_merged_image_thread import SaveMergedImageThread
 from iartisanxl.modules.common.image.image_data_object import ImageDataObject
 
 
-class ControlImageWidget(QWidget):
+class ImageWidget(QWidget):
     image_loaded = pyqtSignal()
     image_changed = pyqtSignal()
 
     def __init__(self, text: str, prefix: str, image_viewer: ImageViewerSimple, editor_width: int, editor_height: int, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self.setObjectName("control_image_widget")
+        self.setObjectName("image_widget")
         self.text = text
         self.image_viewer = image_viewer
         self.image_path = None
