@@ -56,6 +56,7 @@ class T2IDialog(BaseDialog):
         self.preprocessor_combo.addItem("Pose", "t2i_adapter_pose_model")
         self.preprocessor_combo.addItem("Line Art", "t2i_adapter_lineart_model")
         self.preprocessor_combo.addItem("Sketch", "t2i_adapter_sketch_model")
+        self.preprocessor_combo.addItem("Recolor", "t2i-recolor")
         self.preprocessor_combo.currentIndexChanged.connect(self.on_preprocessor_changed)
         control_layout.addWidget(self.preprocessor_combo)
 

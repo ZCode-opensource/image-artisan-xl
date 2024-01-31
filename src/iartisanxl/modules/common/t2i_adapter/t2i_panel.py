@@ -70,11 +70,20 @@ class T2IPanel(BasePanel):
         if adapter_widget.adapter.source_image.image_thumb:
             os.remove(adapter_widget.adapter.source_image.image_thumb)
 
+        if adapter_widget.adapter.preprocessor_image.image_original:
+            os.remove(adapter_widget.adapter.preprocessor_image.image_original)
+
         if adapter_widget.adapter.preprocessor_image.image_filename:
             os.remove(adapter_widget.adapter.preprocessor_image.image_filename)
 
         if adapter_widget.adapter.preprocessor_image.image_thumb:
             os.remove(adapter_widget.adapter.preprocessor_image.image_thumb)
+
+        if adapter_widget.adapter.source_image.image_drawings:
+            os.remove(adapter_widget.adapter.source_image.image_drawings)
+
+        if adapter_widget.adapter.preprocessor_image.image_drawings:
+            os.remove(adapter_widget.adapter.preprocessor_image.image_drawings)
 
         self.t2i_adapter_list.remove(adapter_widget.adapter)
         self.adapters_layout.removeWidget(adapter_widget)

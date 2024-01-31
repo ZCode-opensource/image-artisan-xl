@@ -35,6 +35,7 @@ t2i_adapter_dict = {
     "t2i_adapter_pose_model": "t2i-adapter-openpose-sdxl-1.0",
     "t2i_adapter_lineart_model": "t2i-adapter-lineart-sdxl-1.0",
     "t2i_adapter_sketch_model": "t2i-adapter-sketch-sdxl-1.0",
+    "t2i-recolor": "t2i-recolor",
 }
 
 

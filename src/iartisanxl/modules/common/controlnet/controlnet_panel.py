@@ -86,6 +86,12 @@ class ControlNetPanel(BasePanel):
         if controlnet_widget.controlnet.preprocessor_image.image_thumb:
             os.remove(controlnet_widget.controlnet.preprocessor_image.image_thumb)
 
+        if controlnet_widget.controlnet.source_image.image_drawings:
+            os.remove(controlnet_widget.controlnet.source_image.image_drawings)
+
+        if controlnet_widget.controlnet.preprocessor_image.image_drawings:
+            os.remove(controlnet_widget.controlnet.preprocessor_image.image_drawings)
+
         self.controlnet_list.remove(controlnet_widget.controlnet)
         self.controlnets_layout.removeWidget(controlnet_widget)
         controlnet_widget.deleteLater()
