@@ -96,7 +96,7 @@ class LoraPanel(BasePanel):
         lora_widget.deleteLater()
 
     def on_enabled(self, lora_id, enabled):
-        self.lora_list.update_lora(lora_id, {"enabled": enabled})
+        self.lora_list.update_lora_by_id(lora_id, {"enabled": enabled})
 
     def clean_up(self):
         self.event_bus.unsubscribe("update_from_json", self.update_from_json)
