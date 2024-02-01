@@ -2,14 +2,14 @@ from PyQt6.QtWidgets import QFrame, QVBoxLayout, QHBoxLayout, QCheckBox
 from PyQt6.QtCore import Qt, pyqtSignal
 from superqt import QLabeledDoubleSlider
 
-from iartisanxl.generation.lora_data_object import LoraDataObject
+from iartisanxl.modules.common.lora.lora_data_object import LoraDataObject
 from iartisanxl.buttons.remove_button import RemoveButton
 
 
 class LoraAddedItem(QFrame):
-    remove_clicked = pyqtSignal()
+    remove_clicked = pyqtSignal(object)
     weight_changed = pyqtSignal()
-    enabled = pyqtSignal()
+    enabled = pyqtSignal(int, bool)
 
     def __init__(self, lora: LoraDataObject, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -34,7 +34,7 @@ class LoraAddedItem(QFrame):
 
         remove_button = RemoveButton()
         remove_button.setFixedSize(20, 20)
-        remove_button.clicked.connect(self.remove_clicked.emit)
+        remove_button.clicked.connect(lambda: self.remove_clicked.emit(self))
         upper_layout.addWidget(remove_button)
 
         upper_layout.setStretch(0, 1)
@@ -59,4 +59,4 @@ class LoraAddedItem(QFrame):
         return self.weight_slider.value()
 
     def on_check_enabled(self):
-        self.enabled.emit()
+        self.enabled.emit(self.lora.lora_id, self.enabled_checkbox.isChecked())

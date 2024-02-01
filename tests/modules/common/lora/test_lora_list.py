@@ -1,7 +1,7 @@
 import unittest
 
-from iartisanxl.generation.lora_list import LoraList
-from iartisanxl.generation.lora_data_object import LoraDataObject
+from iartisanxl.modules.common.lora.lora_list import LoraList
+from iartisanxl.modules.common.lora.lora_data_object import LoraDataObject
 
 
 class TestLoraList(unittest.TestCase):
@@ -14,7 +14,6 @@ class TestLoraList(unittest.TestCase):
             path="/path/to/lora_one",
             enabled=True,
             weight=0.5,
-            id=None,
         )
         self.lora_two = LoraDataObject(
             name="test_name_two",
@@ -23,7 +22,6 @@ class TestLoraList(unittest.TestCase):
             path="/path/to/lora_two",
             enabled=True,
             weight=1.2,
-            id=2,
         )
 
     def test_add(self):
@@ -32,22 +30,20 @@ class TestLoraList(unittest.TestCase):
 
     def test_update_lora(self):
         self.lora_list.add(self.lora_one)
-        self.lora_list.update_lora("test_filename", {"id": 3})
-        self.assertEqual(self.lora_list.loras[0].id, 3)
+        self.lora_list.update_lora("test_filename", {"enabled": False})
+        self.assertEqual(self.lora_list.loras[0].enabled, False)
 
     def test_get_lora_by_filename(self):
         self.lora_list.add(self.lora_one)
-        self.assertEqual(
-            self.lora_list.get_lora_by_filename("test_filename"), self.lora_one
-        )
+        self.assertEqual(self.lora_list.get_lora_by_filename("test_filename"), self.lora_one)
 
     def test_get_lora_by_bad_filename(self):
         self.lora_list.add(self.lora_one)
         self.assertEqual(self.lora_list.get_lora_by_filename("mock_filename"), None)
 
     def test_update_lora_by_id(self):
-        self.lora_list.add(self.lora_two)
-        self.lora_list.update_lora_by_id(2, {"name": "mock_name"})
+        lora_id = self.lora_list.add(self.lora_two)
+        self.lora_list.update_lora_by_id(lora_id, {"name": "mock_name"})
         self.assertEqual(self.lora_list.loras[0].name, "mock_name")
 
     def test_update_filename_lora_by_id(self):
@@ -56,8 +52,8 @@ class TestLoraList(unittest.TestCase):
         self.assertNotEqual(self.lora_list.loras[0].filename, "mock_filename")
 
     def test_get_lora_by_id(self):
-        self.lora_list.add(self.lora_two)
-        self.assertEqual(self.lora_list.get_lora_by_id(2), self.lora_two)
+        lora_id = self.lora_list.add(self.lora_two)
+        self.assertEqual(self.lora_list.get_lora_by_id(lora_id), self.lora_two)
 
     def test_get_lora_by_bad_id(self):
         self.lora_list.add(self.lora_one)
@@ -94,7 +90,7 @@ class TestLoraList(unittest.TestCase):
         self.lora_list.add(self.lora_one)
         self.lora_list.add(self.lora_two)
         self.lora_list.save_state()
-        self.lora_list.update_lora("test_filename", {"id": 3})
+        self.lora_list.update_lora("test_filename", {"enabled": False})
         self.assertEqual(len(self.lora_list.get_modified()), 1)
         self.assertEqual(self.lora_list.get_modified()[0], self.lora_one)
         self.assertEqual(len(self.lora_list.get_added()), 0)

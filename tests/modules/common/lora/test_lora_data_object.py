@@ -1,6 +1,6 @@
 import unittest
 
-from iartisanxl.generation.lora_data_object import LoraDataObject
+from iartisanxl.modules.common.lora.lora_data_object import LoraDataObject
 
 
 class TestLoraDataObject(unittest.TestCase):
@@ -12,7 +12,7 @@ class TestLoraDataObject(unittest.TestCase):
             path="test_path",
             enabled=True,
             weight=1.0,
-            id=None,
+            lora_id=None,
         )
 
     def test_attributes(self):
@@ -22,4 +22,4 @@ class TestLoraDataObject(unittest.TestCase):
         self.assertEqual(self.lora_data_object.path, "test_path")
         self.assertEqual(self.lora_data_object.enabled, True)
         self.assertEqual(self.lora_data_object.weight, 1.0)
-        self.assertEqual(self.lora_data_object.id, None)
+        self.assertEqual(self.lora_data_object.lora_id, None)

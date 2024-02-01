@@ -8,7 +8,7 @@ from PyQt6.QtCore import QThread, pyqtSignal
 
 from iartisanxl.app.directories import DirectoriesObject
 from iartisanxl.generation.image_generation_data import ImageGenerationData
-from iartisanxl.generation.lora_list import LoraList
+from iartisanxl.modules.common.lora.lora_list import LoraList
 from iartisanxl.generation.adapter_list import AdapterList
 from iartisanxl.graph.iartisanxl_node_graph import ImageArtisanNodeGraph
 from iartisanxl.graph.nodes.lora_node import LoraNode
@@ -120,7 +120,7 @@ class NodeGraphThread(QThread):
         # process loras
         lora_scale = self.node_graph.get_node_by_name("lora_scale")
 
-        # if there's a image dropped to generate, reset all the loras since its impossible to keep track of the ids for the nodes
+        # if there's a image dropped to generate, reset all the loras since I'm too lazy to keep track of all the ids for the nodes
         if self.lora_list.dropped_image:
             lora_nodes = self.node_graph.get_all_nodes_class(LoraNode)
             for lora_node in lora_nodes:
@@ -135,7 +135,7 @@ class NodeGraphThread(QThread):
                 lora_node.connect("text_encoder_2", sdxl_model, "text_encoder_2")
                 lora_node.connect("global_lora_scale", lora_scale, "value")
                 self.node_graph.add_node(lora_node, lora.filename)
-                lora.id = lora_node.id
+                lora.node_id = lora_node.id
                 image_generation.connect("lora", lora_node, "lora")
                 prompts_encoder.connect("lora", lora_node, "lora")
         else:
@@ -143,7 +143,7 @@ class NodeGraphThread(QThread):
 
             if len(removed_loras) > 0:
                 for lora in removed_loras:
-                    self.node_graph.delete_node_by_id(lora.id)
+                    self.node_graph.delete_node_by_id(lora.node_id)
 
             new_loras = self.lora_list.get_added()
 
@@ -155,7 +155,7 @@ class NodeGraphThread(QThread):
                     lora_node.connect("text_encoder_2", sdxl_model, "text_encoder_2")
                     lora_node.connect("global_lora_scale", lora_scale, "value")
                     self.node_graph.add_node(lora_node, lora.filename)
-                    lora.id = lora_node.id
+                    lora.node_id = lora_node.id
                     image_generation.connect("lora", lora_node, "lora")
                     prompts_encoder.connect("lora", lora_node, "lora")
 
@@ -163,7 +163,7 @@ class NodeGraphThread(QThread):
 
             if len(modified_loras) > 0:
                 for lora in modified_loras:
-                    lora_node = self.node_graph.get_node(lora.id)
+                    lora_node = self.node_graph.get_node(lora.node_id)
 
                     if lora_node is not None:
                         lora_node.update_lora(lora.weight, lora.enabled)

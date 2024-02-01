@@ -9,4 +9,5 @@ class LoraDataObject:
     path = attr.ib(type=str)
     enabled = attr.ib(type=bool, default=True)
     weight = attr.ib(type=float, default=1.00)
-    id = attr.ib(default=None)
+    node_id: int = attr.ib(default=None)
+    lora_id = attr.ib(default=None)

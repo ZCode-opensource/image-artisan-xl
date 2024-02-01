@@ -14,14 +14,14 @@ from iartisanxl.modules.common.drop_lightbox import DropLightBox
 from iartisanxl.modules.common.image_viewer_simple import ImageViewerSimple
 from iartisanxl.modules.common.prompt_window import PromptWindow
 from iartisanxl.modules.common.panels.generation_panel import GenerationPanel
-from iartisanxl.modules.common.panels.lora_panel import LoraPanel
+from iartisanxl.modules.common.lora.lora_panel import LoraPanel
 from iartisanxl.modules.common.controlnet.controlnet_panel import ControlNetPanel
 from iartisanxl.modules.common.t2i_adapter.t2i_panel import T2IPanel
 from iartisanxl.modules.common.ip_adapter.ip_adapter_panel import IPAdapterPanel
 from iartisanxl.menu.right_menu import RightMenu
 from iartisanxl.generation.image_generation_data import ImageGenerationData
-from iartisanxl.generation.lora_list import LoraList
-from iartisanxl.generation.lora_data_object import LoraDataObject
+from iartisanxl.modules.common.lora.lora_list import LoraList
+from iartisanxl.modules.common.lora.lora_data_object import LoraDataObject
 from iartisanxl.modules.common.controlnet.controlnet_data_object import ControlNetDataObject
 from iartisanxl.modules.common.t2i_adapter.t2i_adapter_data_object import T2IAdapterDataObject
 from iartisanxl.modules.common.ip_adapter.ip_adapter_data_object import IPAdapterDataObject
@@ -98,7 +98,6 @@ class TextToImageModule(BaseModule):
         self.auto_save = False
         self.continuous_generation = False
 
-        self.event_bus.subscribe("lora", self.on_lora)
         self.event_bus.subscribe("image_generation_data", self.on_image_generation_data)
         self.event_bus.subscribe("auto_generate", self.on_auto_generate)
 
@@ -258,10 +257,6 @@ class TextToImageModule(BaseModule):
     def on_image_generation_data(self, data):
         if hasattr(self.image_generation_data, data["attr"]):
             setattr(self.image_generation_data, data["attr"], data["value"])
-
-    def on_lora(self, data):
-        if data["action"] == "add":
-            self.lora_list.add(data["lora"])
 
     def on_serialized_data_obtained(self, json_graph):
         loras = self.image_generation_data.update_from_json(json_graph)

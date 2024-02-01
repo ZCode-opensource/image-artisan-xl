@@ -5,7 +5,7 @@ from iartisanxl.app.event_bus import EventBus
 from iartisanxl.buttons.expand_right_button import ExpandRightButton
 from iartisanxl.buttons.vertical_button import VerticalButton
 from iartisanxl.generation.image_generation_data import ImageGenerationData
-from iartisanxl.generation.lora_list import LoraList
+from iartisanxl.modules.common.lora.lora_list import LoraList
 from iartisanxl.generation.adapter_list import AdapterList
 from iartisanxl.app.directories import DirectoriesObject
 from iartisanxl.app.preferences import PreferencesObject
@@ -18,6 +18,8 @@ from iartisanxl.modules.common.t2i_adapter.t2i_panel import T2IPanel
 from iartisanxl.modules.common.t2i_adapter.adapter_added_item import AdapterAddedItem
 from iartisanxl.modules.common.ip_adapter.ip_adapter_panel import IPAdapterPanel
 from iartisanxl.modules.common.ip_adapter.ip_adapter_added_item import IPAdapterAddedItem
+from iartisanxl.modules.common.lora.lora_added_item import LoraAddedItem
+from iartisanxl.modules.common.lora.lora_panel import LoraPanel
 
 
 class RightMenu(QFrame):
@@ -58,6 +60,7 @@ class RightMenu(QFrame):
         self.event_bus.subscribe("controlnet", self.on_controlnet)
         self.event_bus.subscribe("t2i_adapters", self.on_t2i_adapters)
         self.event_bus.subscribe("ip_adapters", self.on_ip_adapters)
+        self.event_bus.subscribe("lora", self.on_lora)
 
         self.expanded = self.module_options.get("right_menu_expanded")
         self.animating = False
@@ -265,3 +268,17 @@ class RightMenu(QFrame):
                         widget.adapter = adapter
                         widget.update_ui()
                         break
+
+    def on_lora(self, data):
+        if data["action"] == "add":
+            lora_id = self.lora_list.add((data["lora"]))
+
+            if lora_id is None:
+                self.show_error("You can only add the same LoRA once.")
+                return
+
+            if isinstance(self.current_panel, LoraPanel):
+                lora_widget = LoraAddedItem(data["lora"])
+                lora_widget.remove_clicked.connect(self.current_panel.on_remove_clicked)
+                lora_widget.enabled.connect(self.current_panel.on_enabled)
+                self.current_panel.loras_layout.addWidget(lora_widget)

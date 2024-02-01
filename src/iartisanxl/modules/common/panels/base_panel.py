@@ -4,7 +4,7 @@ from PyQt6.QtCore import pyqtSignal
 from iartisanxl.app.directories import DirectoriesObject
 from iartisanxl.app.preferences import PreferencesObject
 from iartisanxl.generation.image_generation_data import ImageGenerationData
-from iartisanxl.generation.lora_list import LoraList
+from iartisanxl.modules.common.lora.lora_list import LoraList
 from iartisanxl.generation.adapter_list import AdapterList
 from iartisanxl.modules.common.prompt_window import PromptWindow
 from iartisanxl.modules.common.image_viewer_simple import ImageViewerSimple

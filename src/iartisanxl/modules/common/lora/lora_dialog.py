@@ -13,10 +13,10 @@ from PyQt6.QtCore import QSettings, pyqtSignal, Qt, QSize
 from PyQt6.QtGui import QPixmap
 
 from iartisanxl.app.event_bus import EventBus
-from iartisanxl.generation.lora_data_object import LoraDataObject
+from iartisanxl.modules.common.lora.lora_data_object import LoraDataObject
 from iartisanxl.modules.common.dialogs.base_dialog import BaseDialog
-from iartisanxl.modules.common.dialogs.lora_info_widget import LoraInfoWidget
-from iartisanxl.modules.common.dialogs.lora_edit_widget import LoraEditWidget
+from iartisanxl.modules.common.lora.lora_info_widget import LoraInfoWidget
+from iartisanxl.modules.common.lora.lora_edit_widget import LoraEditWidget
 from iartisanxl.modules.common.dialogs.model_items_view import ModelItemsView
 from iartisanxl.modules.common.model_item import ModelItem
 
@@ -181,6 +181,7 @@ class LoraDialog(BaseDialog):
         self.prompt_window.positive_prompt.insertTextAtCursor(prompt)
 
     def on_lora_selected(self):
+        self.selected_lora.lora_id = None
         self.event_bus.publish("lora", {"action": "add", "lora": self.selected_lora})
 
     def on_lora_imported(self, path: str):

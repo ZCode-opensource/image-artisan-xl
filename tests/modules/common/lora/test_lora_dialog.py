@@ -7,7 +7,7 @@ from PyQt6.QtWidgets import QApplication
 
 from iartisanxl.app.directories import DirectoriesObject
 from iartisanxl.app.preferences import PreferencesObject
-from iartisanxl.modules.common.dialogs.lora_dialog import LoraDialog
+from iartisanxl.modules.common.lora.lora_dialog import LoraDialog
 
 
 app = QApplication(sys.argv)
@@ -57,7 +57,7 @@ class TestLoraDialog(unittest.TestCase):
         data = {"name": "test", "root_filename": "test_filename", "version": "1.0", "filepath": "/path/to/file"}
 
         with patch(
-            "iartisanxl.modules.common.dialogs.lora_info_widget.get_metadata_from_safetensors",
+            "iartisanxl.modules.common.lora.lora_info_widget.get_metadata_from_safetensors",
             return_value={},
         ):
             self.dialog.on_lora_item_clicked(data)
