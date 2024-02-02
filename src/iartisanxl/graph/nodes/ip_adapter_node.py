@@ -1,9 +1,11 @@
 import torch
+
 from torchvision import transforms
 from diffusers.models.embeddings import ImageProjection, IPAdapterFullImageProjection, IPAdapterPlusImageProjection
 from transformers import CLIPImageProcessor
 
 from iartisanxl.graph.nodes.node import Node
+from iartisanxl.modules.common.image.image_noise import create_mandelbrot_tensor, create_noise_tensor, add_torch_noise
 
 
 class IPAdapterNode(Node):
@@ -90,7 +92,19 @@ class IPAdapterNode(Node):
             image_prompt_embeds.append(image_projection(image_embeds))
 
             if image["noise"] > 0:
-                uncond_tensor_image = self.image_add_noise(tensor_image, image["noise"])
+                if image["noise_index"] == 0:
+                    uncond_tensor_image = self.image_add_noise(tensor_image, image["noise"])
+                elif image["noise_index"] == 1:
+                    uncond_tensor_image = create_mandelbrot_tensor(image["noise"], 224, 224)
+                elif image["noise_index"] == 2:
+                    uncond_tensor_image = create_noise_tensor("perlin", image["noise"], 224, 224)
+                elif image["noise_index"] == 3:
+                    uncond_tensor_image = create_noise_tensor("simplex", image["noise"], 224, 224)
+                elif image["noise_index"] == 4:
+                    uncond_tensor_image = add_torch_noise(tensor_image, "uniform", image["noise"])
+                else:
+                    uncond_tensor_image = add_torch_noise(tensor_image, "gaussian", image["noise"])
+
                 uncond_tensor_image = uncond_tensor_image.to(self.device, dtype=self.torch_dtype)
 
                 if output_hidden_states:

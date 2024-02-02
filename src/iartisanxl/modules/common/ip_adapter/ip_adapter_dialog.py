@@ -215,6 +215,8 @@ class IPAdapterDialog(BaseDialog):
                 image_rotation=self.image_widget.image_rotation_control.value,
                 weight=self.image_widget.image_weight_slider.value(),
                 noise=self.image_widget.image_noise_slider.value(),
+                noise_type=self.image_widget.noise_type_combo.currentData(),
+                noise_type_index=self.image_widget.noise_type_combo.currentIndex(),
                 image_original=self.image_widget.image_path,
             )
         else:
@@ -227,6 +229,8 @@ class IPAdapterDialog(BaseDialog):
                 image_data_object.image_rotation = self.image_widget.image_rotation_control.value
                 image_data_object.weight = self.image_widget.image_weight_slider.value()
                 image_data_object.noise = self.image_widget.image_noise_slider.value()
+                image_data_object.noise_type = self.image_widget.noise_type_combo.currentData()
+                image_data_object.noise_type_index = self.image_widget.noise_type_combo.currentIndex()
 
                 if image_data_object.image_original != self.image_widget.image_path:
                     os.remove(image_data_object.image_original)
@@ -267,6 +271,7 @@ class IPAdapterDialog(BaseDialog):
             image_data.image_rotation,
             image_data.weight,
             image_data.noise,
+            image_data.noise_type_index,
         )
         self.image_widget.add_image_button.setText("Update image")
         self.image_widget.add_image_button.setEnabled(False)

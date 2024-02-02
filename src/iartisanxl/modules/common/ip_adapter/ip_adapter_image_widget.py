@@ -2,7 +2,7 @@ import os
 from datetime import datetime
 
 from PIL import Image
-from PyQt6.QtWidgets import QVBoxLayout, QHBoxLayout, QWidget, QPushButton, QFileDialog, QLabel
+from PyQt6.QtWidgets import QVBoxLayout, QHBoxLayout, QWidget, QPushButton, QFileDialog, QLabel, QComboBox
 from PyQt6.QtGui import QImageReader, QPixmap, QGuiApplication
 from PyQt6.QtCore import pyqtSignal, QTimer, Qt, QUrl, QMimeData
 from superqt import QLabeledDoubleSlider
@@ -103,11 +103,21 @@ class IPAdapterImageWidget(QWidget):
         self.image_noise_slider.setValue(0.0)
         self.image_noise_slider.valueChanged.connect(self.on_image_updated)
         image_actions_layout.addWidget(self.image_noise_slider)
+        self.noise_type_combo = QComboBox()
+        self.noise_type_combo.addItem("Default noise", "default")
+        self.noise_type_combo.addItem("Mandelbrot noise", "mandelbrot")
+        self.noise_type_combo.addItem("Perlin noise", "perlin")
+        self.noise_type_combo.addItem("Simplex noise", "simplex")
+        self.noise_type_combo.addItem("Uniform noise", "uniform")
+        self.noise_type_combo.addItem("Gaussian noise", "gaussian")
+        self.noise_type_combo.currentIndexChanged.connect(self.on_image_updated)
+        image_actions_layout.addWidget(self.noise_type_combo)
 
         image_actions_layout.setStretch(0, 0)
         image_actions_layout.setStretch(1, 1)
         image_actions_layout.setStretch(2, 0)
         image_actions_layout.setStretch(3, 1)
+        image_actions_layout.setStretch(4, 0)
         main_layout.addLayout(image_actions_layout)
 
         image_bottom_actions_layout = QHBoxLayout()
@@ -198,7 +208,7 @@ class IPAdapterImageWidget(QWidget):
     def update_image_scale(self, scale):
         self.image_scale_control.set_value(scale)
 
-    def set_image_parameters(self, image_id, scale, x, y, angle, weight, noise):
+    def set_image_parameters(self, image_id, scale, x, y, angle, weight, noise, noise_type_index):
         self.image_id = image_id
         self.add_image_button.setText("Update image")
 
@@ -212,6 +222,7 @@ class IPAdapterImageWidget(QWidget):
         self.image_editor.rotate_image(angle)
         self.image_weight_slider.setValue(weight)
         self.image_noise_slider.setValue(noise)
+        self.noise_type_combo.setCurrentIndex(noise_type_index)
 
     def set_current_image(self):
         if self.image_viewer.pixmap_item is not None:

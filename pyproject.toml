@@ -34,6 +34,7 @@ dependencies = [
     "timm==0.9.5",
     "bitsandbytes==0.41.1",
     "prodigyopt==1.0",
+    "noise==1.2.2",
 ]
 
 [project.optional-dependencies]
