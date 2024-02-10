@@ -9,6 +9,7 @@ from PyQt6.QtWidgets import QVBoxLayout, QHBoxLayout, QComboBox, QLabel, QPushBu
 from superqt import QDoubleSlider
 
 from iartisanxl.modules.common.dialogs.base_dialog import BaseDialog
+from iartisanxl.modules.common.mask.mask_dialog import MaskDialog
 from iartisanxl.app.event_bus import EventBus
 from iartisanxl.modules.common.ip_adapter.ip_adapter_image_widget import IPAdapterImageWidget
 from iartisanxl.modules.common.ip_adapter.ip_adapter_data_object import IPAdapterDataObject
@@ -111,6 +112,8 @@ class IPAdapterDialog(BaseDialog):
 
         self.image_process_thread = None
 
+        self.mask_dialog = None
+
         self.init_ui()
 
     def init_ui(self):
@@ -167,6 +170,10 @@ class IPAdapterDialog(BaseDialog):
 
         bottom_layout = QHBoxLayout()
         bottom_layout.setContentsMargins(5, 0, 5, 0)
+        self.add_mask_button = QPushButton("Add Mask")
+        self.add_mask_button.clicked.connect(self.on_add_mask_clicked)
+        self.add_mask_button.setObjectName("blue_button")
+        bottom_layout.addWidget(self.add_mask_button)
         self.add_button = QPushButton("Add IP-Adapter")
         self.add_button.setObjectName("green_button")
         self.add_button.clicked.connect(self.on_ip_adapter_added)
@@ -315,3 +322,33 @@ class IPAdapterDialog(BaseDialog):
         self.image_widget.new_image_button.setEnabled(True)
         self.on_item_selected(self.image_items_view.current_item.image_data)
         self.dataset_items_count_label.setText(f"{self.image_items_view.current_item_index + 1}/{self.image_items_view.item_count}")
+
+    def on_add_mask_clicked(self):
+        if self.adapter.adapter_id is None:
+            self.show_error("To add a mask, you first need to add the IP Adapter.")
+            return
+
+        if self.mask_dialog is None:
+            self.mask_dialog = MaskDialog(
+                self.adapter,
+                self.directories,
+                self.preferences,
+                "IP Adapter - Mask Editor",
+                self.show_error,
+                self.image_generation_data,
+                self.image_viewer,
+                self.prompt_window,
+            )
+            self.mask_dialog.mask_saved.connect(self.on_mask_saved)
+            self.mask_dialog.closed.connect(self.on_mask_dialog_closed)
+            self.mask_dialog.show()
+        else:
+            self.mask_dialog.raise_()
+            self.mask_dialog.activateWindow()
+
+    def on_mask_saved(self):
+        self.mask_dialog.close()
+        self.add_mask_button.setText("Edit mask")
+
+    def on_mask_dialog_closed(self):
+        self.mask_dialog = None

@@ -15,6 +15,7 @@ class IPAdapterDataObject:
     node_id: int = attr.ib(default=None)
     adapter_id: int = attr.ib(default=None)
     images: list[ImageDataObject] = attr.ib(factory=list)
+    mask_alpha_image: str = attr.ib(default=None)
     _original_images: list[ImageDataObject] = attr.Factory(list)
 
     def add_image(self, image_filename, image_thumb, weight=1.0, image_scale=1.0, image_x_pos=0, image_y_pos=0, image_rotation=0):

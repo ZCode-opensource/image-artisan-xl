@@ -257,6 +257,7 @@ class RightMenu(QFrame):
                 adapter_widget.edit_clicked.connect(self.current_panel.on_edit_clicked)
                 adapter_widget.enabled.connect(self.current_panel.on_enabled)
                 self.current_panel.adapters_layout.addWidget(adapter_widget)
+
         elif data["action"] == "update":
             adapter = data["ip_adapter"]
             self.ip_adapter_list.update_with_adapter_data_object(adapter)

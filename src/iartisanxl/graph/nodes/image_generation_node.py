@@ -40,7 +40,7 @@ class ImageGenerationNode(Node):
         "lora",
         "controlnet",
         "t2i_adapter",
-        "ip_image_prompt_embeds",
+        "ip_adapter",
     ]
     OUTPUTS = ["latents"]
 
@@ -160,16 +160,33 @@ class ImageGenerationNode(Node):
             add_time_ids = torch.cat([negative_add_time_ids, add_time_ids], dim=0)
 
         # IP Adapters
-        if self.ip_image_prompt_embeds is not None:
-            ip_hidden_states = []
+        if self.ip_adapter is not None:
+            ip_adapters = self.ip_adapter
 
-            for image_embeds in self.ip_image_prompt_embeds:
+            if isinstance(ip_adapters, dict):
+                ip_adapters = [ip_adapters]
+
+            ip_hidden_states = []
+            ip_mask = []
+
+            for ip_adapter in ip_adapters:
                 if do_classifier_free_guidance:
-                    ip_hidden_states.append(torch.cat([image_embeds["uncond_image_prompt_embeds"], image_embeds["image_prompt_embeds"]]))
+                    ip_hidden_states.append(torch.cat([ip_adapter["uncond_image_prompt_embeds"], ip_adapter["image_prompt_embeds"]]))
                 else:
-                    ip_hidden_states.append(image_embeds["image_prompt_embeds"])
+                    ip_hidden_states.append(ip_adapter["image_prompt_embeds"])
+
+                if ip_adapter["tensor_mask"] is not None:
+                    mask = torch.nn.functional.interpolate(
+                        ip_adapter["tensor_mask"].unsqueeze(1), size=(height // self.vae_scale_factor, width // self.vae_scale_factor), mode="bicubic"
+                    ).squeeze(1)
+                    mask = mask.to(device=self.device, dtype=self.torch_dtype)
+                else:
+                    mask = None
+
+                ip_mask.append(mask)
 
             cross_attention_kwargs["ip_hidden_states"] = ip_hidden_states
+            cross_attention_kwargs["ip_mask"] = ip_mask
 
         if t2i_adapter_models is not None:
             adapter_states = t2i_adapter_models(t2i_adapter_images, t2i_conditioning_scale)

@@ -2,10 +2,12 @@ import os
 from datetime import datetime
 
 from PIL import Image
-from PyQt6.QtWidgets import QVBoxLayout, QHBoxLayout, QLabel, QWidget, QPushButton, QSpacerItem, QSizePolicy, QFileDialog
-from PyQt6.QtCore import Qt, pyqtSignal, QUrl, QMimeData
-from PyQt6.QtGui import QImageReader, QPixmap, QGuiApplication
+from PyQt6.QtWidgets import QVBoxLayout, QHBoxLayout, QWidget, QPushButton, QSpacerItem, QSizePolicy, QFileDialog, QLabel, QSlider, QGridLayout
+from PyQt6.QtCore import pyqtSignal, QUrl, QMimeData, Qt
+from PyQt6.QtGui import QImageReader, QGuiApplication, QPixmap
+from superqt import QDoubleSlider
 
+from iartisanxl.buttons.color_button import ColorButton
 from iartisanxl.modules.common.image.image_editor import ImageEditor
 from iartisanxl.modules.common.image_viewer_simple import ImageViewerSimple
 from iartisanxl.modules.common.image_control import ImageControl
@@ -14,7 +16,7 @@ from iartisanxl.threads.save_merged_image_thread import SaveMergedImageThread
 from iartisanxl.modules.common.image.image_data_object import ImageDataObject
 
 
-class ImageWidget(QWidget):
+class MaskWidget(QWidget):
     image_loaded = pyqtSignal()
     image_changed = pyqtSignal()
 
@@ -44,13 +46,8 @@ class ImageWidget(QWidget):
         main_layout.setSpacing(0)
 
         top_layout = QHBoxLayout()
-        source_text_label = QLabel(self.text)
-        top_layout.addWidget(source_text_label, alignment=Qt.AlignmentFlag.AlignCenter)
         fit_image_button = QPushButton("Fit")
         top_layout.addWidget(fit_image_button)
-        blank_image_button = QPushButton("Blank")
-        blank_image_button.setToolTip("Create a new empty image with the selected color as background.")
-        top_layout.addWidget(blank_image_button)
         current_image_button = QPushButton("Current")
         current_image_button.setToolTip("Copy the current generated image an set it as an image.")
         top_layout.addWidget(current_image_button)
@@ -59,6 +56,43 @@ class ImageWidget(QWidget):
         load_image_button.clicked.connect(self.on_load_image)
         top_layout.addWidget(load_image_button)
         main_layout.addLayout(top_layout)
+
+        middle_layout = QHBoxLayout()
+        middle_left_layout = QVBoxLayout()
+
+        brush_layout = QGridLayout()
+        brush_layout.setSpacing(5)
+        brush_layout.setContentsMargins(5, 0, 0, 0)
+        brush_size_label = QLabel("Brush size:")
+        brush_layout.addWidget(brush_size_label, 0, 0)
+        brush_size_slider = QSlider(Qt.Orientation.Horizontal)
+        brush_size_slider.setFixedWidth(150)
+        brush_size_slider.setRange(3, 300)
+        brush_size_slider.setValue(20)
+        brush_layout.addWidget(brush_size_slider, 0, 1)
+
+        brush_hardness_label = QLabel("Brush hardness:")
+        brush_layout.addWidget(brush_hardness_label, 1, 0)
+        brush_hardness_slider = QDoubleSlider(Qt.Orientation.Horizontal)
+        brush_hardness_slider.setRange(0.0, 0.99)
+        brush_hardness_slider.setValue(0.5)
+        brush_layout.addWidget(brush_hardness_slider, 1, 1)
+        middle_left_layout.addLayout(brush_layout)
+
+        color_layout = QHBoxLayout()
+        color_button = ColorButton("Color:")
+        color_layout.addWidget(color_button, alignment=Qt.AlignmentFlag.AlignCenter)
+        middle_left_layout.addLayout(color_layout)
+
+        erase_layout = QHBoxLayout()
+        self.erase_button = QPushButton("Erase")
+        self.erase_button.clicked.connect(self.on_erase_clicked)
+        erase_layout.addWidget(self.erase_button)
+        middle_left_layout.addLayout(erase_layout)
+
+        middle_left_layout.addStretch()
+
+        middle_layout.addLayout(middle_left_layout, 0)
 
         image_widget = QWidget()
         self.image_editor = ImageEditor(self.editor_width, self.editor_height, self.aspect_ratio)
@@ -71,7 +105,8 @@ class ImageWidget(QWidget):
         editor_layout = AspectRatioLayout(image_widget, self.aspect_ratio)
         editor_layout.addWidget(self.image_editor)
         image_widget.setLayout(editor_layout)
-        main_layout.addWidget(image_widget)
+        middle_layout.addWidget(image_widget, 1)
+        main_layout.addLayout(middle_layout)
 
         image_bottom_layout = QHBoxLayout()
         reset_image_button = QPushButton("Reset")
@@ -110,11 +145,14 @@ class ImageWidget(QWidget):
         self.setLayout(main_layout)
 
         fit_image_button.clicked.connect(self.image_editor.fit_image)
-        blank_image_button.clicked.connect(self.set_color_image)
         current_image_button.clicked.connect(self.set_current_image)
         reset_image_button.clicked.connect(self.on_reset_image)
         undo_button.clicked.connect(self.image_editor.undo)
         redo_button.clicked.connect(self.image_editor.redo)
+
+        color_button.color_changed.connect(self.image_editor.set_brush_color)
+        brush_size_slider.valueChanged.connect(self.image_editor.set_brush_size)
+        brush_hardness_slider.valueChanged.connect(self.image_editor.set_brush_hardness)
 
     def update_image_scale(self, scale: float):
         self.image_scale_control.set_value(scale)
@@ -173,26 +211,6 @@ class ImageWidget(QWidget):
             self.image_editor.image_path = filepath
 
             self.set_editor_image_by_path(filepath)
-
-    def set_color_image(self):
-        self.clear_image()
-
-        timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
-        filename = f"{self.prefix}_{timestamp}_original.png"
-        filepath = os.path.join("tmp/", filename)
-
-        color_pixmap = QPixmap(self.editor_width, self.editor_height)
-        color_pixmap.fill(self.image_editor.brush_color)
-        color_pixmap.save(filepath)
-
-        self.set_editor_image_by_path(filepath)
-
-    def create_transparent_background_image(self):
-        self.clear_image()
-
-        transparent_pixmap = QPixmap(self.editor_width, self.editor_height)
-        transparent_pixmap.fill(Qt.GlobalColor.transparent)
-        self.image_editor.set_pixmap(transparent_pixmap)
 
     def create_original_image(self, path):
         self.clear_image()
@@ -266,3 +284,13 @@ class ImageWidget(QWidget):
 
     def on_copy_thread_finished(self):
         self.image_copy_thread = None
+
+    def create_transparent_background_image(self):
+        self.clear_image()
+
+        transparent_pixmap = QPixmap(self.editor_width, self.editor_height)
+        transparent_pixmap.fill(Qt.GlobalColor.transparent)
+        self.image_editor.set_pixmap(transparent_pixmap)
+
+    def on_erase_clicked(self):
+        pass

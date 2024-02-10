@@ -316,7 +316,7 @@ class NodeGraphThread(QThread):
             if ip_adapter_merge_node is None:
                 ip_adapter_merge_node = IPAdapterMergeNode()
                 ip_adapter_merge_node.connect("unet", sdxl_model, "unet")
-                image_generation.connect("ip_image_prompt_embeds", ip_adapter_merge_node, "ip_image_prompt_embeds")
+                image_generation.connect("ip_adapter", ip_adapter_merge_node, "ip_adapter")
                 self.node_graph.add_node(ip_adapter_merge_node, "ip_adapter_merge_node")
 
             if len(added_ip_adapters) > 0:
@@ -329,6 +329,11 @@ class NodeGraphThread(QThread):
                     ip_adapter_node.connect("image_encoder", image_encoder_h_model_node, "image_encoder")
                     ip_adapter_node.connect("ip_adapter_model", ip_adapter_model_node, "ip_adapter_model")
                     ip_adapter_merge_node.connect("ip_adapter", ip_adapter_node, "ip_adapter")
+
+                    if ip_adapter.mask_alpha_image is not None:
+                        ip_adapter_mask_image_node = ImageLoadNode(path=ip_adapter.mask_alpha_image)
+                        self.node_graph.add_node(ip_adapter_mask_image_node, f"adapter_mask_image_{ip_adapter_node.id}")
+                        ip_adapter_node.connect("mask_alpha_image", ip_adapter_mask_image_node, "image")
 
                     for image in ip_adapter.images:
                         ip_adapter_image_node = ImageLoadNode(
@@ -357,6 +362,18 @@ class NodeGraphThread(QThread):
 
                     # update rest of params
                     ip_adapter_node.update_adapter(ip_adapter.type_index, ip_adapter.adapter_type, ip_adapter.enabled, ip_adapter.ip_adapter_scale)
+
+                    if ip_adapter.mask_alpha_image is not None:
+                        ip_adapter_mask_image_node = self.node_graph.get_node_by_name(f"adapter_mask_image_{ip_adapter_node.id}")
+
+                        if ip_adapter_mask_image_node is None:
+                            ip_adapter_mask_image_node = ImageLoadNode(path=ip_adapter.mask_alpha_image)
+                            self.node_graph.add_node(ip_adapter_mask_image_node, f"adapter_mask_image_{ip_adapter_node.id}")
+                            ip_adapter_node.connect("mask_alpha_image", ip_adapter_mask_image_node, "image")
+                        else:
+                            ip_adapter_mask_image_node.update_path(ip_adapter.mask_alpha_image)
+                    else:
+                        self.node_graph.delete_node_by_name(f"adapter_mask_image_{ip_adapter_node.id}")
 
                     added_images = ip_adapter.get_added_images()
                     modified_images = ip_adapter.get_modified_images()

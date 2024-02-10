@@ -1,5 +1,5 @@
 import torch
-
+import numpy as np
 from torchvision import transforms
 from diffusers.models.embeddings import ImageProjection, IPAdapterFullImageProjection, IPAdapterPlusImageProjection
 from transformers import CLIPImageProcessor
@@ -10,6 +10,7 @@ from iartisanxl.modules.common.image.image_noise import create_mandelbrot_tensor
 
 class IPAdapterNode(Node):
     REQUIRED_INPUTS = ["ip_adapter_model", "image_encoder", "image"]
+    OPTIONAL_INPUTS = ["mask_alpha_image"]
     OUTPUTS = ["ip_adapter"]
 
     def __init__(self, type_index: int, adapter_type: str, adapter_scale: float = None, **kwargs):
@@ -18,6 +19,7 @@ class IPAdapterNode(Node):
         self.type_index = type_index
         self.adapter_type = adapter_type
         self.adapter_scale = adapter_scale
+        self.ip_image_prompt_embeds = None
 
         self.clip_image_processor = CLIPImageProcessor()
 
@@ -62,11 +64,22 @@ class IPAdapterNode(Node):
 
         image_prompt_embeds, uncond_image_prompt_embeds = self.get_image_embeds(image, image_projection, output_hidden_states)
 
+        tensor_mask = None
+        if self.mask_alpha_image is not None:
+            np_image = np.array(self.mask_alpha_image).astype(np.float32) / 255.0
+            image = torch.from_numpy(np_image.transpose(2, 0, 1))
+
+            alpha_channel = image[3, :, :]
+            tensor_mask = torch.where(alpha_channel < 0.5, 1, 0).float()
+            tensor_mask = tensor_mask.unsqueeze(0)
+            tensor_mask = 1 - tensor_mask
+
         self.values["ip_adapter"] = {
             "weights": self.ip_adapter_model,
             "image_prompt_embeds": image_prompt_embeds,
             "uncond_image_prompt_embeds": uncond_image_prompt_embeds,
             "scale": self.adapter_scale,
+            "tensor_mask": tensor_mask,
         }
 
         return self.values

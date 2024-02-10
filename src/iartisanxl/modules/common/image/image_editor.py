@@ -165,7 +165,7 @@ class ImageEditor(QGraphicsView):
     def draw(self, point):
         gradient = QRadialGradient(point, self.brush_size / 2)
         gradient.setColorAt(0, QColor(0, 0, 0, 255))  # Inner color (black)
-        gradient.setColorAt(self.hardness, self.brush_color)  # Outer color (black)
+        gradient.setColorAt(self.hardness, self.brush_color)
         gradient.setColorAt(1, QColor(0, 0, 0, 0))  # Beyond hardness (transparent)
         brush = QBrush(gradient)
 
