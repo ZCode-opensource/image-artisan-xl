@@ -1,9 +1,9 @@
-from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QCheckBox, QLabel, QPushButton
 from PyQt6.QtCore import pyqtSignal
 from PyQt6.QtGui import QPixmap
+from PyQt6.QtWidgets import QCheckBox, QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget
 
-from iartisanxl.modules.common.controlnet.controlnet_data_object import ControlNetDataObject
 from iartisanxl.buttons.remove_button import RemoveButton
+from iartisanxl.modules.common.controlnet.controlnet_data_object import ControlNetDataObject
 
 
 class ControlNetAddedItem(QWidget):

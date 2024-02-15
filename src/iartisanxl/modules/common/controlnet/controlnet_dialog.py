@@ -1,18 +1,24 @@
 import os
 
 import torch
-
-from PyQt6.QtWidgets import QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QSlider, QComboBox, QWidget
 from PyQt6.QtCore import QSettings, Qt
 from PyQt6.QtGui import QPixmap
+from PyQt6.QtWidgets import QComboBox, QHBoxLayout, QLabel, QPushButton, QSlider, QVBoxLayout, QWidget
 from superqt import QDoubleRangeSlider, QDoubleSlider
 
 from iartisanxl.app.event_bus import EventBus
 from iartisanxl.buttons.color_button import ColorButton
+from iartisanxl.modules.common.controlnet.controlnet_data_object import ControlNetDataObject
 from iartisanxl.modules.common.dialogs.base_dialog import BaseDialog
 from iartisanxl.modules.common.image.image_widget import ImageWidget
-from iartisanxl.modules.common.controlnet.controlnet_data_object import ControlNetDataObject
-from iartisanxl.threads.preprocessor_thread import PreprocessorThread
+from iartisanxl.preprocessors.canny.canny_edges_detector import CannyEdgesDetector
+from iartisanxl.threads.controlnet.controlnet_preprocess_thread import ControlnetPreprocessThread
+from iartisanxl.threads.image.transformed_images_saver_thread import TransformedImagesSaverThread
+from iartisanxl.utilities.image.converters import (
+    convert_numpy_argb_to_bgr,
+    convert_numpy_to_pixmap,
+    convert_pixmap_to_numpy,
+)
 
 
 class ControlNetDialog(BaseDialog):
@@ -34,12 +40,15 @@ class ControlNetDialog(BaseDialog):
         self.controlnet = ControlNetDataObject()
         self.controlnet.generation_width = self.image_generation_data.image_width
         self.controlnet.generation_height = self.image_generation_data.image_height
-        self.updating = False
-        self.source_changed = False
+        self.error = False
+
+        self.source_changed = True
         self.preprocessor_changed = True
-        self.preprocessing = False
-        self.preprocess = True
+        self.canny_detector = None
+
+        self.image_prepare_thread = None
         self.preprocessor_thread = None
+        self.processing = False
 
         self.init_ui()
 
@@ -53,7 +62,6 @@ class ControlNetDialog(BaseDialog):
         self.preprocessor_combo = QComboBox()
         self.preprocessor_combo.addItem("Canny", "controlnet_canny_model")
         self.preprocessor_combo.addItem("Depth", "controlnet_depth_model")
-        self.preprocessor_combo.addItem("Pose", "controlnet_pose_model")
         self.preprocessor_combo.addItem("Inpaint", "controlnet_inpaint_model")
         self.preprocessor_combo.currentIndexChanged.connect(self.on_preprocessor_changed)
         control_layout.addWidget(self.preprocessor_combo)
@@ -87,6 +95,7 @@ class ControlNetDialog(BaseDialog):
         second_control_layout.setSpacing(10)
         second_control_layout.setContentsMargins(10, 2, 10, 2)
         self.canny_widget = QWidget()
+        self.canny_widget.setVisible(False)
         canny_layout = QHBoxLayout(self.canny_widget)
         canny_layout.setSpacing(10)
         canny_layout.setContentsMargins(0, 0, 0, 0)
@@ -97,7 +106,6 @@ class ControlNetDialog(BaseDialog):
         self.canny_slider = QDoubleRangeSlider(Qt.Orientation.Horizontal)
         self.canny_slider.setRange(0, 600)
         self.canny_slider.setValue((self.controlnet.canny_low, self.controlnet.canny_high))
-        self.canny_slider.valueChanged.connect(self.on_canny_threshold_changed)
         canny_layout.addWidget(self.canny_slider)
         self.canny_high_label = QLabel(f"{self.controlnet.canny_high}")
         canny_layout.addWidget(self.canny_high_label)
@@ -157,28 +165,42 @@ class ControlNetDialog(BaseDialog):
 
         source_layout = QVBoxLayout()
         self.source_widget = ImageWidget(
-            "Source image", "cn_source", self.image_viewer, self.controlnet.generation_width, self.controlnet.generation_height
+            "Source image",
+            "cn_source",
+            self.image_viewer,
+            self.controlnet.generation_width,
+            self.controlnet.generation_height,
         )
+        self.source_widget.set_enabled(False)
         self.source_widget.image_loaded.connect(lambda: self.on_image_loaded(0))
-        self.source_widget.image_changed.connect(self.on_source_changed)
+        self.source_widget.image_changed.connect(self.on_source_image_changed)
+        self.source_widget.widget_updated.connect(self.on_source_image_changed)
         source_layout.addWidget(self.source_widget)
-        preprocess_button = QPushButton("Preprocess")
-        preprocess_button.setObjectName("blue_button")
-        preprocess_button.clicked.connect(self.on_preprocess)
-        source_layout.addWidget(preprocess_button)
+        self.preprocess_button = QPushButton("Preprocess")
+        self.preprocess_button.setObjectName("blue_button")
+        self.preprocess_button.setDisabled(True)
+        self.preprocess_button.clicked.connect(self.on_prepare_source)
+        source_layout.addWidget(self.preprocess_button)
         images_layout.addLayout(source_layout)
 
         preprocessor_layout = QVBoxLayout()
         self.preprocessor_widget = ImageWidget(
-            "Preprocessor", "cn_preprocessor", self.image_viewer, self.controlnet.generation_width, self.controlnet.generation_height
+            "Preprocessor",
+            "cn_preprocessor",
+            self.image_viewer,
+            self.controlnet.generation_width,
+            self.controlnet.generation_height,
         )
+        self.preprocessor_widget.set_enabled(False)
         self.preprocessor_widget.image_loaded.connect(lambda: self.on_image_loaded(1))
         self.preprocessor_widget.image_changed.connect(self.on_preprocessor_image_changed)
+        self.preprocessor_widget.widget_updated.connect(self.on_preprocessor_image_changed)
         preprocessor_layout.addWidget(self.preprocessor_widget)
 
         self.add_button = QPushButton("Add")
         self.add_button.setObjectName("green_button")
-        self.add_button.clicked.connect(self.on_controlnet_added)
+        self.add_button.setDisabled(True)
+        self.add_button.clicked.connect(self.on_prepare_preprocessor)
 
         preprocessor_layout.addWidget(self.add_button)
         images_layout.addLayout(preprocessor_layout)
@@ -194,11 +216,18 @@ class ControlNetDialog(BaseDialog):
 
         color_button.color_changed.connect(self.source_widget.image_editor.set_brush_color)
         brush_size_slider.valueChanged.connect(self.source_widget.image_editor.set_brush_size)
+        brush_size_slider.sliderReleased.connect(self.source_widget.image_editor.hide_brush_preview)
         brush_hardness_slider.valueChanged.connect(self.source_widget.image_editor.set_brush_hardness)
+        brush_hardness_slider.sliderReleased.connect(self.source_widget.image_editor.hide_brush_preview)
 
         color_button.color_changed.connect(self.preprocessor_widget.image_editor.set_brush_color)
         brush_size_slider.valueChanged.connect(self.preprocessor_widget.image_editor.set_brush_size)
+        brush_size_slider.sliderReleased.connect(self.preprocessor_widget.image_editor.hide_brush_preview)
         brush_hardness_slider.valueChanged.connect(self.preprocessor_widget.image_editor.set_brush_hardness)
+        brush_hardness_slider.sliderReleased.connect(self.preprocessor_widget.image_editor.hide_brush_preview)
+
+        self.canny_slider.valueChanged.connect(self.on_canny_threshold_changed)
+        self.canny_slider.sliderReleased.connect(self.on_canny_slider_released)
 
     def closeEvent(self, event):
         self.settings.beginGroup("controlnet_dialog")
@@ -211,107 +240,125 @@ class ControlNetDialog(BaseDialog):
 
         super().closeEvent(event)
 
-    def on_source_changed(self):
+    def on_source_image_changed(self):
         self.source_changed = True
-        self.preprocess = True
+        self.preprocess_button.setEnabled(True)
 
     def on_preprocessor_image_changed(self):
         self.preprocessor_changed = True
+        self.add_button.setEnabled(True)
 
-    def on_preprocess(self):
-        if not self.preprocessing:
+    def on_prepare_source(self):
+        if not self.processing:
             if self.controlnet.source_image.image_original is None:
                 self.show_error("You must load an image or create a new one to be able to use preprocessors.")
                 return
 
-            if not self.preprocess:
-                return
+            self.set_preprocessing()
 
-            self.preprocessing = True
+            if self.source_changed:
+                layer = self.source_widget.image_editor.layer_manager.get_layer_by_id(
+                    self.source_widget.drawing_layer_id
+                )
+                drawings_pixmap = layer.pixmap_item.pixmap()
 
-            self.controlnet.source_image.image_scale = self.source_widget.image_scale_control.value
-            self.controlnet.source_image.image_x_pos = self.source_widget.image_x_pos_control.value
-            self.controlnet.source_image.image_y_pos = self.source_widget.image_y_pos_control.value
-            self.controlnet.source_image.image_rotation = self.source_widget.image_rotation_control.value
+                images = [self.controlnet.source_image.image_original, drawings_pixmap]
 
-            self.controlnet.adapter_name = self.preprocessor_combo.currentText()
-            self.controlnet.adapter_type = self.preprocessor_combo.currentData()
-            self.controlnet.type_index = self.preprocessor_combo.currentIndex()
-            self.controlnet.depth_type = self.depth_type_combo.currentData()
-            self.controlnet.depth_type_index = self.depth_type_combo.currentIndex()
+                self.image_prepare_thread = TransformedImagesSaverThread(
+                    images,
+                    self.controlnet.generation_width,
+                    self.controlnet.generation_height,
+                    self.source_widget.image_rotation_control.value,
+                    self.source_widget.image_scale_control.value,
+                    self.source_widget.image_scale_control.value,
+                    self.source_widget.image_x_pos_control.value,
+                    self.source_widget.image_y_pos_control.value,
+                    prefix="cn_source_",
+                )
+                self.image_prepare_thread.merge_finished.connect(self.on_source_prepared)
+                self.image_prepare_thread.finished.connect(self.on_image_prepare_thread_finished)
+                self.image_prepare_thread.error.connect(self.on_error)
+                self.image_prepare_thread.start()
+            else:
+                self.preprocess()
 
-            drawings_pixmap = self.source_widget.image_editor.get_layer(1)
+    def set_preprocessing(self):
+        self.processing = True
 
-            self.preprocessor_thread = PreprocessorThread(self.controlnet, drawings_pixmap, self.source_changed, self.preprocess)
-            self.preprocessor_thread.finished.connect(self.on_preprocessed)
-            self.preprocessor_thread.start()
+        self.preprocess_button.setText("Preprocessing...")
+        self.preprocess_button.setEnabled(False)
+        self.add_button.setEnabled(False)
 
-    def on_preprocessed(self):
-        pixmap = self.preprocessor_thread.preprocessor_pixmap
-        self.preprocessor_thread = None
-        self.preprocessor_widget.image_editor.set_pixmap(pixmap)
-        self.source_changed = False
-        self.preprocess = False
-        self.preprocessor_changed = True
-        self.preprocessing = False
+    def on_error(self, message: str):
+        self.error = True
+        self.show_error(message)
+
+        self.preprocess_button.setText("Preprocess")
+        self.preprocess_button.setDisabled(False)
 
     def on_image_loaded(self, image_type: int):
         # types: 0 - source, 1 - preprocessor
         if image_type == 0:
-            if self.controlnet.source_image.image_filename is not None and os.path.isfile(self.controlnet.source_image.image_filename):
+            if self.controlnet.source_image.image_filename is not None and os.path.isfile(
+                self.controlnet.source_image.image_filename
+            ):
                 os.remove(self.controlnet.source_image.image_filename)
                 self.controlnet.source_image.image_filename = None
 
-            if self.controlnet.source_image.image_thumb is not None and os.path.isfile(self.controlnet.source_image.image_thumb):
+            if self.controlnet.source_image.image_thumb is not None and os.path.isfile(
+                self.controlnet.source_image.image_thumb
+            ):
                 os.remove(self.controlnet.source_image.image_thumb)
                 self.controlnet.source_image.image_thumb = None
 
-            self.controlnet.source_image.image_original = self.source_widget.image_path
+            layer = self.source_widget.image_editor.layer_manager.get_layer_by_id(self.source_widget.image_layer_id)
+            self.controlnet.source_image.image_original = layer.image_path
             self.source_changed = True
-            self.preprocess = True
+            self.source_widget.set_enabled(True)
         else:
-            self.controlnet.preprocessor_image.image_original = self.preprocessor_widget.image_path
+            layer = self.preprocessor_widget.image_editor.layer_manager.get_layer_by_id(
+                self.preprocessor_widget.image_layer_id
+            )
+            self.controlnet.preprocessor_image.image_original = layer.image_path
             self.preprocessor_changed = True
+            self.preprocessor_widget.set_enabled(True)
 
-    def on_controlnet_added(self):
-        if self.updating:
+    def on_source_prepared(self, image_path: str, thumbnail_path: str):
+        if self.controlnet.source_image.image_filename is not None and os.path.isfile(
+            self.controlnet.source_image.image_filename
+        ):
+            os.remove(self.controlnet.source_image.image_filename)
+
+        if self.controlnet.source_image.image_thumb is not None and os.path.isfile(
+            self.controlnet.source_image.image_thumb
+        ):
+            os.remove(self.controlnet.source_image.image_thumb)
+
+        self.controlnet.source_image.image_filename = image_path
+        self.controlnet.source_image.image_thumb = thumbnail_path
+
+        self.preprocess()
+
+    def on_image_prepare_thread_finished(self):
+        self.image_prepare_thread.finished.disconnect(self.on_image_prepare_thread_finished)
+        self.image_prepare_thread = None
+
+    def preprocess(self):
+        if self.controlnet.source_image.image_filename is None:
+            self.show_error("Couldn't find a source image to preprocess.")
+            self.preprocess_button.setText("Preprocess")
+            self.preprocess_button.setDisabled(False)
             return
 
-        if not self.preprocessor_changed:
-            return
+        if self.controlnet.preprocessor_image.image_original is not None and os.path.isfile(
+            self.controlnet.preprocessor_image.image_original
+        ):
+            os.remove(self.controlnet.preprocessor_image.image_original)
 
-        if self.preprocessor_widget.image_editor.pixmap_item is None:
-            self.show_error("You'll need to either preprocess an image or load an image in the preprocessor to add the controlnet.")
-            return
-
-        self.updating = True
-
-        drawings_pixmap = self.source_widget.image_editor.get_layer(1)
-        preprocessor_drawings_pixmap = self.preprocessor_widget.image_editor.get_layer(1)
-
-        self.preprocess = True
-
-        if self.controlnet.source_image.image_filename is None and self.controlnet.preprocessor_image:
-            self.controlnet.preprocessor_image.image_scale = self.preprocessor_widget.image_scale_control.value
-            self.controlnet.preprocessor_image.image_x_pos = self.preprocessor_widget.image_x_pos_control.value
-            self.controlnet.preprocessor_image.image_y_pos = self.preprocessor_widget.image_y_pos_control.value
-            self.controlnet.preprocessor_image.image_rotation = self.preprocessor_widget.image_rotation_control.value
-
-            self.preprocess = False
-
-        self.preprocessor_thread = PreprocessorThread(
-            self.controlnet,
-            drawings_pixmap,
-            self.source_changed,
-            self.preprocess,
-            save_preprocessor=True,
-            preprocessor_drawings=preprocessor_drawings_pixmap,
-        )
-        self.preprocessor_thread.finished.connect(self.on_controlnet_image_saved)
-        self.preprocessor_thread.start()
-
-    def on_controlnet_image_saved(self):
-        self.preprocessor_thread = None
+        self.controlnet.source_image.image_scale = self.source_widget.image_scale_control.value
+        self.controlnet.source_image.image_x_pos = self.source_widget.image_x_pos_control.value
+        self.controlnet.source_image.image_y_pos = self.source_widget.image_y_pos_control.value
+        self.controlnet.source_image.image_rotation = self.source_widget.image_rotation_control.value
 
         self.controlnet.adapter_name = self.preprocessor_combo.currentText()
         self.controlnet.adapter_type = self.preprocessor_combo.currentData()
@@ -319,14 +366,143 @@ class ControlNetDialog(BaseDialog):
         self.controlnet.depth_type = self.depth_type_combo.currentData()
         self.controlnet.depth_type_index = self.depth_type_combo.currentIndex()
 
+        self.preprocessor_thread = ControlnetPreprocessThread(self.controlnet)
+        self.preprocessor_thread.preprocessor_finished.connect(self.on_preprocessed)
+        self.preprocessor_thread.start()
+
+    def on_preprocessed(self, preprocesor_pixmap: QPixmap, image_path: str, thumbnail_path: str):
+        image_layer_id = self.preprocessor_widget.image_editor.set_pixmap(
+            preprocesor_pixmap, self.preprocessor_widget.image_layer_id
+        )
+
+        if self.controlnet.preprocessor_image.image_thumb is not None and os.path.isfile(
+            self.controlnet.preprocessor_image.image_thumb
+        ):
+            os.remove(self.controlnet.preprocessor_image.image_thumb)
+
+        self.controlnet.preprocessor_image.image_original = image_path
+        self.controlnet.preprocessor_image.image_thumb = thumbnail_path
+
+        if self.preprocessor_widget.image_layer_id is None:
+            self.preprocessor_widget.image_editor.set_layer_order(image_layer_id, 0)
+            self.preprocessor_widget.image_editor.layer_manager.edit_layer(
+                self.preprocessor_widget.drawing_layer_id, parent_id=image_layer_id
+            )
+
+        self.preprocessor_widget.image_layer_id = image_layer_id
+
+        if self.preprocessor_combo.currentData() == "controlnet_canny_model":
+            self.canny_widget.setVisible(True)
+
+        self.preprocessor_widget.set_enabled(True)
+
+        self.processing = False
+        self.preprocess_button.setText("Preprocess")
+        self.source_changed = False
+
+    def preprocess_canny(self):
+        source_pixmap = self.source_widget.image_editor.get_scene_as_pixmap()
+        numpy_image = convert_pixmap_to_numpy(source_pixmap)
+        numpy_image = convert_numpy_argb_to_bgr(numpy_image)
+
+        preprocessor_resolution = (
+            int(self.controlnet.generation_width * self.preprocessor_resolution_slider.value()),
+            int(self.controlnet.generation_height * self.preprocessor_resolution_slider.value()),
+        )
+
+        canny_values = self.canny_slider.value()
+        canny_low = int(canny_values[0])
+        canny_high = int(canny_values[1])
+
+        self.canny_detector = CannyEdgesDetector()
+        preprocessor_image = self.canny_detector.get_canny_edges(
+            numpy_image, canny_low, canny_high, resolution=preprocessor_resolution
+        )
+        preprocesor_pixmap = convert_numpy_to_pixmap(preprocessor_image)
+
+        self.preprocessor_widget.image_editor.set_pixmap(preprocesor_pixmap, self.preprocessor_widget.image_layer_id)
+
+    def on_canny_slider_released(self):
+        self.set_preprocessing()
+        self.preprocess()
+
+    def on_prepare_preprocessor(self):
+        if self.processing:
+            return
+
+        if not self.preprocessor_changed:
+            return
+
+        self.set_adding_controlnet()
+
+        preprocessor_layer = self.preprocessor_widget.image_editor.layer_manager.get_layer_by_id(
+            self.preprocessor_widget.image_layer_id
+        )
+        if preprocessor_layer.pixmap_item is None:
+            self.show_error(
+                "You'll need to either preprocess an image or load an image in the preprocessor to add the controlnet."
+            )
+            return
+
+        drawings_layer = self.preprocessor_widget.image_editor.layer_manager.get_layer_by_id(
+            self.preprocessor_widget.drawing_layer_id
+        )
+        drawings_pixmap = drawings_layer.pixmap_item.pixmap()
+
+        images = [self.controlnet.preprocessor_image.image_original, drawings_pixmap]
+
+        self.image_prepare_thread = TransformedImagesSaverThread(
+            images,
+            self.controlnet.generation_width,
+            self.controlnet.generation_height,
+            self.preprocessor_widget.image_rotation_control.value,
+            self.preprocessor_widget.image_scale_control.value,
+            self.preprocessor_widget.image_scale_control.value,
+            self.preprocessor_widget.image_x_pos_control.value,
+            self.preprocessor_widget.image_y_pos_control.value,
+            prefix="cn_preprocessor_",
+        )
+        self.image_prepare_thread.merge_finished.connect(self.on_preprocessor_prepared)
+        self.image_prepare_thread.finished.connect(self.on_image_prepare_thread_finished)
+        self.image_prepare_thread.error.connect(self.on_error)
+        self.image_prepare_thread.start()
+
+    def set_adding_controlnet(self):
+        self.processing = True
+
+        self.add_button.setText("Adding controlnet...")
+        self.preprocess_button.setEnabled(False)
+        self.add_button.setEnabled(False)
+
+    def on_preprocessor_prepared(self, image_path: str, thumbnail_path: str):
+        self.controlnet.preprocessor_image.image_scale = self.preprocessor_widget.image_scale_control.value
+        self.controlnet.preprocessor_image.image_x_pos = self.preprocessor_widget.image_x_pos_control.value
+        self.controlnet.preprocessor_image.image_y_pos = self.preprocessor_widget.image_y_pos_control.value
+        self.controlnet.preprocessor_image.image_rotation = self.preprocessor_widget.image_rotation_control.value
+
+        if self.controlnet.preprocessor_image.image_filename is not None and os.path.isfile(
+            self.controlnet.preprocessor_image.image_filename
+        ):
+            os.remove(self.controlnet.preprocessor_image.image_filename)
+
+        if self.controlnet.preprocessor_image.image_thumb is not None and os.path.isfile(
+            self.controlnet.preprocessor_image.image_thumb
+        ):
+            os.remove(self.controlnet.preprocessor_image.image_thumb)
+
+        self.controlnet.preprocessor_image.image_filename = image_path
+        self.controlnet.preprocessor_image.image_thumb = thumbnail_path
+
+        self.processing = False
+        self.source_changed = False
+        self.preprocessor_changed = False
+        self.add_button.setText("Update")
+
         if self.controlnet.adapter_id is None:
             self.event_bus.publish("controlnet", {"action": "add", "controlnet": self.controlnet})
             self.add_button.setText("Update")
         else:
             self.event_bus.publish("controlnet", {"action": "update", "controlnet": self.controlnet})
-
-        self.preprocessor_changed = False
-        self.updating = False
 
     def on_conditional_scale_changed(self, value):
         self.controlnet.conditioning_scale = value
@@ -344,13 +520,12 @@ class ControlNetDialog(BaseDialog):
         self.canny_low_label.setText(f"{self.controlnet.canny_low}")
         self.canny_high_label.setText(f"{self.controlnet.canny_high}")
 
-        if self.source_widget.image_editor.pixmap_item is not None:
-            self.preprocess = True
-            self.on_preprocess()
+        self.preprocess_canny()
 
     def on_preprocessor_changed(self):
         if self.preprocessor_combo.currentIndex() == 0:
-            self.canny_widget.setVisible(True)
+            if not self.source_changed:
+                self.canny_widget.setVisible(True)
             self.depth_widget.setVisible(False)
         elif self.preprocessor_combo.currentIndex() == 1:
             self.canny_widget.setVisible(False)
@@ -359,15 +534,18 @@ class ControlNetDialog(BaseDialog):
             self.canny_widget.setVisible(False)
             self.depth_widget.setVisible(False)
 
-        self.preprocess = True
+        # self.preprocessor_changed = True
 
     def on_preprocessor_type_changed(self):
-        self.preprocess = True
+        # self.preprocessor_changed = True
+        pass
 
     def on_preprocessor_resolution_changed(self, value):
         self.controlnet.preprocessor_resolution = value
         self.preprocessor_resolution_value_label.setText(f"{int(value * 100)}%")
-        self.preprocess = True
+
+        if self.preprocessor_combo.currentData() == "controlnet_canny_model" and self.canny_widget.isVisible():
+            self.preprocess_canny()
 
     def update_ui(self):
         self.conditioning_scale_slider.setValue(self.controlnet.conditioning_scale)
@@ -375,50 +553,56 @@ class ControlNetDialog(BaseDialog):
         self.guidance_slider.setValue((self.controlnet.guidance_start, self.controlnet.guidance_end))
 
         self.preprocessor_combo.setCurrentIndex(self.controlnet.type_index)
+
+        self.canny_slider.valueChanged.disconnect(self.on_canny_threshold_changed)
         self.canny_slider.setValue((self.controlnet.canny_low, self.controlnet.canny_high))
+        self.canny_slider.valueChanged.connect(self.on_canny_threshold_changed)
+
         self.depth_type_combo.setCurrentIndex(self.controlnet.depth_type_index)
         self.on_preprocessor_changed()
 
         if self.controlnet.source_image:
-            source_pixmap = QPixmap(self.controlnet.source_image.image_original)
-            self.source_widget.image_editor.set_pixmap(source_pixmap)
+            self.source_widget.reload_image_layer(self.controlnet.source_image.image_original)
             self.source_widget.set_image_parameters(
+                self.source_widget.image_layer_id,
                 self.controlnet.source_image.image_scale,
                 self.controlnet.source_image.image_x_pos,
                 self.controlnet.source_image.image_y_pos,
                 self.controlnet.source_image.image_rotation,
             )
 
-            if self.controlnet.source_image.image_drawings:
-                self.source_widget.image_editor.set_drawing_image(self.controlnet.source_image.image_drawings)
+            # if self.controlnet.source_image.image_drawings:
+            #     self.source_widget.image_editor.set_drawing_image(self.controlnet.source_image.image_drawings)
 
         if self.controlnet.preprocessor_image:
             if self.controlnet.preprocessor_image.image_original:
-                preprocessor_pixmap = QPixmap(self.controlnet.preprocessor_image.image_original)
+                self.preprocessor_widget.reload_image_layer(self.controlnet.preprocessor_image.image_original)
                 self.preprocessor_widget.set_image_parameters(
+                    self.preprocessor_widget.image_layer_id,
                     self.controlnet.preprocessor_image.image_scale,
                     self.controlnet.preprocessor_image.image_x_pos,
                     self.controlnet.preprocessor_image.image_y_pos,
                     self.controlnet.preprocessor_image.image_rotation,
                 )
-                self.preprocessor_widget.image_editor.set_pixmap(preprocessor_pixmap)
 
-                if self.controlnet.preprocessor_image.image_drawings:
-                    self.preprocessor_widget.image_editor.set_drawing_image(self.controlnet.preprocessor_image.image_drawings)
-            else:
-                preprocessor_pixmap = QPixmap(self.controlnet.preprocessor_image.image_filename)
-                self.preprocessor_widget.image_editor.set_pixmap(preprocessor_pixmap)
+                # if self.controlnet.preprocessor_image.image_drawings:
+                #     self.preprocessor_widget.image_editor.set_drawing_image(
+                #         self.controlnet.preprocessor_image.image_drawings
+                #     )
 
         if self.controlnet.adapter_id is not None:
             self.add_button.setText("Update")
 
-        self.preprocess = False
         self.source_changed = False
         self.preprocessor_changed = False
+        self.source_widget.set_enabled(True)
+        self.preprocessor_widget.set_enabled(True)
 
     def reset_ui(self):
         self.source_widget.clear_image()
+        self.source_widget.create_drawing_pixmap()
         self.preprocessor_widget.clear_image()
+        self.preprocessor_widget.create_drawing_pixmap()
 
         self.controlnet = ControlNetDataObject()
         self.controlnet.generation_width = self.image_generation_data.image_width
@@ -431,8 +615,7 @@ class ControlNetDialog(BaseDialog):
         self.preprocessor_combo.setCurrentIndex(self.controlnet.type_index)
         self.on_preprocessor_changed()
 
-        self.source_changed = False
+        self.source_changed = True
         self.preprocessor_changed = True
-        self.preprocess = True
 
         self.add_button.setText("Add")
