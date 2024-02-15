@@ -51,8 +51,19 @@ where = ["src"]
 [tool.setuptools.package-data]
 iartisanxl = ["theme/stylesheet.qss", "theme/icons/*.*", "theme/images/*.*", "theme/cursors/*.svg"]
 
-[tool.black]
-line-length = 155
+[tool.ruff]
+select = ["C", "E", "F", "I", "W"]
+line-length = 119
+
+[tool.ruff.isort]
+lines-after-imports = 2
+known-first-party = ["iartisanxl"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
 
 [project.gui-scripts]
 iartisanxl = "iartisanxl.__main__:main"
