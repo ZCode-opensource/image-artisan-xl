@@ -10,11 +10,12 @@ from PyQt6.QtGui import QImage, QPixmap
 
 from iartisanxl.preprocessors.canny.canny_edges_detector import CannyEdgesDetector
 from iartisanxl.preprocessors.depth.depth_estimator import DepthEstimator
-from iartisanxl.preprocessors.openpose.open_pose_detector import OpenPoseDetector
 from iartisanxl.preprocessors.lineart.lineart_generator import LineArtGenerator
 from iartisanxl.preprocessors.pidinet.pidinet_generator import PidinetGenerator
 from iartisanxl.modules.common.t2i_adapter.t2i_adapter_data_object import T2IAdapterDataObject
 from iartisanxl.modules.common.image.image_data_object import ImageDataObject
+
+preprocessors = ["canny", "depth", "lineart", "pidinet"]
 
 
 class T2IPreprocessorThread(QThread):
@@ -124,20 +125,6 @@ class T2IPreprocessorThread(QThread):
                     return
 
                 preprocessor_image = self.depth_estimator.get_depth_map(numpy_image, source_resolution)
-            elif self.adapter.type_index == 2:
-                preprocessor_name = "pose"
-                try:
-                    if self.openpose_detector is None:
-                        self.canny_detector = None
-                        self.depth_estimator = None
-                        self.lineart_generator = None
-                        self.pidinet_generator = None
-                        self.openpose_detector = OpenPoseDetector()
-                except FileNotFoundError:
-                    self.error.emit("You need to download the preprocessors from the downloader menu first.")
-                    return
-
-                preprocessor_image = self.openpose_detector.get_open_pose(numpy_image, source_resolution)
             elif self.adapter.type_index == 3:
                 try:
                     if self.lineart_generator is None:
