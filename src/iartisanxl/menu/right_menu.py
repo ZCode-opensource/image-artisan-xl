@@ -1,25 +1,25 @@
-from PyQt6.QtWidgets import QSizePolicy, QHBoxLayout, QVBoxLayout, QFrame
-from PyQt6.QtCore import QPropertyAnimation, QEasingCurve, QTimer
+from PyQt6.QtCore import QEasingCurve, QPropertyAnimation, QTimer
+from PyQt6.QtWidgets import QFrame, QHBoxLayout, QSizePolicy, QVBoxLayout
 
+from iartisanxl.app.directories import DirectoriesObject
 from iartisanxl.app.event_bus import EventBus
+from iartisanxl.app.preferences import PreferencesObject
 from iartisanxl.buttons.expand_right_button import ExpandRightButton
 from iartisanxl.buttons.vertical_button import VerticalButton
-from iartisanxl.generation.image_generation_data import ImageGenerationData
-from iartisanxl.modules.common.lora.lora_list import LoraList
 from iartisanxl.generation.adapter_list import AdapterList
-from iartisanxl.app.directories import DirectoriesObject
-from iartisanxl.app.preferences import PreferencesObject
-from iartisanxl.modules.common.image_viewer_simple import ImageViewerSimple
-from iartisanxl.modules.common.prompt_window import PromptWindow
-from iartisanxl.modules.common.panels.panel_container import PanelContainer
-from iartisanxl.modules.common.controlnet.controlnet_panel import ControlNetPanel
+from iartisanxl.generation.image_generation_data import ImageGenerationData
 from iartisanxl.modules.common.controlnet.controlnet_added_item import ControlNetAddedItem
-from iartisanxl.modules.common.t2i_adapter.t2i_panel import T2IPanel
-from iartisanxl.modules.common.t2i_adapter.adapter_added_item import AdapterAddedItem
-from iartisanxl.modules.common.ip_adapter.ip_adapter_panel import IPAdapterPanel
+from iartisanxl.modules.common.controlnet.controlnet_panel import ControlNetPanel
+from iartisanxl.modules.common.image_viewer_simple import ImageViewerSimple
 from iartisanxl.modules.common.ip_adapter.ip_adapter_added_item import IPAdapterAddedItem
+from iartisanxl.modules.common.ip_adapter.ip_adapter_panel import IPAdapterPanel
 from iartisanxl.modules.common.lora.lora_added_item import LoraAddedItem
+from iartisanxl.modules.common.lora.lora_list import LoraList
 from iartisanxl.modules.common.lora.lora_panel import LoraPanel
+from iartisanxl.modules.common.panels.panel_container import PanelContainer
+from iartisanxl.modules.common.prompt_window import PromptWindow
+from iartisanxl.modules.common.t2i_adapter.adapter_added_item import AdapterAddedItem
+from iartisanxl.modules.common.t2i_adapter.t2i_panel import T2IPanel
 
 
 class RightMenu(QFrame):
