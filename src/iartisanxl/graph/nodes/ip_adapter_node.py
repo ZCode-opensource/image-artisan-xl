@@ -5,7 +5,7 @@ from diffusers.models.embeddings import ImageProjection, IPAdapterFullImageProje
 from transformers import CLIPImageProcessor
 
 from iartisanxl.graph.nodes.node import Node
-from iartisanxl.modules.common.image.image_noise import create_mandelbrot_tensor, create_noise_tensor, add_torch_noise
+from iartisanxl.utilities.image.noise import create_mandelbrot_tensor, create_noise_tensor, add_torch_noise
 
 
 class IPAdapterNode(Node):

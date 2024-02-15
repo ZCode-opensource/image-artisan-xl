@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 
 from PIL import Image
 
-from iartisanxl.modules.common.image.image_utils import normalize_tensor_image
+from .tensors import normalize_tensor_image
 
 
 def mandelbrot(c, max_iter):
