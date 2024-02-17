@@ -407,16 +407,6 @@ PreferencesDialog QCheckBox {
     background-color: #181b28;
 }
 
-QWidget#image_widget ImageEditor {
-    background: #181b28;
-    border: 1px solid #2f344e;
-}
-
-QWidget#ip_adapter_image_widget ImageEditor {
-    background: #181b28;
-    border: 1px solid #2f344e;
-}
-
 DownloaderDialog QProgressBar:horizontal {
     background-color: #353636;
     border: 10px solid #181b28;
@@ -480,4 +470,40 @@ IPAdapterImageWidget ImageAdderPreview {
 
 ImageItemsView QWidget#flow_widget {
     background: #232325;
+}
+
+ImageWidget {
+    border: 1px solid #525164; 
+}
+
+LayerManagerWidget QListWidget {
+    background: #161525;
+    border: 1px solid #525164;
+}
+
+LayerManagerWidget QListWidget::item {
+    background: #23223b;
+}
+
+LayerManagerWidget QListWidget::item:selected {
+    background: #48477c;
+}
+
+LayerManagerWidget QListWidget::item:hover {
+    background: #5f5da3;
+}
+
+ImageWidget ImageEditor {
+    background: #181b28;
+    border: 1px solid #2f344e;
+}
+
+ImageWidget TransparentButton#bottom_layer_control:hover {
+    background: #282d42;
+    border: 1px solid #1f2333;
+}
+
+ImageWidget#ip_adapter_image_widget ImageEditor {
+    background: #181b28;
+    border: 1px solid #2f344e;
 }
