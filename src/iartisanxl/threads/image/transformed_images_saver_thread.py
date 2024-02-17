@@ -32,7 +32,9 @@ class TransformedImagesSaverThread(QThread):
         timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
 
         # make the list of images all pillow images
-        self.images = [self.process_image(layer, timestamp) for layer in self.layers]
+        self.images = [
+            self.process_image(layer, timestamp) for layer in sorted(self.layers, key=lambda layer: layer.order)
+        ]
 
         source_path = None
         thumb_path = None
