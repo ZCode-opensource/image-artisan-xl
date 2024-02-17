@@ -97,6 +97,7 @@ class ImageEditor(QGraphicsView):
 
     def set_image(self, image_path: str, delete_prev_image: bool = True):
         pixmap = QPixmap(image_path)
+
         layer_id = self.set_pixmap(pixmap, self.selected_layer_id, image_path, delete_prev_image=delete_prev_image)
 
         return layer_id
@@ -111,15 +112,21 @@ class ImageEditor(QGraphicsView):
     ):
         layer = self.layer_manager.get_layer_by_id(layer_id)
 
+        alpha_pixmap = QPixmap(pixmap.size())
+        alpha_pixmap.fill(Qt.GlobalColor.transparent)
+        painter = QPainter(alpha_pixmap)
+        painter.drawPixmap(0, 0, pixmap)
+        painter.end()
+
         if layer is not None:
-            layer.pixmap_item.setPixmap(pixmap)
+            layer.pixmap_item.setPixmap(alpha_pixmap)
 
             if delete_prev_image and layer.image_path is not None and os.path.isfile(layer.image_path):
                 os.remove(layer.image_path)
 
             layer.original_path = image_path
         else:
-            layer = self.layer_manager.add_new_layer(pixmap, image_path=image_path, order=order)
+            layer = self.layer_manager.add_new_layer(alpha_pixmap, image_path=image_path, order=order)
             self.scene.addItem(layer.pixmap_item)
 
         layer.pixmap_item.setTransformationMode(Qt.TransformationMode.SmoothTransformation)
@@ -300,7 +307,7 @@ class ImageEditor(QGraphicsView):
             painter = QPainter(pixmap)
 
             if self.erasing:
-                painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_DestinationOut)
+                painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_Clear)
             else:
                 painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_SourceOver)
 

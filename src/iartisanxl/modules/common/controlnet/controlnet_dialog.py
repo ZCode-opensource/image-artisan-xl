@@ -7,6 +7,7 @@ from PyQt6.QtWidgets import QComboBox, QHBoxLayout, QLabel, QPushButton, QSlider
 from superqt import QDoubleRangeSlider, QDoubleSlider
 
 from iartisanxl.app.event_bus import EventBus
+from iartisanxl.buttons.brush_erase_button import BrushEraseButton
 from iartisanxl.buttons.color_button import ColorButton
 from iartisanxl.modules.common.controlnet.controlnet_data import ControlNetData
 from iartisanxl.modules.common.dialogs.base_dialog import BaseDialog
@@ -160,6 +161,9 @@ class ControlNetDialog(BaseDialog):
         brush_hardness_slider.setValue(0.5)
         brush_layout.addWidget(brush_hardness_slider)
 
+        brush_erase_button = BrushEraseButton()
+        brush_layout.addWidget(brush_erase_button)
+
         color_button = ColorButton("Color:")
         brush_layout.addWidget(color_button)
 
@@ -237,6 +241,9 @@ class ControlNetDialog(BaseDialog):
 
         self.canny_slider.valueChanged.connect(self.on_canny_threshold_changed)
         self.canny_slider.sliderReleased.connect(self.on_canny_slider_released)
+
+        brush_erase_button.brush_selected.connect(self.source_widget.set_erase_mode)
+        brush_erase_button.brush_selected.connect(self.preprocessor_widget.set_erase_mode)
 
     def closeEvent(self, event):
         self.settings.beginGroup("controlnet_dialog")

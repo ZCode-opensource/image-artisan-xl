@@ -469,3 +469,6 @@ class ImageWidget(QWidget):
         self.image_x_pos_control.setEnabled(enabled)
         self.image_y_pos_control.setEnabled(enabled)
         self.image_rotation_control.setEnabled(enabled)
+
+    def set_erase_mode(self, value: bool):
+        self.image_editor.erasing = value
