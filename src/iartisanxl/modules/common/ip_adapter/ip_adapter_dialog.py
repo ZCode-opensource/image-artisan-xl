@@ -1,21 +1,21 @@
+import math
 import os
 import shutil
-import math
 from datetime import datetime
 
 from PIL import Image
 from PyQt6.QtCore import QSettings, Qt, QThread, pyqtSignal
-from PyQt6.QtWidgets import QVBoxLayout, QHBoxLayout, QComboBox, QLabel, QPushButton, QWidget
+from PyQt6.QtWidgets import QComboBox, QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget
 from superqt import QDoubleSlider
 
-from iartisanxl.modules.common.dialogs.base_dialog import BaseDialog
-from iartisanxl.modules.common.mask.mask_dialog import MaskDialog
 from iartisanxl.app.event_bus import EventBus
-from iartisanxl.modules.common.ip_adapter.ip_adapter_image_widget import IPAdapterImageWidget
-from iartisanxl.modules.common.ip_adapter.ip_adapter_data_object import IPAdapterDataObject
-from iartisanxl.modules.common.ip_adapter.ip_adapter_image_items_view import IpAdapterImageItemsView
+from iartisanxl.modules.common.dialogs.base_dialog import BaseDialog
 from iartisanxl.modules.common.image.image_adder_preview import ImageAdderPreview
 from iartisanxl.modules.common.image.image_data_object import ImageDataObject
+from iartisanxl.modules.common.ip_adapter.ip_adapter_data_object import IPAdapterDataObject
+from iartisanxl.modules.common.ip_adapter.ip_adapter_image_items_view import IpAdapterImageItemsView
+from iartisanxl.modules.common.ip_adapter.ip_adapter_image_widget import IPAdapterImageWidget
+from iartisanxl.modules.common.mask.mask_dialog import MaskDialog
 
 
 class ImageProcessThread(QThread):
@@ -30,7 +30,7 @@ class ImageProcessThread(QThread):
     def run(self):
         timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
 
-        if self.image_data_object.id is None or self.image_data_object.replace_original:
+        if self.image_data_object.image_id is None or self.image_data_object.replace_original:
             original_filename = f"ip_{timestamp}_original.png"
             original_path = os.path.join("tmp/", original_filename)
 
@@ -65,7 +65,7 @@ class ImageProcessThread(QThread):
 
         original_pixmap = self.image_editor.original_pixmap
 
-        if self.image_data_object.id is None:
+        if self.image_data_object.image_id is None:
             original_filename = f"ip_{timestamp}_original.png"
 
             original_path = os.path.join("tmp/", original_filename)
@@ -253,14 +253,14 @@ class IPAdapterDialog(BaseDialog):
         self.image_process_thread.start()
 
     def on_image_saved(self, image_data_object: ImageDataObject):
-        if image_data_object.id is not None:
+        if image_data_object.image_id is not None:
             self.image_items_view.update_current_item(image_data_object)
         else:
             self.adapter.add_image_data_object(image_data_object)
             image_item = self.image_items_view.add_item_data_object(image_data_object)
             self.image_items_view.on_item_selected(image_item)
 
-        self.image_widget.image_id = image_data_object.id
+        self.image_widget.image_id = image_data_object.image_id
         self.image_widget.add_image_button.setText("Update image")
         self.image_widget.new_image_button.setEnabled(True)
         self.image_widget.delete_image_button.setEnabled(True)
@@ -285,7 +285,9 @@ class IPAdapterDialog(BaseDialog):
         self.image_widget.delete_image_button.setEnabled(True)
         self.image_widget.new_image_button.setEnabled(True)
 
-        self.dataset_items_count_label.setText(f"{self.image_items_view.current_item_index + 1}/{self.image_items_view.item_count}")
+        self.dataset_items_count_label.setText(
+            f"{self.image_items_view.current_item_index + 1}/{self.image_items_view.item_count}"
+        )
 
     def on_item_deleted(self, image_data: ImageDataObject, clear_view: bool):
         if clear_view:
@@ -321,7 +323,9 @@ class IPAdapterDialog(BaseDialog):
     def on_images_finished_loading(self):
         self.image_widget.new_image_button.setEnabled(True)
         self.on_item_selected(self.image_items_view.current_item.image_data)
-        self.dataset_items_count_label.setText(f"{self.image_items_view.current_item_index + 1}/{self.image_items_view.item_count}")
+        self.dataset_items_count_label.setText(
+            f"{self.image_items_view.current_item_index + 1}/{self.image_items_view.item_count}"
+        )
 
     def on_add_mask_clicked(self):
         if self.adapter.adapter_id is None:
