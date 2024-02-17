@@ -2,7 +2,7 @@ import torch
 from PyQt6.QtWidgets import QPushButton, QVBoxLayout, QWidget
 
 from iartisanxl.modules.common.controlnet.controlnet_added_item import ControlNetAddedItem
-from iartisanxl.modules.common.controlnet.controlnet_data_object import ControlNetDataObject
+from iartisanxl.modules.common.controlnet.controlnet_data import ControlNetData
 from iartisanxl.modules.common.controlnet.controlnet_dialog import ControlNetDialog
 from iartisanxl.modules.common.panels.base_panel import BasePanel
 from iartisanxl.utilities.image.operations import remove_image_data_files
@@ -73,7 +73,7 @@ class ControlNetPanel(BasePanel):
         self.controlnets_layout.removeWidget(controlnet_widget)
         controlnet_widget.deleteLater()
 
-    def on_edit_clicked(self, controlnet: ControlNetDataObject):
+    def on_edit_clicked(self, controlnet: ControlNetData):
         if self.parent().controlnet_dialog is None:
             self.open_controlnet_dialog()
 

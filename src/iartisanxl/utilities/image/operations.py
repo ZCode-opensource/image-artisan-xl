@@ -1,4 +1,3 @@
-import math
 import os
 from typing import Union
 
@@ -11,50 +10,36 @@ from iartisanxl.modules.common.image.image_data_object import ImageDataObject
 from .converters import convert_to_alpha_image
 
 
-def rotate_scale_crop_image(
+def transform_image(
     image: Image.Image,
     target_width: int,
     target_height: int,
     angle: float,
-    horizontal_scale: float,
-    vertical_scale: float,
+    scale: float,
     x_pos: int,
     y_pos: int,
 ) -> Image.Image:
-    image = rotate_image(image, angle)
-    image = scale_image(image, horizontal_scale, vertical_scale)
-    image = crop_image(image, target_width, target_height, x_pos, y_pos)
-
-    return image
-
-
-def rotate_image(image: Image.Image, angle: float) -> Image.Image:
     width, height = image.size
+    original_center = (width / 2, height / 2)
 
-    center = (width / 2, height / 2)
-    image = image.rotate(-angle, Image.Resampling.BICUBIC, center=center, expand=True)
-
-    return image
-
-
-def scale_image(image: Image.Image, horizontal_scale: float, vertical_scale: float) -> Image.Image:
-    width, height = image.size
-
-    new_width = round(width * horizontal_scale)
-    new_height = round(height * vertical_scale)
+    # scale the image
+    new_width = round(width * scale)
+    new_height = round(height * scale)
     image = image.resize((new_width, new_height), Image.Resampling.LANCZOS)
 
-    return image
+    scaled_center = (new_width / 2, new_height / 2)
+    diff_center = (original_center[0] - scaled_center[0], original_center[1] - scaled_center[1])
 
-
-def crop_image(image: Image.Image, target_width: int, target_height: int, x_pos: int, y_pos: int) -> Image.Image:
-    width, height = image.size
-
-    left = math.floor(width / 2 - (target_width / 2 + x_pos))
-    top = math.floor(height / 2 - (target_width / 2 + y_pos))
-    right = target_width + left
-    bottom = target_height + top
+    # crop the image
+    left = -diff_center[0] - x_pos
+    top = -diff_center[1] - y_pos
+    right = target_width - diff_center[0] - x_pos
+    bottom = target_height - diff_center[1] - y_pos
     image = image.crop((left, top, right, bottom))
+
+    # Rotate the image
+    center = (width / 2, height / 2)
+    image = image.rotate(-angle, Image.Resampling.BICUBIC, center=center, expand=False)
 
     return image
 

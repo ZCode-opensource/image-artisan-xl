@@ -5,11 +5,11 @@ import cv2
 from PIL import Image
 from PyQt6.QtCore import QThread, pyqtSignal
 
-from iartisanxl.modules.common.controlnet.controlnet_data_object import ControlNetDataObject
+from iartisanxl.modules.common.controlnet.controlnet_data import ControlNetData
+from iartisanxl.modules.common.image.image_editor_layer import ImageEditorLayer
 from iartisanxl.preprocessors.canny.canny_edges_detector import CannyEdgesDetector
 from iartisanxl.preprocessors.depth.depth_estimator import DepthEstimator
 from iartisanxl.utilities.image.converters import convert_numpy_to_pixmap, convert_pillow_to_pixmap
-from iartisanxl.utilities.image.operations import generate_thumbnail
 
 
 preprocessors = ["canny", "depth"]
@@ -17,29 +17,40 @@ preprocessors = ["canny", "depth"]
 
 class ControlnetPreprocessThread(QThread):
     error = pyqtSignal(str)
-    preprocessor_finished = pyqtSignal(object, str, str)
+    preprocessor_finished = pyqtSignal(object, str)
 
-    def __init__(self, controlnet_data: ControlNetDataObject):
+    def __init__(
+        self,
+        controlnet_data: ControlNetData,
+        layer: ImageEditorLayer,
+        prefix: str = "img",
+    ):
         super().__init__()
 
         self.controlnet_data = controlnet_data
         self.target_width = self.controlnet_data.generation_width
         self.target_height = self.controlnet_data.generation_height
         self.resolution = self.controlnet_data.preprocessor_resolution
+        self.layer = layer
+        self.prefix = prefix
 
         self.canny_detector = None
         self.depth_estimator = None
 
     def run(self):
-        # quality of the preprocessor result image
+        if self.layer.image_path is not None and os.path.isfile(self.layer.image_path):
+            os.remove(self.layer.image_path)
+        if self.layer.original_path is not None and os.path.isfile(self.layer.original_path):
+            os.remove(self.layer.original_path)
+
         preprocessor_resolution = (int(self.target_width * self.resolution), int(self.target_height * self.resolution))
         timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
-        preprocessor_filename = f"cn_{preprocessors[self.controlnet_data.type_index]}_{timestamp}_original.png"
+        preprocessor_filename = f"{self.prefix}_{timestamp}_{self.layer.layer_id}_original.png"
         preprocessor_path = os.path.join("tmp/", preprocessor_filename)
 
         if self.controlnet_data.type_index == 0:
-            numpy_image = cv2.imread(self.controlnet_data.source_image.image_filename)  # pylint: disable=no-member
-            numpy_image = cv2.cvtColor(numpy_image, cv2.COLOR_BGRA2RGB)  # pylint: disable=no-member
+            numpy_image = cv2.imread(self.controlnet_data.source_image)
+            numpy_image = cv2.cvtColor(numpy_image, cv2.COLOR_BGRA2RGB)
 
             if self.canny_detector is None:
                 self.depth_estimator = None
@@ -51,10 +62,10 @@ class ControlnetPreprocessThread(QThread):
                 self.controlnet_data.canny_high,
                 resolution=preprocessor_resolution,
             )
-            cv2.imwrite(preprocessor_path, preprocessor_image)  # pylint: disable=no-member
+            cv2.imwrite(preprocessor_path, preprocessor_image)
             pixmap = convert_numpy_to_pixmap(preprocessor_image)
         elif self.controlnet_data.type_index == 1:
-            pil_image = Image.open(self.controlnet_data.source_image.image_filename).convert("RGB")
+            pil_image = Image.open(self.controlnet_data.source_image).convert("RGB")
 
             try:
                 if self.depth_estimator is None:
@@ -70,8 +81,4 @@ class ControlnetPreprocessThread(QThread):
             preprocessor_image.save(preprocessor_path)
             pixmap = convert_pillow_to_pixmap(preprocessor_image)
 
-        thumb_filename = f"cn_{preprocessors[self.controlnet_data.type_index]}_{timestamp}_thumb.png"
-        thumb_path = os.path.join("tmp/", thumb_filename)
-        generate_thumbnail(preprocessor_image, 80, 80, thumb_path)
-
-        self.preprocessor_finished.emit(pixmap, preprocessor_path, thumb_path)
+        self.preprocessor_finished.emit(pixmap, preprocessor_path)

@@ -1,18 +1,22 @@
 import attr
 
-from iartisanxl.modules.common.image.image_data_object import ImageDataObject
+from iartisanxl.modules.common.controlnet.controlnet_image import ControlNetImage
 
 
 @attr.s(auto_attribs=True, slots=True)
-class ControlNetDataObject:
+class ControlNetData:
     enabled: bool = attr.ib(default=True)
     adapter_name: str = attr.ib(default=None)
     adapter_type: str = attr.ib(default=None)
     type_index: int = attr.ib(default=0)
     guess_mode: bool = attr.ib(default=False)
     adapter_id: int = attr.ib(default=None)
-    source_image: ImageDataObject = attr.ib(default=attr.Factory(ImageDataObject))
-    preprocessor_image: ImageDataObject = attr.ib(default=attr.Factory(ImageDataObject))
+    source_images: ControlNetImage = attr.ib(default=attr.Factory(ControlNetImage))
+    source_image: str = attr.ib(default=None)
+    source_thumb: str = attr.ib(default=None)
+    preprocessor_images: ControlNetImage = attr.ib(default=attr.Factory(ControlNetImage))
+    preprocessor_image: str = attr.ib(default=None)
+    preprocessor_thumb: str = attr.ib(default=None)
     preprocessor_resolution: float = attr.ib(default=0.5)
     conditioning_scale: float = attr.ib(default=0.5)
     guidance_start: float = attr.ib(default=0.0)

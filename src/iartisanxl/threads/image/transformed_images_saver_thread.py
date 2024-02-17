@@ -1,13 +1,12 @@
 import os
 from datetime import datetime
-from typing import List, Union
 
 from PIL import Image
 from PyQt6.QtCore import QThread, pyqtSignal
-from PyQt6.QtGui import QPixmap
 
-from iartisanxl.utilities.image.converters import convert_pixmap_to_pillow, convert_to_alpha_image
-from iartisanxl.utilities.image.operations import generate_thumbnail, merge_images, rotate_scale_crop_image
+from iartisanxl.modules.common.image.image_editor_layer import ImageEditorLayer
+from iartisanxl.utilities.image.converters import convert_pixmap_to_pillow
+from iartisanxl.utilities.image.operations import generate_thumbnail, merge_images, transform_image
 
 
 class TransformedImagesSaverThread(QThread):
@@ -16,65 +15,65 @@ class TransformedImagesSaverThread(QThread):
 
     def __init__(
         self,
-        images: List[Union[str, Image.Image, QPixmap]],
+        layers: list[ImageEditorLayer],
         target_width: int,
         target_height: int,
-        angle: float,
-        horizontal_scale: int,
-        vertical_scale: int,
-        x_pos: int,
-        y_pos: int,
         prefix: str = "img",
     ):
         super().__init__()
 
-        self.images = images
+        self.layers = layers
         self.target_width = target_width
         self.target_height = target_height
-        self.angle = angle
-        self.horizontal_scale = horizontal_scale
-        self.vertical_scale = vertical_scale
-        self.x_pos = x_pos
-        self.y_pos = y_pos
         self.prefix = prefix
+        self.temp_path = "tmp"
 
     def run(self):
+        timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+
         # make the list of images all pillow images
-        self.images = [self.process_image(image) for image in self.images]
+        self.images = [self.process_image(layer, timestamp) for layer in self.layers]
 
         source_path = None
         thumb_path = None
 
         try:
             merged_image = merge_images(self.images)
-            timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
             source_filename = f"{self.prefix}_{timestamp}.png"
             source_path = os.path.join("tmp/", source_filename)
             merged_image.save(source_path)
 
             thumb_filename = f"{self.prefix}_{timestamp}_thumb.png"
-            thumb_path = os.path.join("tmp/", thumb_filename)
+            thumb_path = os.path.join(self.temp_path, thumb_filename)
             generate_thumbnail(merged_image, 80, 80, thumb_path)
         except ValueError as e:
             self.error.emit(str(e))
 
         self.merge_finished.emit(source_path, thumb_path)
 
-    def process_image(self, image: Union[str, Image.Image, QPixmap]) -> Image.Image:
-        if isinstance(image, str):
-            image = convert_to_alpha_image(Image.open(image))
-        elif isinstance(image, QPixmap):
-            image = convert_pixmap_to_pillow(image)
+    def process_image(self, layer: ImageEditorLayer, timestamp: str) -> Image.Image:
+        image = convert_pixmap_to_pillow(layer.pixmap_item.pixmap())
 
-        image = rotate_scale_crop_image(
+        if layer.original_path is None:
+            original_filename = f"{self.prefix}_{timestamp}_{layer.layer_id}_original.png"
+            original_path = os.path.join(self.temp_path, original_filename)
+            image.save(original_path)
+
+        image = transform_image(
             image,
             self.target_width,
             self.target_height,
-            self.angle,
-            self.horizontal_scale,
-            self.vertical_scale,
-            self.x_pos,
-            self.y_pos,
+            layer.pixmap_item.rotation(),
+            layer.pixmap_item.scale(),
+            layer.pixmap_item.x(),
+            layer.pixmap_item.y(),
         )
+        filename = f"{self.prefix}_{timestamp}_{layer.layer_id}.png"
+        image_path = os.path.join(self.temp_path, filename)
+        image.save(image_path)
+
+        if layer.image_path is not None and os.path.isfile(layer.image_path):
+            os.remove(layer.image_path)
+        layer.image_path = image_path
 
         return image

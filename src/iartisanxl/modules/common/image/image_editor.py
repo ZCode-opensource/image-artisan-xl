@@ -8,6 +8,7 @@ from PyQt6.QtSvg import QSvgRenderer
 from PyQt6.QtWidgets import QApplication, QFileDialog, QGraphicsEllipseItem, QGraphicsScene, QGraphicsView, QMenu
 
 from iartisanxl.modules.common.drop_lightbox import DropLightBox
+from iartisanxl.modules.common.image.image_editor_layer import ImageEditorLayer
 from iartisanxl.modules.common.image.layer_manager import LayerManager
 
 
@@ -86,27 +87,39 @@ class ImageEditor(QGraphicsView):
         self.timer.start(100)
         super().enterEvent(event)
 
-    def set_image(self, image_path: str, layer_id: int = None, delete_prev_image: bool = True):
+    def add_empty_layer(self):
+        pixmap = QPixmap(self.target_width, self.target_height)
+        pixmap.fill(Qt.GlobalColor.transparent)
+
+        layer_id = self.set_pixmap(pixmap)
+
+        return layer_id
+
+    def set_image(self, image_path: str, delete_prev_image: bool = True):
         pixmap = QPixmap(image_path)
-        layer_id = self.set_pixmap(pixmap, layer_id, image_path, delete_prev_image=delete_prev_image)
+        layer_id = self.set_pixmap(pixmap, self.selected_layer_id, image_path, delete_prev_image=delete_prev_image)
 
         return layer_id
 
     def set_pixmap(
-        self, pixmap: QPixmap, layer_id: int = None, image_path: str = None, delete_prev_image: bool = True
+        self,
+        pixmap: QPixmap,
+        layer_id: int = None,
+        image_path: str = None,
+        order: int = None,
+        delete_prev_image: bool = True,
     ):
         layer = self.layer_manager.get_layer_by_id(layer_id)
 
         if layer is not None:
             layer.pixmap_item.setPixmap(pixmap)
-            layer.original_pixmap = pixmap
 
             if delete_prev_image and layer.image_path is not None and os.path.isfile(layer.image_path):
                 os.remove(layer.image_path)
 
-            layer.image_path = image_path
+            layer.original_path = image_path
         else:
-            layer = self.layer_manager.add_new_layer(pixmap, image_path=image_path)
+            layer = self.layer_manager.add_new_layer(pixmap, image_path=image_path, order=order)
             self.scene.addItem(layer.pixmap_item)
 
         layer.pixmap_item.setTransformationMode(Qt.TransformationMode.SmoothTransformation)
@@ -114,6 +127,29 @@ class ImageEditor(QGraphicsView):
         self.image_changed.emit()
 
         return layer.layer_id
+
+    def reload_image_layer(self, image_path: str, original_path: str, order: int):
+        pixmap = QPixmap(image_path)
+        layer = self.layer_manager.reload_layer(pixmap, image_path, original_path, order)
+        self.scene.addItem(layer.pixmap_item)
+
+        layer.pixmap_item.setTransformationMode(Qt.TransformationMode.SmoothTransformation)
+        layer.pixmap_item.setZValue(layer.order)
+
+        return layer.layer_id
+
+    def get_selected_layer(self):
+        layer = self.layer_manager.get_layer_by_id(self.selected_layer_id)
+        return layer
+
+    def get_all_layers(self) -> list[ImageEditorLayer]:
+        return self.layer_manager.layers
+
+    def set_layer_locked(self, layer_id: int, locked: bool):
+        layer = self.layer_manager.get_layer_by_id(layer_id)
+
+        if layer is not None:
+            layer.locked = locked
 
     def set_layer_order(self, layer_id: int, order: int):
         layer = self.layer_manager.get_layer_by_id(layer_id)
@@ -123,6 +159,13 @@ class ImageEditor(QGraphicsView):
 
             for layer in self.layer_manager.get_layers():
                 layer.pixmap_item.setZValue(layer.order)
+
+    def edit_all_layers_order(self, layers: list):
+        for layer_id, order in layers:
+            for layer in self.layer_manager.layers:
+                if layer.layer_id == layer_id:
+                    layer.order = order
+                    layer.pixmap_item.setZValue(layer.order)
 
     def fit_image(self):
         layer = self.layer_manager.get_layer_by_id(self.selected_layer_id)
@@ -161,70 +204,66 @@ class ImageEditor(QGraphicsView):
 
         if layer is not None:
             if layer.pixmap_item is not None:
+                scale_ratio = scale_factor / layer.pixmap_item.scale()
+
                 layer.pixmap_item.setTransformOriginPoint(layer.pixmap_item.boundingRect().center())
                 layer.pixmap_item.setScale(scale_factor)
 
-                for layer in self.layer_manager.get_layers():
-                    if (
-                        layer.layer_id != self.selected_layer_id
-                        and layer.parent_id == self.selected_layer_id
-                        and layer.pixmap_item is not None
-                    ):
-                        layer.pixmap_item.setTransformOriginPoint(layer.pixmap_item.boundingRect().center())
-                        layer.pixmap_item.setScale(scale_factor)
+                if layer.locked:
+                    for layer in self.layer_manager.get_layers():
+                        if layer.layer_id != self.selected_layer_id and layer.locked:
+                            layer.pixmap_item.setTransformOriginPoint(layer.pixmap_item.boundingRect().center())
+                            layer.pixmap_item.setScale(layer.pixmap_item.scale() * scale_ratio)
 
     def set_image_x(self, x_position):
         layer = self.layer_manager.get_layer_by_id(self.selected_layer_id)
 
         if layer is not None:
+            x_delta = x_position - layer.pixmap_item.x()
+
             if layer.pixmap_item is not None:
                 layer.pixmap_item.setX(x_position)
 
-                for layer in self.layer_manager.get_layers():
-                    if (
-                        layer.layer_id != self.selected_layer_id
-                        and layer.parent_id == self.selected_layer_id
-                        and layer.pixmap_item is not None
-                    ):
-                        layer.pixmap_item.setX(x_position)
+                if layer.locked:
+                    for layer in self.layer_manager.get_layers():
+                        if layer.layer_id != self.selected_layer_id and layer.locked:
+                            layer.pixmap_item.setX(layer.pixmap_item.x() + x_delta)
 
     def set_image_y(self, y_position):
         layer = self.layer_manager.get_layer_by_id(self.selected_layer_id)
 
-        if layer is not None:
-            if layer.pixmap_item is not None:
-                layer.pixmap_item.setY(y_position)
+        if layer is not None and layer.pixmap_item is not None:
+            y_delta = y_position - layer.pixmap_item.y()
 
+            layer.pixmap_item.setY(y_position)
+
+            if layer.locked:
                 for layer in self.layer_manager.get_layers():
-                    if (
-                        layer.layer_id != self.selected_layer_id
-                        and layer.parent_id == self.selected_layer_id
-                        and layer.pixmap_item is not None
-                    ):
-                        layer.pixmap_item.setY(y_position)
+                    if layer.layer_id != self.selected_layer_id and layer.locked:
+                        layer.pixmap_item.setY(layer.pixmap_item.y() + y_delta)
 
     def rotate_image(self, angle):
         layer = self.layer_manager.get_layer_by_id(self.selected_layer_id)
 
         if layer is not None:
             if layer.pixmap_item is not None:
+                rotation_delta = angle - layer.pixmap_item.rotation()
+
                 layer.pixmap_item.setTransformOriginPoint(layer.pixmap_item.boundingRect().center())
                 layer.pixmap_item.setRotation(angle)
 
-                for layer in self.layer_manager.get_layers():
-                    if (
-                        layer.layer_id != self.selected_layer_id
-                        and layer.parent_id == self.selected_layer_id
-                        and layer.pixmap_item is not None
-                    ):
-                        layer.pixmap_item.setTransformOriginPoint(layer.pixmap_item.boundingRect().center())
-                        layer.pixmap_item.setRotation(angle)
+                if layer.locked:
+                    for layer in self.layer_manager.get_layers():
+                        if layer.layer_id != self.selected_layer_id and layer.locked:
+                            layer.pixmap_item.setTransformOriginPoint(layer.pixmap_item.boundingRect().center())
+                            layer.pixmap_item.setRotation(layer.pixmap_item.rotation() + rotation_delta)
 
     def clear_and_restore(self):
         layer = self.layer_manager.get_layer_by_id(self.selected_layer_id)
 
         if layer is not None and layer.pixmap_item is not None:
-            layer.pixmap_item.setPixmap(layer.original_pixmap)
+            pixmap = QPixmap(layer.image_path)
+            layer.pixmap_item.setPixmap(pixmap)
             layer.pixmap_item.setScale(1)
             layer.pixmap_item.setX(0)
             layer.pixmap_item.setY(0)
@@ -233,33 +272,25 @@ class ImageEditor(QGraphicsView):
             self.image_moved.emit(0, 0)
             self.image_rotated.emit(0)
 
-            for layer in self.layer_manager.get_layers():
-                if (
-                    layer.layer_id != self.selected_layer_id
-                    and layer.parent_id == self.selected_layer_id
-                    and layer.pixmap_item is not None
-                ):
-                    layer.pixmap_item.setScale(1)
-                    layer.pixmap_item.setX(0)
-                    layer.pixmap_item.setY(0)
-                    layer.pixmap_item.setRotation(0)
-                    self.image_scaled.emit(1)
-                    self.image_moved.emit(0, 0)
-                    self.image_rotated.emit(0)
-
             self.image_changed.emit()
 
-    def delete_layer(self, layer_id: int = None):
+    def delete_layer(self):
         layer = self.layer_manager.get_layer_by_id(self.selected_layer_id)
 
         if layer is not None and layer.pixmap_item is not None:
+            if layer.image_path is not None and os.path.isfile(layer.image_path):
+                os.remove(layer.image_path)
+            if layer.original_path is not None and os.path.isfile(layer.original_path):
+                os.remove(layer.original_path)
+
             self.scene.removeItem(layer.pixmap_item)
-            self.layer_manager.delete_layer(layer_id)
+            self.layer_manager.delete_layer(layer.layer_id)
             del layer
 
     def clear_all(self):
         self.scene.clear()
         self.layer_manager.delete_all()
+        self.selected_layer_id = None
 
     def draw(self, point):
         layer = self.layer_manager.get_layer_by_id(self.selected_layer_id)
@@ -526,15 +557,6 @@ class ImageEditor(QGraphicsView):
             self.scene.removeItem(self.brush_preview)
             self.brush_preview = None
 
-    def dragMoveEvent(self, event):
-        pass
-
-    def dragEnterEvent(self, event):
-        pass
-
-    def dropEvent(self, event):
-        pass
-
     def reset_view(self):
         self.scale(1 / self.current_scale_factor, 1 / self.current_scale_factor)
         self.setSceneRect(self.sceneRect().translated(-self.total_translation.x(), -self.total_translation.y()))
@@ -549,3 +571,12 @@ class ImageEditor(QGraphicsView):
         painter.end()
 
         return pixmap
+
+    def dragMoveEvent(self, event):
+        pass
+
+    def dragEnterEvent(self, event):
+        pass
+
+    def dropEvent(self, event):
+        pass

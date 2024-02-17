@@ -1,5 +1,5 @@
-from PyQt6.QtWidgets import QGraphicsPixmapItem
 from PyQt6.QtGui import QPixmap
+from PyQt6.QtWidgets import QGraphicsPixmapItem
 
 from iartisanxl.modules.common.image.image_editor_layer import ImageEditorLayer
 
@@ -15,25 +15,30 @@ class LayerManager:
                 layer.order += 1
 
     def add_new_layer(
-        self,
-        pixmap: QPixmap,
-        original_pixmap: QGraphicsPixmapItem = None,
-        image_path: str = None,
-        parent_id: int = None,
-        name: str = None,
-        order: int = None,
+        self, pixmap: QPixmap, image_path: str = None, locked: bool = True, order: int = None
     ) -> ImageEditorLayer:
-        if original_pixmap is None:
-            original_pixmap = pixmap
-
         if order is not None:
             self.shift_order(order)
         else:
             order = max(layer.order for layer in self.layers) + 1 if self.layers else 0
 
         pixmap_item = QGraphicsPixmapItem(pixmap)
+        layer = ImageEditorLayer(pixmap_item=pixmap_item, image_path=image_path, locked=locked, order=order)
+
+        layer.layer_id = self.next_layer_id
+        self.layers.append(layer)
+        self.next_layer_id += 1
+
+        return layer
+
+    def reload_layer(self, pixmap: QPixmap, image_path: str, original_path: str, order: int):
+        pixmap_item = QGraphicsPixmapItem(pixmap)
         layer = ImageEditorLayer(
-            pixmap_item=pixmap_item, original_pixmap=original_pixmap, image_path=image_path, parent_id=parent_id, name=name, order=order
+            pixmap_item=pixmap_item,
+            image_path=image_path,
+            original_path=original_path,
+            locked=True,
+            order=order,
         )
 
         layer.layer_id = self.next_layer_id
@@ -46,10 +51,8 @@ class LayerManager:
         self,
         layer_id: int,
         pixmap: QPixmap = None,
-        original_pixmap: QPixmap = None,
         image_path: str = None,
-        parent_id: int = None,
-        name: str = None,
+        locked: bool = None,
         order: int = None,
     ) -> ImageEditorLayer:
         layer = self.get_layer_by_id(layer_id)
@@ -57,12 +60,8 @@ class LayerManager:
             if pixmap is not None:
                 layer.pixmap_item.setPixmap(pixmap)
 
-            if original_pixmap is not None:
-                layer.original_pixmap = original_pixmap
-
             layer.image_path = image_path if image_path is not None else layer.image_path
-            layer.parent_id = parent_id if parent_id is not None else layer.parent_id
-            layer.name = name if name is not None else layer.name
+            layer.locked = locked if locked is not None else layer.locked
 
             if order is not None and order != layer.order:
                 self.move_layer(layer_id, order)
@@ -88,9 +87,9 @@ class LayerManager:
         if layer is not None:
             self.layers.remove(layer)
 
-            for l in self.layers:
-                if l.order >= new_order:
-                    l.order += 1
+            for iter_layer in self.layers:
+                if iter_layer.order >= new_order:
+                    iter_layer.order += 1
 
             layer.order = new_order
             self.layers.append(layer)

@@ -1,10 +1,10 @@
-import os
-import math
 import io
+import math
+import os
 from datetime import datetime
 
 from PIL import Image
-from PyQt6.QtCore import pyqtSignal, QThread, QByteArray, QBuffer, QIODevice
+from PyQt6.QtCore import QBuffer, QByteArray, QIODevice, QThread, pyqtSignal
 from PyQt6.QtGui import QPixmap
 
 from iartisanxl.modules.common.image.image_data_object import ImageDataObject
@@ -14,7 +14,9 @@ class SaveMergedImageThread(QThread):
     error = pyqtSignal(str)
     image_done = pyqtSignal(str)
 
-    def __init__(self, image_width, image_height, image_data: ImageDataObject, drawings_pixmap: QPixmap, save_path: str = None):
+    def __init__(
+        self, image_width, image_height, image_data: ImageDataObject, drawings_pixmap: QPixmap, save_path: str = None
+    ):
         super().__init__()
 
         self.image_width = image_width
@@ -33,7 +35,9 @@ class SaveMergedImageThread(QThread):
             original_pil_image = original_pil_image.convert("RGBA")
 
         center = (width / 2, height / 2)
-        original_pil_image = original_pil_image.rotate(-self.image_data.image_rotation, Image.Resampling.BICUBIC, center=center, expand=True)
+        original_pil_image = original_pil_image.rotate(
+            -self.image_data.image_rotation, Image.Resampling.BICUBIC, center=center, expand=True
+        )
 
         new_width = round(width * self.image_data.image_scale)
         new_height = round(height * self.image_data.image_scale)

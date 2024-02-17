@@ -5,7 +5,7 @@ from PyQt6.QtGui import QImage, QPixmap
 
 
 def convert_pixmap_to_pillow(qpixmap: QPixmap) -> Image.Image:
-    qimage = qpixmap.toImage()
+    qimage = qpixmap.toImage().convertToFormat(QImage.Format.Format_RGBA8888)
 
     buffer = qimage.bits().asstring(qimage.sizeInBytes())
     img_size = qimage.size()
