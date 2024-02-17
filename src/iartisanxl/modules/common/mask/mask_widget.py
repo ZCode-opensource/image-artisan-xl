@@ -57,11 +57,11 @@ class MaskWidget(QWidget):
 
         self.image_copy_thread = None
 
-        self.image_layer_id = None
-        self.drawing_layer_id = None
-
         self.init_ui()
-        self.create_drawing_pixmap()
+
+        self.image_layer_id = self.image_editor.add_empty_layer()
+        self.drawing_layer_id = self.image_editor.add_empty_layer()
+        self.image_editor.selected_layer_id = self.drawing_layer_id
 
     def init_ui(self):
         main_layout = QVBoxLayout()
@@ -227,16 +227,9 @@ class MaskWidget(QWidget):
             pil_image.save(temp_image_path, format="PNG")
 
         self.reset_controls()
-        self.set_image_on_layer(temp_image_path, self.image_layer_id)
-
-    def set_image_on_layer(self, path: str, image_layer_id: int = None):
-        image_layer_id = self.image_editor.set_image(path, self.image_layer_id)
-
-        if self.image_layer_id is None:
-            self.image_editor.set_layer_order(image_layer_id, 0)
-            self.image_editor.layer_manager.edit_layer(self.drawing_layer_id, parent_id=image_layer_id)
-
-        self.image_layer_id = image_layer_id
+        self.image_editor.selected_layer_id = self.image_layer_id
+        self.image_editor.set_image(temp_image_path)
+        self.image_editor.selected_layer_id = self.drawing_layer_id
         self.image_loaded.emit()
 
     def reload_image_layer(self, image_path: str):
