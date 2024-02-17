@@ -1,9 +1,9 @@
-from PyQt6.QtWidgets import QFrame, QVBoxLayout, QHBoxLayout, QCheckBox
 from PyQt6.QtCore import Qt, pyqtSignal
+from PyQt6.QtWidgets import QCheckBox, QFrame, QHBoxLayout, QVBoxLayout
 from superqt import QLabeledDoubleSlider
 
-from iartisanxl.modules.common.lora.lora_data_object import LoraDataObject
 from iartisanxl.buttons.remove_button import RemoveButton
+from iartisanxl.modules.common.lora.lora_data_object import LoraDataObject
 
 
 class LoraAddedItem(QFrame):

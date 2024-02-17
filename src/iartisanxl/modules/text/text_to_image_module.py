@@ -1,39 +1,39 @@
-import random
 import logging
+import random
 
-from PIL import Image
 import torch
+from PIL import Image
+from PyQt6.QtCore import QSettings
+from PyQt6.QtGui import QImage, QPixmap
 
 # import tomesd
-from PyQt6.QtWidgets import QVBoxLayout, QHBoxLayout, QSpacerItem, QSizePolicy, QProgressBar
-from PyQt6.QtGui import QImage, QPixmap
-from PyQt6.QtCore import QSettings
+from PyQt6.QtWidgets import QHBoxLayout, QProgressBar, QSizePolicy, QSpacerItem, QVBoxLayout
 
-from iartisanxl.modules.base_module import BaseModule
-from iartisanxl.modules.common.drop_lightbox import DropLightBox
-from iartisanxl.modules.common.image_viewer_simple import ImageViewerSimple
-from iartisanxl.modules.common.prompt_window import PromptWindow
-from iartisanxl.modules.common.panels.generation_panel import GenerationPanel
-from iartisanxl.modules.common.lora.lora_panel import LoraPanel
-from iartisanxl.modules.common.controlnet.controlnet_panel import ControlNetPanel
-from iartisanxl.modules.common.t2i_adapter.t2i_panel import T2IPanel
-from iartisanxl.modules.common.ip_adapter.ip_adapter_panel import IPAdapterPanel
-from iartisanxl.menu.right_menu import RightMenu
-from iartisanxl.generation.image_generation_data import ImageGenerationData
-from iartisanxl.modules.common.lora.lora_list import LoraList
-from iartisanxl.modules.common.lora.lora_data_object import LoraDataObject
-from iartisanxl.modules.common.controlnet.controlnet_data_object import ControlNetDataObject
-from iartisanxl.modules.common.t2i_adapter.t2i_adapter_data_object import T2IAdapterDataObject
-from iartisanxl.modules.common.ip_adapter.ip_adapter_data_object import IPAdapterDataObject
-from iartisanxl.generation.adapter_list import AdapterList
-from iartisanxl.generation.model_data_object import ModelDataObject
-from iartisanxl.generation.vae_data_object import VaeDataObject
-from iartisanxl.generation.schedulers.schedulers import schedulers
 from iartisanxl.console.console_stream import ConsoleStream
+from iartisanxl.generation.adapter_list import AdapterList
+from iartisanxl.generation.image_generation_data import ImageGenerationData
+from iartisanxl.generation.model_data_object import ModelDataObject
+from iartisanxl.generation.schedulers.schedulers import schedulers
+from iartisanxl.generation.vae_data_object import VaeDataObject
+from iartisanxl.menu.right_menu import RightMenu
+from iartisanxl.modules.base_module import BaseModule
+from iartisanxl.modules.common.controlnet.controlnet_data import ControlNetData
+from iartisanxl.modules.common.controlnet.controlnet_panel import ControlNetPanel
+from iartisanxl.modules.common.drop_lightbox import DropLightBox
 from iartisanxl.modules.common.image.image_processor import ImageProcessor
-from iartisanxl.threads.taesd_loader_thread import TaesdLoaderThread
+from iartisanxl.modules.common.image_viewer_simple import ImageViewerSimple
+from iartisanxl.modules.common.ip_adapter.ip_adapter_data_object import IPAdapterDataObject
+from iartisanxl.modules.common.ip_adapter.ip_adapter_panel import IPAdapterPanel
+from iartisanxl.modules.common.lora.lora_data_object import LoraDataObject
+from iartisanxl.modules.common.lora.lora_list import LoraList
+from iartisanxl.modules.common.lora.lora_panel import LoraPanel
+from iartisanxl.modules.common.panels.generation_panel import GenerationPanel
+from iartisanxl.modules.common.prompt_window import PromptWindow
+from iartisanxl.modules.common.t2i_adapter.t2i_adapter_data_object import T2IAdapterDataObject
+from iartisanxl.modules.common.t2i_adapter.t2i_panel import T2IPanel
 from iartisanxl.threads.image_processor_thread import ImageProcesorThread
 from iartisanxl.threads.node_graph_thread import NodeGraphThread
+from iartisanxl.threads.taesd_loader_thread import TaesdLoaderThread
 
 
 class TextToImageModule(BaseModule):
@@ -66,7 +66,7 @@ class TextToImageModule(BaseModule):
         self.setAcceptDrops(True)
 
         self.lora_list = LoraList()
-        self.controlnet_list = AdapterList[ControlNetDataObject]()
+        self.controlnet_list = AdapterList[ControlNetData]()
         self.t2i_adapter_list = AdapterList[T2IAdapterDataObject]()
         self.ip_adapter_list = AdapterList[IPAdapterDataObject]()
         self.image_generation_data = ImageGenerationData(
@@ -266,7 +266,11 @@ class TextToImageModule(BaseModule):
 
             for lora in loras:
                 lora_object = LoraDataObject(
-                    name=lora["lora_name"], filename=lora["name"], version=lora["version"], path=lora["path"], weight=lora["scale"]
+                    name=lora["lora_name"],
+                    filename=lora["name"],
+                    version=lora["version"],
+                    path=lora["path"],
+                    weight=lora["scale"],
                 )
                 self.lora_list.add(lora_object)
 
@@ -421,7 +425,11 @@ class TextToImageModule(BaseModule):
 
             for lora in loras:
                 lora_object = LoraDataObject(
-                    name=lora["lora_name"], filename=lora["name"], version=lora["version"], path=lora["path"], weight=lora["scale"]
+                    name=lora["lora_name"],
+                    filename=lora["name"],
+                    version=lora["version"],
+                    path=lora["path"],
+                    weight=lora["scale"],
                 )
                 self.lora_list.add(lora_object)
 
