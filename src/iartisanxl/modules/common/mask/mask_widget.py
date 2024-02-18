@@ -250,8 +250,7 @@ class MaskWidget(QWidget):
             pixmap = self.image_viewer.pixmap_item.pixmap()
             pixmap.save(filepath)
 
-            self.reset_controls()
-            self.set_image_on_layer(filepath, self.image_layer_id)
+            self.set_image(filepath)
 
     def create_drawing_pixmap(self):
         pixmap = QPixmap(self.editor_width, self.editor_height)

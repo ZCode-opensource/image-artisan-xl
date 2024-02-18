@@ -271,7 +271,7 @@ class IPAdapterDialog(BaseDialog):
     def on_item_selected(self, image_data: ImageDataObject):
         self.image_widget.show_image(image_data.image_original)
         self.image_widget.set_image_parameters(
-            image_data.id,
+            image_data.image_id,
             image_data.image_scale,
             image_data.image_x_pos,
             image_data.image_y_pos,
@@ -293,7 +293,7 @@ class IPAdapterDialog(BaseDialog):
         if clear_view:
             self.image_widget.clear_image()
 
-        self.adapter.delete_image(image_data.id)
+        self.adapter.delete_image(image_data.image_id)
 
     def reset_ui(self):
         self.adapter = IPAdapterDataObject()

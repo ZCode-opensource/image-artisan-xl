@@ -1,4 +1,5 @@
 import copy
+
 import attr
 
 from iartisanxl.modules.common.image.image_data_object import ImageDataObject
@@ -18,7 +19,9 @@ class IPAdapterDataObject:
     mask_alpha_image: str = attr.ib(default=None)
     _original_images: list[ImageDataObject] = attr.Factory(list)
 
-    def add_image(self, image_filename, image_thumb, weight=1.0, image_scale=1.0, image_x_pos=0, image_y_pos=0, image_rotation=0):
+    def add_image(
+        self, image_filename, image_thumb, weight=1.0, image_scale=1.0, image_x_pos=0, image_y_pos=0, image_rotation=0
+    ):
         """Adds an image to the images list and generates a unique ID."""
 
         new_image = ImageDataObject(
@@ -38,7 +41,7 @@ class IPAdapterDataObject:
     def add_image_data_object(self, image_data_object: ImageDataObject):
         """Adds an image data object to the images list and generates a unique ID."""
 
-        image_data_object.id = self._generate_unique_id()
+        image_data_object.image_id = self._generate_unique_id()
         self.images.append(image_data_object)
 
     def delete_image(self, image_id):
@@ -46,7 +49,7 @@ class IPAdapterDataObject:
 
         images = self.images
         for image in images:
-            if image.id == image_id:
+            if image.image_id == image_id:
                 images.remove(image)
                 return  # Image found and removed
 
@@ -67,7 +70,7 @@ class IPAdapterDataObject:
         """
 
         for image in self.images:
-            if image.id == image_id:
+            if image.image_id == image_id:
                 return image
 
         return None
@@ -76,13 +79,17 @@ class IPAdapterDataObject:
         self._original_images = copy.deepcopy(self.images)
 
     def get_added_images(self):
-        original_ids = [image.id for image in self._original_images]
-        return [image for image in self.images if image.id not in original_ids]
+        original_ids = [image.image_id for image in self._original_images]
+        return [image for image in self.images if image.image_id not in original_ids]
 
     def get_removed_images(self):
-        current_ids = [image.id for image in self.images]
-        return [image for image in self._original_images if image.id not in current_ids]
+        current_ids = [image.image_id for image in self.images]
+        return [image for image in self._original_images if image.image_id not in current_ids]
 
     def get_modified_images(self):
-        original_images_dict = {image.id: image for image in self._original_images}
-        return [image for image in self.images if image.id in original_images_dict and image != original_images_dict[image.id]]
+        original_images_dict = {image.image_id: image for image in self._original_images}
+        return [
+            image
+            for image in self.images
+            if image.image_id in original_images_dict and image != original_images_dict[image.image_id]
+        ]

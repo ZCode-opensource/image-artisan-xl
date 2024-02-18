@@ -507,3 +507,8 @@ ImageWidget#ip_adapter_image_widget ImageEditor {
     background: #181b28;
     border: 1px solid #2f344e;
 }
+
+MaskWidget ImageEditor {
+    background: #181b28;
+    border: 1px solid #2f344e;
+}

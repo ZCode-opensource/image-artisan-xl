@@ -374,7 +374,7 @@ class NodeGraphThread(QThread):
                             noise_index=image.noise_type_index,
                         )
                         self.node_graph.add_node(
-                            ip_adapter_image_node, f"adapter_image_{ip_adapter_node.id}_{image.id}"
+                            ip_adapter_image_node, f"adapter_image_{ip_adapter_node.id}_{image.image_id}"
                         )
                         image.node_id = ip_adapter_image_node.id
                         ip_adapter_node.connect("image", ip_adapter_image_node, "image")
@@ -430,7 +430,7 @@ class NodeGraphThread(QThread):
                                 noise_index=image.noise_type_index,
                             )
                             self.node_graph.add_node(
-                                ip_adapter_image_node, f"adapter_image_{ip_adapter_node.id}_{image.id}"
+                                ip_adapter_image_node, f"adapter_image_{ip_adapter_node.id}_{image.image_id}"
                             )
                             image.node_id = ip_adapter_image_node.id
                             ip_adapter_node.connect("image", ip_adapter_image_node, "image")
