@@ -522,6 +522,8 @@ class ControlNetDialog(BaseDialog):
     def on_preprocessor_resolution_changed(self, value):
         self.controlnet.preprocessor_resolution = value
         self.preprocessor_resolution_value_label.setText(f"{int(value * 100)}%")
+        self.preprocessor_changed = True
+        self.preprocess_button.setEnabled(True)
 
         if self.preprocessor_combo.currentData() == "controlnet_canny_model" and self.canny_widget.isVisible():
             self.preprocess_canny()
