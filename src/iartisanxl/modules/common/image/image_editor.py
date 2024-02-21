@@ -45,6 +45,7 @@ class ImageEditor(QGraphicsView):
 
         self.setRenderHint(QPainter.RenderHint.Antialiasing)
         self.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform)
+        self.setRenderHint(QPainter.RenderHint.TextAntialiasing)
 
         self.layer_manager = LayerManager()
         self.selected_layer_id = 0
@@ -574,6 +575,9 @@ class ImageEditor(QGraphicsView):
         pixmap = QPixmap(self.sceneRect().size().toSize())
         pixmap.fill(QColor(0, 0, 0, 0))
         painter = QPainter(pixmap)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        painter.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform)
+        painter.setRenderHint(QPainter.RenderHint.TextAntialiasing)
         self.render(painter)
         painter.end()
 
