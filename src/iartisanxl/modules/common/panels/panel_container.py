@@ -1,4 +1,4 @@
-from PyQt6.QtWidgets import QWidget, QVBoxLayout, QSizePolicy
+from PyQt6.QtWidgets import QSizePolicy, QVBoxLayout, QWidget
 
 
 class PanelContainer(QWidget):

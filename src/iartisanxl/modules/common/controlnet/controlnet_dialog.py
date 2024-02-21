@@ -459,7 +459,7 @@ class ControlNetDialog(BaseDialog):
         # save preprocessor layer data
         self.controlnet.preprocessor_images.images = []
         for layer in self.preprocessor_widget.image_editor.get_all_layers():
-            layer_name = self.source_widget.layer_manager_widget.get_layer_name(layer.layer_id)
+            layer_name = self.preprocessor_widget.layer_manager_widget.get_layer_name(layer.layer_id)
             self.controlnet.preprocessor_images.add_image(
                 layer.original_path,
                 layer.image_path,
@@ -541,7 +541,7 @@ class ControlNetDialog(BaseDialog):
         self.on_preprocessor_changed()
 
         # restore source layers
-        self.source_widget.image_editor.delete_layer()
+        self.source_widget.image_editor.clear_all()
         self.source_widget.layer_manager_widget.list_widget.clear()
         for image in sorted(self.controlnet.source_images.images, key=lambda img: img.order):
             layer_id = self.source_widget.reload_image_layer(image.image_filename, image.image_original, image.order)
@@ -551,7 +551,7 @@ class ControlNetDialog(BaseDialog):
             self.source_widget.layer_manager_widget.add_layer(layer_id, image.layer_name)
 
         # restore preprocessor layers
-        self.preprocessor_widget.image_editor.delete_layer()
+        self.preprocessor_widget.image_editor.clear_all()
         self.preprocessor_widget.layer_manager_widget.list_widget.clear()
         for image in sorted(self.controlnet.preprocessor_images.images, key=lambda img: img.order):
             layer_id = self.preprocessor_widget.reload_image_layer(
