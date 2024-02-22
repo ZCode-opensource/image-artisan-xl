@@ -1,6 +1,5 @@
 import os
 from datetime import datetime
-from importlib.resources import files
 
 from PIL import Image
 from PyQt6.QtCore import QMimeData, Qt, QUrl, pyqtSignal
@@ -9,8 +8,6 @@ from PyQt6.QtWidgets import (
     QFileDialog,
     QHBoxLayout,
     QLabel,
-    QListWidget,
-    QListWidgetItem,
     QPushButton,
     QSizePolicy,
     QSpacerItem,
@@ -18,140 +15,16 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from iartisanxl.buttons.transparent_button import TransparentButton
 from iartisanxl.layouts.aspect_ratio_layout import AspectRatioLayout
 from iartisanxl.modules.common.image.image_data_object import ImageDataObject
 from iartisanxl.modules.common.image.image_editor import ImageEditor
 from iartisanxl.modules.common.image.image_editor_layer import ImageEditorLayer
+from iartisanxl.modules.common.image.layer_manager_widget import LayerManagerWidget
 from iartisanxl.modules.common.image_control import ImageControl
 from iartisanxl.modules.common.image_viewer_simple import ImageViewerSimple
 
 
-class LayerWidget(QWidget):
-    LINK_IMG = files("iartisanxl.theme.icons").joinpath("link.png")
-    UNLINK_IMG = files("iartisanxl.theme.icons").joinpath("unlink.png")
-
-    lock_changed = pyqtSignal(int, bool)
-
-    def __init__(self, layer_id: int, name: str):
-        super().__init__()
-
-        self.layer_id = layer_id
-        self.name = name
-        self.lock = True
-        self.lock_parent = None
-
-        self.init_ui()
-
-    def init_ui(self):
-        main_layout = QHBoxLayout()
-        main_layout.setContentsMargins(3, 0, 0, 0)
-        main_layout.setSpacing(0)
-
-        self.layer_name_label = QLabel(self.name)
-        main_layout.addWidget(self.layer_name_label, alignment=Qt.AlignmentFlag.AlignVCenter)
-
-        self.lock_button = TransparentButton(self.LINK_IMG, 25, 25)
-        self.lock_button.clicked.connect(self.on_lock_clicked)
-        main_layout.addWidget(self.lock_button, alignment=Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignRight)
-
-        self.setLayout(main_layout)
-
-    def on_lock_clicked(self):
-        self.lock = not self.lock
-        self.lock_button.icon = self.LINK_IMG if self.lock else self.UNLINK_IMG
-        self.lock_changed.emit(self.layer_id, self.lock)
-
-
-class LayerListWidget(QListWidget):
-    layers_reordered = pyqtSignal(list)
-
-    def __init__(self):
-        super().__init__()
-        self.setDragDropMode(self.DragDropMode.InternalMove)
-
-    def dropEvent(self, event):
-        pre_move_index = self.currentRow()
-        super().dropEvent(event)
-        post_move_index = self.currentRow()
-
-        if pre_move_index != post_move_index:
-            layers_list = []
-
-            for i in range(self.count()):
-                item = self.item(i)
-                widget = self.itemWidget(item)
-                inverted_index = self.count() - 1 - i
-                layers_list.append((widget.layer_id, inverted_index))
-
-            self.layers_reordered.emit(layers_list)
-
-
-class LayerManagerWidget(QWidget):
-    layer_selected = pyqtSignal(int)
-    layer_lock_changed = pyqtSignal(int, bool)
-    layers_reordered = pyqtSignal(list)
-
-    def __init__(self):
-        super().__init__()
-        self.setMaximumWidth(150)
-        self.init_ui()
-
-    def init_ui(self):
-        main_layout = QVBoxLayout()
-        main_layout.setContentsMargins(0, 0, 0, 0)
-        main_layout.setSpacing(2)
-
-        self.list_widget = LayerListWidget()
-        self.list_widget.currentItemChanged.connect(self.handle_item_selected)
-        self.list_widget.layers_reordered.connect(self.on_layers_reordered)
-        self.list_widget.setSpacing(0)
-        main_layout.addWidget(self.list_widget)
-
-        self.setLayout(main_layout)
-
-    def add_layer(self, layer_id: int, name: str):
-        item = QListWidgetItem()
-        widget = LayerWidget(layer_id, name)
-        item.setSizeHint(widget.sizeHint())
-        widget.lock_changed.connect(self.on_lock_changed)
-
-        self.list_widget.insertItem(0, item)
-        self.list_widget.setItemWidget(item, widget)
-        self.list_widget.setCurrentItem(item)
-
-    def delete_layer(self, layer_id: int):
-        for i in range(self.list_widget.count()):
-            item = self.list_widget.item(i)
-            widget = self.list_widget.itemWidget(item)
-            if widget.layer_id == layer_id:
-                self.list_widget.takeItem(i)
-                break
-
-    def get_layer_name(self, layer_id):
-        for i in range(self.list_widget.count()):
-            item = self.list_widget.item(i)
-            widget = self.list_widget.itemWidget(item)
-            if widget.layer_id == layer_id:
-                return widget.name
-        return None
-
-    def handle_item_selected(self, current_item, previous_item):
-        if current_item is not None:
-            widget = self.list_widget.itemWidget(current_item)
-            self.layer_selected.emit(widget.layer_id)
-
-    def on_lock_changed(self, layer_id: int, locked: bool):
-        self.layer_lock_changed.emit(layer_id, locked)
-
-    def on_layers_reordered(self, layers: list):
-        self.layers_reordered.emit(layers)
-
-
 class ImageWidget(QWidget):
-    ADD_LAYER_IMG = files("iartisanxl.theme.icons").joinpath("add_layer.png")
-    DELETE_LAYER_IMG = files("iartisanxl.theme.icons").joinpath("delete_layer.png")
-
     image_loaded = pyqtSignal()
     image_changed = pyqtSignal()
     widget_updated = pyqtSignal()
@@ -165,10 +38,8 @@ class ImageWidget(QWidget):
         editor_height: int,
         show_layer_manager: bool = False,
         layer_manager_to_right: bool = False,
-        *args,
-        **kwargs,
     ):
-        super().__init__(*args, **kwargs)
+        super().__init__()
 
         self.text = text
         self.image_viewer = image_viewer
@@ -224,27 +95,18 @@ class ImageWidget(QWidget):
         # set layer manager to the corresponding side
         if self.show_layer_manager:
             layers_layout = QVBoxLayout()
-            self.layer_manager_widget = LayerManagerWidget()
+            self.layer_manager_widget = LayerManagerWidget(self.layer_manager_to_right)
             self.layer_manager_widget.layer_selected.connect(self.on_layer_selected)
             self.layer_manager_widget.layers_reordered.connect(self.image_editor.edit_all_layers_order)
             self.layer_manager_widget.layer_lock_changed.connect(self.on_layer_lock_changed)
+            self.layer_manager_widget.add_layer_clicked.connect(self.on_add_layer_clicked)
+            self.layer_manager_widget.delete_layer_clicked.connect(self.on_delete_layer_clicked)
             layers_layout.addWidget(self.layer_manager_widget)
 
-            layers_controls_layout = QHBoxLayout()
-            self.add_layer_button = TransparentButton(self.ADD_LAYER_IMG, 28, 28)
-            self.add_layer_button.setObjectName("bottom_layer_control")
-            self.add_layer_button.clicked.connect(self.on_add_layer_clicked)
-            layers_controls_layout.addWidget(self.add_layer_button, alignment=Qt.AlignmentFlag.AlignLeft)
-            self.delete_layer_button = TransparentButton(self.DELETE_LAYER_IMG, 28, 28)
-            self.delete_layer_button.clicked.connect(self.on_delete_layer_clicked)
-            self.delete_layer_button.setObjectName("bottom_layer_control")
-            layers_controls_layout.addWidget(self.delete_layer_button, alignment=Qt.AlignmentFlag.AlignRight)
-            layers_layout.addLayout(layers_controls_layout)
-
             if self.layer_manager_to_right:
-                middle_layout.addLayout(layers_layout, 2)
+                middle_layout.addLayout(layers_layout, 0)
             else:
-                middle_layout.insertLayout(0, layers_layout, 2)
+                middle_layout.insertLayout(0, layers_layout, 0)
 
         main_layout.addLayout(middle_layout)
 

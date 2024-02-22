@@ -4,7 +4,7 @@ from PyQt6.QtWidgets import QFrame, QHBoxLayout, QSizePolicy, QVBoxLayout
 from iartisanxl.app.directories import DirectoriesObject
 from iartisanxl.app.event_bus import EventBus
 from iartisanxl.app.preferences import PreferencesObject
-from iartisanxl.buttons.expand_right_button import ExpandRightButton
+from iartisanxl.buttons.expand_contract_button import ExpandContractButton
 from iartisanxl.buttons.vertical_button import VerticalButton
 from iartisanxl.generation.adapter_list import AdapterList
 from iartisanxl.generation.image_generation_data import ImageGenerationData
@@ -87,7 +87,7 @@ class RightMenu(QFrame):
         self.main_layout.setSpacing(0)
 
         self.button_layout = QVBoxLayout()
-        self.expand_btn = ExpandRightButton()
+        self.expand_btn = ExpandContractButton(self.NORMAL_WIDTH, self.NORMAL_WIDTH, True)
         self.expand_btn.clicked.connect(self.on_expand_clicked)
         self.button_layout.addWidget(self.expand_btn)
 
@@ -138,13 +138,9 @@ class RightMenu(QFrame):
         self.expand()
 
     def animation_finished(self):
-        if self.expanded:
-            self.expanded = False
-        else:
-            self.expanded = True
+        self.expanded = not self.expanded
 
         self.module_options["right_menu_expanded"] = self.expanded
-
         self.animating = False
 
     def on_expand_clicked(self):

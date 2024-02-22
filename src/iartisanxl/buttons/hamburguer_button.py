@@ -1,18 +1,21 @@
 from importlib.resources import files
+
 from PyQt6 import QtGui
-from PyQt6.QtCore import Qt, QRectF
+from PyQt6.QtCore import QRectF, Qt
 
 from iartisanxl.buttons.base_menu_button import BaseMenuButton
 
 
-class ExpandButton(BaseMenuButton):
+class HamburguerButton(BaseMenuButton):
     CONTRACT_ICON = files("iartisanxl.theme.icons").joinpath("chevron_left.png")
     HAMBURGUER_ICON = files("iartisanxl.theme.icons").joinpath("hamburguer.png")
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, button_width: int = 40, button_height: int = 40):
+        super().__init__()
 
-        self.setMinimumWidth(40)
+        self.button_width = button_width
+        self.button_height = button_height
+        self.setMinimumWidth(self.button_width)
         self.extended = True
 
     def paintEvent(self, _event):
@@ -31,7 +34,7 @@ class ExpandButton(BaseMenuButton):
 
         icon.paint(
             painter,
-            QRectF(self.width() - 40, 2, 40, 40).toRect(),
+            QRectF(self.width() - self.button_width, 2, self.button_width, self.button_height).toRect(),
             Qt.AlignmentFlag.AlignCenter,
             state=QtGui.QIcon.State.Off,
         )
