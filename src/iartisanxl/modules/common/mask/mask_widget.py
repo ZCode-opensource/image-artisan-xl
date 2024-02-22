@@ -24,7 +24,7 @@ from iartisanxl.modules.common.image.image_data_object import ImageDataObject
 from iartisanxl.modules.common.image.image_editor import ImageEditor
 from iartisanxl.modules.common.image_control import ImageControl
 from iartisanxl.modules.common.image_viewer_simple import ImageViewerSimple
-from iartisanxl.threads.save_merged_image_thread import SaveMergedImageThread
+from iartisanxl.threads.image.save_merged_image_thread import SaveMergedImageThread
 
 
 class MaskWidget(QWidget):

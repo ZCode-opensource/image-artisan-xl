@@ -16,12 +16,11 @@ from PyQt6.QtWidgets import (
 )
 
 from iartisanxl.layouts.aspect_ratio_layout import AspectRatioLayout
-from iartisanxl.modules.common.image.image_data_object import ImageDataObject
 from iartisanxl.modules.common.image.image_editor import ImageEditor
-from iartisanxl.modules.common.image.image_editor_layer import ImageEditorLayer
 from iartisanxl.modules.common.image.layer_manager_widget import LayerManagerWidget
 from iartisanxl.modules.common.image_control import ImageControl
 from iartisanxl.modules.common.image_viewer_simple import ImageViewerSimple
+from iartisanxl.threads.image.save_merged_image_thread import SaveMergedImageThread
 
 
 class ImageWidget(QWidget):
@@ -86,7 +85,7 @@ class ImageWidget(QWidget):
         self.image_editor.image_rotated.connect(self.update_image_angle)
         self.image_editor.image_pasted.connect(self.set_image)
         self.image_editor.image_copy.connect(self.on_image_copy)
-        self.image_editor.image_save.connect(self.on_image_save)
+        self.image_editor.image_save.connect(self.on_image_copy)
         editor_layout = AspectRatioLayout(image_widget, self.aspect_ratio)
         editor_layout.addWidget(self.image_editor)
         image_widget.setLayout(editor_layout)
@@ -283,42 +282,25 @@ class ImageWidget(QWidget):
     def on_image_changed(self):
         self.image_changed.emit()
 
-    def on_image_copy(self):
-        layer = self.image_editor.get_selected_layer()
+    def on_image_copy(self, save_path: str = None):
+        layers = self.image_editor.get_all_layers()
 
-        if layer.image_path is not None:
-            self.prepare_copy_thread(layer)
-            self.image_copy_thread.image_done.connect(self.on_copy_image_done)
-            self.image_copy_thread.start()
+        if len(layers) == 0:
+            return
 
-    def prepare_copy_thread(self, layer: ImageEditorLayer, save_path: str = None):
-        image_data = ImageDataObject()
-        image_data.image_original = layer.image_path
-        image_data.image_scale = self.image_scale_control.value
-        image_data.image_x_pos = self.image_x_pos_control.value
-        image_data.image_y_pos = self.image_y_pos_control.value
-        image_data.image_rotation = self.image_rotation_control.value
-
-        # drawings_layer = self.image_editor.layer_manager.get_layer_by_id(self.drawing_layer_id)
-        # drawings_pixmap = drawings_layer.pixmap_item.pixmap()
-
-        # self.image_copy_thread = SaveMergedImageThread(
-        #     self.editor_width, self.editor_height, image_data, drawings_pixmap, save_path=save_path
-        # )
-        # self.image_copy_thread.finished.connect(self.on_copy_thread_finished)
+        self.image_copy_thread = SaveMergedImageThread(layers, self.editor_width, self.editor_height, save_path)
+        self.image_copy_thread.image_done.connect(self.on_copy_image_done)
+        self.image_copy_thread.start()
 
     def on_copy_thread_finished(self):
         self.image_copy_thread = None
 
     def on_copy_image_done(self, image_path):
-        clipboard = QGuiApplication.clipboard()
-        mime_data = QMimeData()
-        mime_data.setUrls([QUrl.fromLocalFile(image_path)])
-        clipboard.setMimeData(mime_data)
-
-    def on_image_save(self, image_path):
-        self.prepare_copy_thread(save_path=image_path)
-        self.image_copy_thread.start()
+        if image_path is not None:
+            clipboard = QGuiApplication.clipboard()
+            mime_data = QMimeData()
+            mime_data.setUrls([QUrl.fromLocalFile(image_path)])
+            clipboard.setMimeData(mime_data)
 
     def set_enabled(self, enabled: bool):
         self.image_editor.setEnabled(enabled)
