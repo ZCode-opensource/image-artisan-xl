@@ -1,14 +1,15 @@
 import os
 
 import torch
-from PyQt6.QtCore import QSettings, Qt
-from PyQt6.QtGui import QPixmap
-from PyQt6.QtWidgets import QComboBox, QHBoxLayout, QLabel, QPushButton, QSlider, QVBoxLayout, QWidget
+from PyQt6.QtCore import QEvent, QSettings, Qt
+from PyQt6.QtGui import QColor, QCursor, QGuiApplication, QPixmap
+from PyQt6.QtWidgets import QApplication, QComboBox, QHBoxLayout, QLabel, QPushButton, QSlider, QVBoxLayout, QWidget
 from superqt import QDoubleRangeSlider, QDoubleSlider
 
 from iartisanxl.app.event_bus import EventBus
 from iartisanxl.buttons.brush_erase_button import BrushEraseButton
 from iartisanxl.buttons.color_button import ColorButton
+from iartisanxl.buttons.eyedropper_button import EyeDropperButton
 from iartisanxl.modules.common.controlnet.controlnet_data import ControlNetData
 from iartisanxl.modules.common.dialogs.base_dialog import BaseDialog
 from iartisanxl.modules.common.image.image_widget import ImageWidget
@@ -164,8 +165,12 @@ class ControlNetDialog(BaseDialog):
         brush_erase_button = BrushEraseButton()
         brush_layout.addWidget(brush_erase_button)
 
-        color_button = ColorButton("Color:")
-        brush_layout.addWidget(color_button)
+        self.color_button = ColorButton("Color:")
+        brush_layout.addWidget(self.color_button, 0)
+
+        eyedropper_button = EyeDropperButton(25, 25)
+        eyedropper_button.clicked.connect(self.on_eyedropper_clicked)
+        brush_layout.addWidget(eyedropper_button, 0)
 
         content_layout.addLayout(brush_layout)
 
@@ -227,13 +232,13 @@ class ControlNetDialog(BaseDialog):
 
         self.main_layout.addLayout(content_layout)
 
-        color_button.color_changed.connect(self.source_widget.image_editor.set_brush_color)
+        self.color_button.color_changed.connect(self.source_widget.image_editor.set_brush_color)
         brush_size_slider.valueChanged.connect(self.source_widget.image_editor.set_brush_size)
         brush_size_slider.sliderReleased.connect(self.source_widget.image_editor.hide_brush_preview)
         brush_hardness_slider.valueChanged.connect(self.source_widget.image_editor.set_brush_hardness)
         brush_hardness_slider.sliderReleased.connect(self.source_widget.image_editor.hide_brush_preview)
 
-        color_button.color_changed.connect(self.preprocessor_widget.image_editor.set_brush_color)
+        self.color_button.color_changed.connect(self.preprocessor_widget.image_editor.set_brush_color)
         brush_size_slider.valueChanged.connect(self.preprocessor_widget.image_editor.set_brush_size)
         brush_size_slider.sliderReleased.connect(self.preprocessor_widget.image_editor.hide_brush_preview)
         brush_hardness_slider.valueChanged.connect(self.preprocessor_widget.image_editor.set_brush_hardness)
@@ -591,3 +596,22 @@ class ControlNetDialog(BaseDialog):
         self.preprocessor_changed = True
 
         self.add_button.setText("Add")
+
+    def on_eyedropper_clicked(self):
+        QApplication.instance().setOverrideCursor(Qt.CursorShape.CrossCursor)
+        QApplication.instance().installEventFilter(self)
+
+    def eventFilter(self, obj, event):
+        if (
+            QApplication.instance().overrideCursor() == Qt.CursorShape.CrossCursor
+            and event.type() == QEvent.Type.MouseButtonPress
+        ):
+            QApplication.instance().restoreOverrideCursor()
+            QApplication.instance().removeEventFilter(self)
+            x, y = QCursor.pos().x(), QCursor.pos().y()
+            pixmap = QGuiApplication.primaryScreen().grabWindow(0, x, y, 1, 1)
+            color = QColor(pixmap.toImage().pixel(0, 0))
+            rgb_color = (color.red(), color.green(), color.blue())
+            self.color_button.set_color(rgb_color)
+            return True
+        return super().eventFilter(obj, event)
