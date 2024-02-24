@@ -1,6 +1,6 @@
 import attr
 
-from iartisanxl.modules.common.image.image_data_object import ImageDataObject
+from iartisanxl.modules.common.t2i_adapter.t2i_adapter_image import T2IAdapterImage
 
 
 @attr.s(auto_attribs=True, slots=True)
@@ -10,8 +10,12 @@ class T2IAdapterDataObject:
     adapter_type: str = attr.ib(default=None)
     type_index: int = attr.ib(default=0)
     adapter_id: int = attr.ib(default=None)
-    source_image: ImageDataObject = attr.ib(default=attr.Factory(ImageDataObject))
-    preprocessor_image: ImageDataObject = attr.ib(default=attr.Factory(ImageDataObject))
+    source_images: T2IAdapterImage = attr.ib(default=attr.Factory(T2IAdapterImage))
+    source_image: str = attr.ib(default=None)
+    source_thumb: str = attr.ib(default=None)
+    preprocessor_images: T2IAdapterImage = attr.ib(default=attr.Factory(T2IAdapterImage))
+    preprocessor_image: str = attr.ib(default=None)
+    preprocessor_thumb: str = attr.ib(default=None)
     preprocessor_resolution: float = attr.ib(default=0.5)
     conditioning_scale: float = attr.ib(default=0.5)
     conditioning_factor: float = attr.ib(default=1.0)

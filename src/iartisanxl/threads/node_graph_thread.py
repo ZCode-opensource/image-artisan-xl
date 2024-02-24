@@ -268,7 +268,7 @@ class NodeGraphThread(QThread):
 
             if len(added_t2i_adapters) > 0:
                 for t2i_adapter in added_t2i_adapters:
-                    t2i_adapter_image_node = ImageLoadNode(path=t2i_adapter.preprocessor_image.image_filename)
+                    t2i_adapter_image_node = ImageLoadNode(path=t2i_adapter.preprocessor_image)
                     t2i_adapter_node = T2IAdapterNode(
                         t2i_adapter.type_index,
                         t2i_adapter.adapter_type,
@@ -311,7 +311,7 @@ class NodeGraphThread(QThread):
 
                     # update image
                     t2i_adapter_image_node = self.node_graph.get_node_by_name(f"adapter_image_{t2i_adapter.node_id}")
-                    t2i_adapter_image_node.update_path(t2i_adapter.preprocessor_image.image_filename)
+                    t2i_adapter_image_node.update_path(t2i_adapter.preprocessor_image)
 
         removed_t2i_adapters = self.t2i_adapter_list.get_removed()
         if len(removed_t2i_adapters) > 0:

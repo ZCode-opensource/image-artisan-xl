@@ -30,7 +30,7 @@ from iartisanxl.modules.common.lora.lora_panel import LoraPanel
 from iartisanxl.modules.common.panels.generation_panel import GenerationPanel
 from iartisanxl.modules.common.prompt_window import PromptWindow
 from iartisanxl.modules.common.t2i_adapter.t2i_adapter_data_object import T2IAdapterDataObject
-from iartisanxl.modules.common.t2i_adapter.t2i_panel import T2IPanel
+from iartisanxl.modules.common.t2i_adapter.t2i_adapter_panel import T2IAdapterPanel
 from iartisanxl.threads.image_processor_thread import ImageProcesorThread
 from iartisanxl.threads.node_graph_thread import NodeGraphThread
 from iartisanxl.threads.taesd_loader_thread import TaesdLoaderThread
@@ -167,7 +167,7 @@ class TextToImageModule(BaseModule):
         self.right_menu.add_panel("Generation", GenerationPanel, schedulers)
         self.right_menu.add_panel("LoRAs", LoraPanel)
         self.right_menu.add_panel("ControlNet", ControlNetPanel)
-        self.right_menu.add_panel("T2I Adapters", T2IPanel)
+        self.right_menu.add_panel("T2I Adapters", T2IAdapterPanel)
         self.right_menu.add_panel("IP Adapters", IPAdapterPanel)
 
         main_layout.setStretch(0, 16)

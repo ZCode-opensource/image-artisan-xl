@@ -10,12 +10,12 @@ from iartisanxl.app.event_bus import EventBus
 from iartisanxl.buttons.brush_erase_button import BrushEraseButton
 from iartisanxl.buttons.color_button import ColorButton
 from iartisanxl.buttons.eyedropper_button import EyeDropperButton
-from iartisanxl.modules.common.controlnet.controlnet_data import ControlNetData
 from iartisanxl.modules.common.dialogs.base_dialog import BaseDialog
 from iartisanxl.modules.common.image.image_widget import ImageWidget
+from iartisanxl.modules.common.t2i_adapter.t2i_adapter_data_object import T2IAdapterDataObject
 from iartisanxl.preprocessors.canny.canny_edges_detector import CannyEdgesDetector
-from iartisanxl.threads.controlnet.controlnet_preprocess_thread import ControlnetPreprocessThread
 from iartisanxl.threads.image.transformed_images_saver_thread import TransformedImagesSaverThread
+from iartisanxl.threads.t2i_preprocessor_thread import T2IPreprocessorThread
 from iartisanxl.utilities.image.converters import (
     convert_numpy_argb_to_bgr,
     convert_numpy_to_pixmap,
@@ -23,15 +23,15 @@ from iartisanxl.utilities.image.converters import (
 )
 
 
-class ControlNetDialog(BaseDialog):
+class T2IAdapterDialog(BaseDialog):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self.setWindowTitle("ControlNet")
+        self.setWindowTitle("T2I Adapters")
         self.setMinimumSize(500, 500)
 
         self.settings = QSettings("ZCode", "ImageArtisanXL")
-        self.settings.beginGroup("controlnet_dialog")
+        self.settings.beginGroup("t2i_adapters_dialog")
         geometry = self.settings.value("geometry")
         if geometry:
             self.restoreGeometry(geometry)
@@ -39,9 +39,9 @@ class ControlNetDialog(BaseDialog):
 
         self.event_bus = EventBus()
 
-        self.controlnet = ControlNetData()
-        self.controlnet.generation_width = self.image_generation_data.image_width
-        self.controlnet.generation_height = self.image_generation_data.image_height
+        self.t2i_adapter = T2IAdapterDataObject()
+        self.t2i_adapter.generation_width = self.image_generation_data.image_width
+        self.t2i_adapter.generation_height = self.image_generation_data.image_height
         self.error = False
 
         self.canny_detector = None
@@ -68,9 +68,11 @@ class ControlNetDialog(BaseDialog):
         control_layout.setSpacing(10)
 
         self.preprocessor_combo = QComboBox()
-        self.preprocessor_combo.addItem("Canny", "controlnet_canny_model")
-        self.preprocessor_combo.addItem("Depth", "controlnet_depth_model")
-        self.preprocessor_combo.addItem("Inpaint", "controlnet_inpaint_model")
+        self.preprocessor_combo.addItem("Canny", "t2i_adapter_canny_model")
+        self.preprocessor_combo.addItem("Depth", "t2i_adapter_depth_model")
+        self.preprocessor_combo.addItem("Line Art", "t2i_adapter_lineart_model")
+        self.preprocessor_combo.addItem("Sketch", "t2i_adapter_sketch_model")
+        self.preprocessor_combo.addItem("Recolor", "t2i-recolor")
         self.preprocessor_combo.currentIndexChanged.connect(self.on_preprocessor_changed)
         control_layout.addWidget(self.preprocessor_combo)
 
@@ -78,25 +80,21 @@ class ControlNetDialog(BaseDialog):
         control_layout.addWidget(conditioning_scale_label)
         self.conditioning_scale_slider = QDoubleSlider(Qt.Orientation.Horizontal)
         self.conditioning_scale_slider.setRange(0.0, 2.0)
-        self.conditioning_scale_slider.setValue(self.controlnet.conditioning_scale)
+        self.conditioning_scale_slider.setValue(self.t2i_adapter.conditioning_scale)
         self.conditioning_scale_slider.valueChanged.connect(self.on_conditional_scale_changed)
         control_layout.addWidget(self.conditioning_scale_slider)
-        self.conditioning_scale_value_label = QLabel(f"{self.controlnet.conditioning_scale}")
+        self.conditioning_scale_value_label = QLabel(f"{self.t2i_adapter.conditioning_scale}")
         control_layout.addWidget(self.conditioning_scale_value_label)
 
-        guidance_start_label = QLabel("Guidance Start:")
-        control_layout.addWidget(guidance_start_label)
-        self.guidance_start_value_label = QLabel(f"{int(self.controlnet.guidance_start * 100)}%")
-        control_layout.addWidget(self.guidance_start_value_label)
-        self.guidance_slider = QDoubleRangeSlider(Qt.Orientation.Horizontal)
-        self.guidance_slider.setRange(0, 1)
-        self.guidance_slider.setValue((self.controlnet.guidance_start, self.controlnet.guidance_end))
-        self.guidance_slider.valueChanged.connect(self.on_guidance_changed)
-        control_layout.addWidget(self.guidance_slider)
-        guidance_end_label = QLabel("End:")
-        control_layout.addWidget(guidance_end_label)
-        self.guidance_end_value_label = QLabel(f"{int(self.controlnet.guidance_end * 100)}%")
-        control_layout.addWidget(self.guidance_end_value_label)
+        conditioning_factor_label = QLabel("Conditioning Factor:")
+        control_layout.addWidget(conditioning_factor_label)
+        self.conditioning_factor_slider = QDoubleSlider(Qt.Orientation.Horizontal)
+        self.conditioning_factor_slider.setRange(0.0, 1.0)
+        self.conditioning_factor_slider.setValue(self.t2i_adapter.conditioning_factor)
+        self.conditioning_factor_slider.valueChanged.connect(self.on_conditioning_factor_changed)
+        control_layout.addWidget(self.conditioning_factor_slider)
+        self.conditioning_factor_value_label = QLabel(f"{int(self.t2i_adapter.conditioning_factor * 100)}%")
+        control_layout.addWidget(self.conditioning_factor_value_label)
         content_layout.addLayout(control_layout)
 
         second_control_layout = QHBoxLayout()
@@ -109,13 +107,13 @@ class ControlNetDialog(BaseDialog):
         canny_layout.setContentsMargins(0, 0, 0, 0)
         canny_label = QLabel("Canny tresholds:")
         canny_layout.addWidget(canny_label)
-        self.canny_low_label = QLabel(f"{self.controlnet.canny_low}")
+        self.canny_low_label = QLabel(f"{self.t2i_adapter.canny_low}")
         canny_layout.addWidget(self.canny_low_label)
         self.canny_slider = QDoubleRangeSlider(Qt.Orientation.Horizontal)
         self.canny_slider.setRange(0, 600)
-        self.canny_slider.setValue((self.controlnet.canny_low, self.controlnet.canny_high))
+        self.canny_slider.setValue((self.t2i_adapter.canny_low, self.t2i_adapter.canny_high))
         canny_layout.addWidget(self.canny_slider)
-        self.canny_high_label = QLabel(f"{self.controlnet.canny_high}")
+        self.canny_high_label = QLabel(f"{self.t2i_adapter.canny_high}")
         canny_layout.addWidget(self.canny_high_label)
         second_control_layout.addWidget(self.canny_widget)
 
@@ -132,14 +130,39 @@ class ControlNetDialog(BaseDialog):
         self.depth_widget.setVisible(False)
         second_control_layout.addWidget(self.depth_widget)
 
+        self.lineart_widget = QWidget()
+        lineart_layout = QHBoxLayout(self.lineart_widget)
+        lineart_layout.setSpacing(10)
+        lineart_layout.setContentsMargins(0, 0, 0, 0)
+        self.lineart_type_combo = QComboBox()
+        self.lineart_type_combo.addItem("Anime", "anime_style")
+        self.lineart_type_combo.addItem("Open Sketch", "opensketch_style")
+        self.lineart_type_combo.addItem("Countour", "contour_style")
+        self.lineart_type_combo.currentIndexChanged.connect(self.on_preprocessor_type_changed)
+        lineart_layout.addWidget(self.lineart_type_combo)
+        self.lineart_widget.setVisible(False)
+        second_control_layout.addWidget(self.lineart_widget)
+
+        self.sketch_widget = QWidget()
+        sketch_layout = QHBoxLayout(self.sketch_widget)
+        sketch_layout.setSpacing(10)
+        sketch_layout.setContentsMargins(0, 0, 0, 0)
+        self.sketch_type_combo = QComboBox()
+        self.sketch_type_combo.addItem("Pidinet Table 5", "table5")
+        self.sketch_type_combo.addItem("Pidinet Table 7", "table7")
+        self.sketch_type_combo.currentIndexChanged.connect(self.on_preprocessor_type_changed)
+        sketch_layout.addWidget(self.sketch_type_combo)
+        self.sketch_widget.setVisible(False)
+        second_control_layout.addWidget(self.sketch_widget)
+
         preprocessor_resolution_label = QLabel("Preprocessor resolution:")
         second_control_layout.addWidget(preprocessor_resolution_label)
         self.preprocessor_resolution_slider = QDoubleSlider(Qt.Orientation.Horizontal)
         self.preprocessor_resolution_slider.setRange(0.05, 1.0)
-        self.preprocessor_resolution_slider.setValue(self.controlnet.preprocessor_resolution)
+        self.preprocessor_resolution_slider.setValue(self.t2i_adapter.preprocessor_resolution)
         self.preprocessor_resolution_slider.valueChanged.connect(self.on_preprocessor_resolution_changed)
         second_control_layout.addWidget(self.preprocessor_resolution_slider)
-        self.preprocessor_resolution_value_label = QLabel(f"{int(self.controlnet.preprocessor_resolution * 100)}%")
+        self.preprocessor_resolution_value_label = QLabel(f"{int(self.t2i_adapter.preprocessor_resolution * 100)}%")
         second_control_layout.addWidget(self.preprocessor_resolution_value_label)
 
         content_layout.addLayout(second_control_layout)
@@ -166,7 +189,7 @@ class ControlNetDialog(BaseDialog):
         brush_layout.addWidget(brush_erase_button)
 
         self.color_button = ColorButton("Color:")
-        brush_layout.addWidget(self.color_button, 0)
+        brush_layout.addWidget(self.color_button)
 
         eyedropper_button = EyeDropperButton(25, 25)
         eyedropper_button.clicked.connect(self.on_eyedropper_clicked)
@@ -181,10 +204,10 @@ class ControlNetDialog(BaseDialog):
         source_layout = QVBoxLayout()
         self.source_widget = ImageWidget(
             "Source image",
-            "cn_source",
+            "t2i_source",
             self.image_viewer,
-            self.controlnet.generation_width,
-            self.controlnet.generation_height,
+            self.t2i_adapter.generation_width,
+            self.t2i_adapter.generation_height,
             show_layer_manager=True,
         )
         self.source_widget.image_loaded.connect(lambda: self.on_image_loaded(0))
@@ -201,10 +224,10 @@ class ControlNetDialog(BaseDialog):
         preprocessor_layout = QVBoxLayout()
         self.preprocessor_widget = ImageWidget(
             "Preprocessor",
-            "cn_preprocessor",
+            "t2i_preprocessor",
             self.image_viewer,
-            self.controlnet.generation_width,
-            self.controlnet.generation_height,
+            self.t2i_adapter.generation_width,
+            self.t2i_adapter.generation_height,
             show_layer_manager=True,
             layer_manager_to_right=True,
         )
@@ -249,7 +272,7 @@ class ControlNetDialog(BaseDialog):
         brush_erase_button.brush_selected.connect(self.preprocessor_widget.set_erase_mode)
 
     def closeEvent(self, event):
-        self.settings.beginGroup("controlnet_dialog")
+        self.settings.beginGroup("t2i_adapters_dialog")
         self.settings.setValue("geometry", self.saveGeometry())
         self.settings.endGroup()
 
@@ -280,9 +303,9 @@ class ControlNetDialog(BaseDialog):
             if self.source_changed:
                 self.image_prepare_thread = TransformedImagesSaverThread(
                     layers,
-                    self.controlnet.generation_width,
-                    self.controlnet.generation_height,
-                    prefix="cn_source_",
+                    self.t2i_adapter.generation_width,
+                    self.t2i_adapter.generation_height,
+                    prefix="t2i_source_",
                 )
                 self.image_prepare_thread.merge_finished.connect(self.on_source_prepared)
                 self.image_prepare_thread.finished.connect(self.on_image_prepare_thread_finished)
@@ -308,13 +331,13 @@ class ControlNetDialog(BaseDialog):
     def on_image_loaded(self, image_type: int):
         # types: 0 - source, 1 - preprocessor
         if image_type == 0:
-            if self.controlnet.source_image is not None and os.path.isfile(self.controlnet.source_image):
-                os.remove(self.controlnet.source_image)
-                self.controlnet.source_image = None
+            if self.t2i_adapter.source_image is not None and os.path.isfile(self.t2i_adapter.source_image):
+                os.remove(self.t2i_adapter.source_image)
+                self.t2i_adapter.source_image = None
 
-            if self.controlnet.source_thumb is not None and os.path.isfile(self.controlnet.source_thumb):
-                os.remove(self.controlnet.source_thumb)
-                self.controlnet.source_thumb = None
+            if self.t2i_adapter.source_thumb is not None and os.path.isfile(self.t2i_adapter.source_thumb):
+                os.remove(self.t2i_adapter.source_thumb)
+                self.t2i_adapter.source_thumb = None
 
             self.source_changed = True
             self.source_widget.set_enabled(True)
@@ -323,14 +346,14 @@ class ControlNetDialog(BaseDialog):
             self.preprocessor_widget.set_enabled(True)
 
     def on_source_prepared(self, image_path: str, thumbnail_path: str):
-        if self.controlnet.source_image is not None and os.path.isfile(self.controlnet.source_image):
-            os.remove(self.controlnet.source_image)
+        if self.t2i_adapter.source_image is not None and os.path.isfile(self.t2i_adapter.source_image):
+            os.remove(self.t2i_adapter.source_image)
 
-        if self.controlnet.source_thumb is not None and os.path.isfile(self.controlnet.source_thumb):
-            os.remove(self.controlnet.source_thumb)
+        if self.t2i_adapter.source_thumb is not None and os.path.isfile(self.t2i_adapter.source_thumb):
+            os.remove(self.t2i_adapter.source_thumb)
 
-        self.controlnet.source_image = image_path
-        self.controlnet.source_thumb = thumbnail_path
+        self.t2i_adapter.source_image = image_path
+        self.t2i_adapter.source_thumb = thumbnail_path
 
         self.preprocess()
 
@@ -339,21 +362,25 @@ class ControlNetDialog(BaseDialog):
         self.image_prepare_thread = None
 
     def preprocess(self):
-        if self.controlnet.source_image is None:
+        if self.t2i_adapter.source_image is None:
             self.show_error("Couldn't find a source image to preprocess.")
             self.preprocess_button.setText("Preprocess")
             self.preprocess_button.setDisabled(False)
             return
 
-        self.controlnet.adapter_name = self.preprocessor_combo.currentText()
-        self.controlnet.adapter_type = self.preprocessor_combo.currentData()
-        self.controlnet.type_index = self.preprocessor_combo.currentIndex()
-        self.controlnet.depth_type = self.depth_type_combo.currentData()
-        self.controlnet.depth_type_index = self.depth_type_combo.currentIndex()
+        self.t2i_adapter.adapter_name = self.preprocessor_combo.currentText()
+        self.t2i_adapter.adapter_type = self.preprocessor_combo.currentData()
+        self.t2i_adapter.type_index = self.preprocessor_combo.currentIndex()
+        self.t2i_adapter.depth_type = self.depth_type_combo.currentData()
+        self.t2i_adapter.depth_type_index = self.depth_type_combo.currentIndex()
+        self.t2i_adapter.lineart_type = self.lineart_type_combo.currentData()
+        self.t2i_adapter.lineart_type_index = self.lineart_type_combo.currentIndex()
+        self.t2i_adapter.sketch_type = self.sketch_type_combo.currentData()
+        self.t2i_adapter.sketch_type_index = self.sketch_type_combo.currentIndex()
 
         layer = self.preprocessor_widget.image_editor.get_selected_layer()
 
-        self.preprocessor_thread = ControlnetPreprocessThread(self.controlnet, layer, prefix="cn_preprocessor_")
+        self.preprocessor_thread = T2IPreprocessorThread(self.t2i_adapter, layer, prefix="t2i_preprocessor_")
         self.preprocessor_thread.preprocessor_finished.connect(self.on_preprocessed)
         self.preprocessor_thread.start()
 
@@ -362,7 +389,7 @@ class ControlNetDialog(BaseDialog):
             preprocesor_pixmap, self.preprocessor_widget.image_editor.selected_layer_id, image_path
         )
 
-        if self.preprocessor_combo.currentData() == "controlnet_canny_model":
+        if self.preprocessor_combo.currentData() == "t2i_adapter_canny_model":
             self.canny_widget.setVisible(True)
 
         self.preprocessor_widget.set_enabled(True)
@@ -377,8 +404,8 @@ class ControlNetDialog(BaseDialog):
         numpy_image = convert_numpy_argb_to_bgr(numpy_image)
 
         preprocessor_resolution = (
-            int(self.controlnet.generation_width * self.preprocessor_resolution_slider.value()),
-            int(self.controlnet.generation_height * self.preprocessor_resolution_slider.value()),
+            int(self.t2i_adapter.generation_width * self.preprocessor_resolution_slider.value()),
+            int(self.t2i_adapter.generation_height * self.preprocessor_resolution_slider.value()),
         )
 
         canny_values = self.canny_slider.value()
@@ -406,7 +433,7 @@ class ControlNetDialog(BaseDialog):
         if not self.preprocessor_changed:
             return
 
-        self.set_adding_controlnet()
+        self.set_adding_t2i_adapter()
 
         layers = self.preprocessor_widget.image_editor.get_all_layers()
 
@@ -418,37 +445,37 @@ class ControlNetDialog(BaseDialog):
 
         self.image_prepare_thread = TransformedImagesSaverThread(
             layers,
-            self.controlnet.generation_width,
-            self.controlnet.generation_height,
-            prefix="cn_preprocessor_",
+            self.t2i_adapter.generation_width,
+            self.t2i_adapter.generation_height,
+            prefix="t2i_preprocessor_",
         )
         self.image_prepare_thread.merge_finished.connect(self.on_preprocessor_prepared)
         self.image_prepare_thread.finished.connect(self.on_image_prepare_thread_finished)
         self.image_prepare_thread.error.connect(self.on_error)
         self.image_prepare_thread.start()
 
-    def set_adding_controlnet(self):
+    def set_adding_t2i_adapter(self):
         self.processing = True
 
-        self.add_button.setText("Adding controlnet...")
+        self.add_button.setText("Adding T2I Adapter...")
         self.preprocess_button.setEnabled(False)
         self.add_button.setEnabled(False)
 
     def on_preprocessor_prepared(self, image_path: str, thumbnail_path: str):
-        if self.controlnet.preprocessor_image is not None and os.path.isfile(self.controlnet.preprocessor_image):
-            os.remove(self.controlnet.preprocessor_image)
+        if self.t2i_adapter.preprocessor_image is not None and os.path.isfile(self.t2i_adapter.preprocessor_image):
+            os.remove(self.t2i_adapter.preprocessor_image)
 
-        if self.controlnet.preprocessor_thumb is not None and os.path.isfile(self.controlnet.preprocessor_thumb):
-            os.remove(self.controlnet.preprocessor_thumb)
+        if self.t2i_adapter.preprocessor_thumb is not None and os.path.isfile(self.t2i_adapter.preprocessor_thumb):
+            os.remove(self.t2i_adapter.preprocessor_thumb)
 
-        self.controlnet.preprocessor_image = image_path
-        self.controlnet.preprocessor_thumb = thumbnail_path
+        self.t2i_adapter.preprocessor_image = image_path
+        self.t2i_adapter.preprocessor_thumb = thumbnail_path
 
         # save source layer data
-        self.controlnet.source_images.images = []
+        self.t2i_adapter.source_images.images = []
         for layer in self.source_widget.image_editor.get_all_layers():
             layer_name = self.source_widget.layer_manager_widget.get_layer_name(layer.layer_id)
-            self.controlnet.source_images.add_image(
+            self.t2i_adapter.source_images.add_image(
                 layer.original_path,
                 layer.image_path,
                 layer.pixmap_item.scale(),
@@ -460,10 +487,10 @@ class ControlNetDialog(BaseDialog):
             )
 
         # save preprocessor layer data
-        self.controlnet.preprocessor_images.images = []
+        self.t2i_adapter.preprocessor_images.images = []
         for layer in self.preprocessor_widget.image_editor.get_all_layers():
             layer_name = self.preprocessor_widget.layer_manager_widget.get_layer_name(layer.layer_id)
-            self.controlnet.preprocessor_images.add_image(
+            self.t2i_adapter.preprocessor_images.add_image(
                 layer.original_path,
                 layer.image_path,
                 layer.pixmap_item.scale(),
@@ -479,27 +506,25 @@ class ControlNetDialog(BaseDialog):
         self.preprocessor_changed = False
         self.add_button.setText("Update")
 
-        if self.controlnet.adapter_id is None:
-            self.event_bus.publish("controlnet", {"action": "add", "controlnet": self.controlnet})
+        if self.t2i_adapter.adapter_id is None:
+            self.event_bus.publish("t2i_adapters", {"action": "add", "t2i_adapter": self.t2i_adapter})
             self.add_button.setText("Update")
         else:
-            self.event_bus.publish("controlnet", {"action": "update", "controlnet": self.controlnet})
+            self.event_bus.publish("t2i_adapters", {"action": "update", "t2i_adapter": self.t2i_adapter})
 
     def on_conditional_scale_changed(self, value):
-        self.controlnet.conditioning_scale = value
+        self.t2i_adapter.conditioning_scale = value
         self.conditioning_scale_value_label.setText(f"{value:.2f}")
 
-    def on_guidance_changed(self, values):
-        self.controlnet.guidance_start = round(values[0], 2)
-        self.controlnet.guidance_end = round(values[1], 2)
-        self.guidance_start_value_label.setText(f"{int(self.controlnet.guidance_start * 100)}%")
-        self.guidance_end_value_label.setText(f"{int(self.controlnet.guidance_end * 100)}%")
+    def on_conditioning_factor_changed(self, value):
+        self.t2i_adapter.conditioning_factor = value
+        self.conditioning_factor_value_label.setText(f"{int(value * 100)}%")
 
     def on_canny_threshold_changed(self, values):
-        self.controlnet.canny_low = int(values[0])
-        self.controlnet.canny_high = int(values[1])
-        self.canny_low_label.setText(f"{self.controlnet.canny_low}")
-        self.canny_high_label.setText(f"{self.controlnet.canny_high}")
+        self.t2i_adapter.canny_low = int(values[0])
+        self.t2i_adapter.canny_high = int(values[1])
+        self.canny_low_label.setText(f"{self.t2i_adapter.canny_low}")
+        self.canny_high_label.setText(f"{self.t2i_adapter.canny_high}")
 
         self.preprocess_canny()
 
@@ -508,12 +533,28 @@ class ControlNetDialog(BaseDialog):
             if not self.source_changed:
                 self.canny_widget.setVisible(True)
             self.depth_widget.setVisible(False)
+            self.lineart_widget.setVisible(False)
+            self.sketch_widget.setVisible(False)
         elif self.preprocessor_combo.currentIndex() == 1:
             self.canny_widget.setVisible(False)
             self.depth_widget.setVisible(True)
+            self.lineart_widget.setVisible(False)
+            self.sketch_widget.setVisible(False)
+        elif self.preprocessor_combo.currentIndex() == 2:
+            self.canny_widget.setVisible(False)
+            self.depth_widget.setVisible(False)
+            self.lineart_widget.setVisible(True)
+            self.sketch_widget.setVisible(False)
+        elif self.preprocessor_combo.currentIndex() == 3:
+            self.canny_widget.setVisible(False)
+            self.depth_widget.setVisible(False)
+            self.lineart_widget.setVisible(False)
+            self.sketch_widget.setVisible(True)
         else:
             self.canny_widget.setVisible(False)
             self.depth_widget.setVisible(False)
+            self.lineart_widget.setVisible(False)
+            self.sketch_widget.setVisible(False)
 
         self.preprocessor_changed = True
         self.preprocess_button.setEnabled(True)
@@ -523,32 +564,34 @@ class ControlNetDialog(BaseDialog):
         self.preprocess_button.setEnabled(True)
 
     def on_preprocessor_resolution_changed(self, value):
-        self.controlnet.preprocessor_resolution = value
+        self.t2i_adapter.preprocessor_resolution = value
         self.preprocessor_resolution_value_label.setText(f"{int(value * 100)}%")
         self.preprocessor_changed = True
         self.preprocess_button.setEnabled(True)
 
-        if self.preprocessor_combo.currentData() == "controlnet_canny_model" and self.canny_widget.isVisible():
+        if self.preprocessor_combo.currentData() == "t2i_adapter_canny_model" and self.canny_widget.isVisible():
             self.preprocess_canny()
 
     def update_ui(self):
-        self.conditioning_scale_slider.setValue(self.controlnet.conditioning_scale)
-        self.conditioning_scale_value_label.setText(f"{self.controlnet.conditioning_scale:.2f}")
-        self.guidance_slider.setValue((self.controlnet.guidance_start, self.controlnet.guidance_end))
+        self.conditioning_scale_slider.setValue(self.t2i_adapter.conditioning_scale)
+        self.conditioning_scale_value_label.setText(f"{self.t2i_adapter.conditioning_scale:.2f}")
+        self.conditioning_factor_slider.setValue(self.t2i_adapter.conditioning_factor)
 
-        self.preprocessor_combo.setCurrentIndex(self.controlnet.type_index)
+        self.preprocessor_combo.setCurrentIndex(self.t2i_adapter.type_index)
 
         self.canny_slider.valueChanged.disconnect(self.on_canny_threshold_changed)
-        self.canny_slider.setValue((self.controlnet.canny_low, self.controlnet.canny_high))
+        self.canny_slider.setValue((self.t2i_adapter.canny_low, self.t2i_adapter.canny_high))
         self.canny_slider.valueChanged.connect(self.on_canny_threshold_changed)
 
-        self.depth_type_combo.setCurrentIndex(self.controlnet.depth_type_index)
+        self.depth_type_combo.setCurrentIndex(self.t2i_adapter.depth_type_index)
+        self.lineart_type_combo.setCurrentIndex(self.t2i_adapter.lineart_type_index)
+        self.sketch_type_combo.setCurrentIndex(self.t2i_adapter.sketch_type_index)
         self.on_preprocessor_changed()
 
         # restore source layers
         self.source_widget.image_editor.clear_all()
         self.source_widget.layer_manager_widget.list_widget.clear()
-        for image in sorted(self.controlnet.source_images.images, key=lambda img: img.order):
+        for image in sorted(self.t2i_adapter.source_images.images, key=lambda img: img.order):
             layer_id = self.source_widget.reload_image_layer(image.image_filename, image.image_original, image.order)
             self.source_widget.set_layer_parameters(
                 layer_id, image.image_scale, image.image_x_pos, image.image_y_pos, image.image_rotation
@@ -558,7 +601,7 @@ class ControlNetDialog(BaseDialog):
         # restore preprocessor layers
         self.preprocessor_widget.image_editor.clear_all()
         self.preprocessor_widget.layer_manager_widget.list_widget.clear()
-        for image in sorted(self.controlnet.preprocessor_images.images, key=lambda img: img.order):
+        for image in sorted(self.t2i_adapter.preprocessor_images.images, key=lambda img: img.order):
             layer_id = self.preprocessor_widget.reload_image_layer(
                 image.image_filename, image.image_original, image.order
             )
@@ -567,10 +610,9 @@ class ControlNetDialog(BaseDialog):
             )
             self.preprocessor_widget.layer_manager_widget.add_layer(layer_id, image.layer_name)
 
-        if self.controlnet.adapter_id is not None:
+        if self.t2i_adapter.adapter_id is not None:
             self.add_button.setText("Update")
 
-        self.source_changed = False
         self.preprocessor_changed = False
         self.source_widget.set_enabled(True)
         self.preprocessor_widget.set_enabled(True)
@@ -579,15 +621,19 @@ class ControlNetDialog(BaseDialog):
         self.source_widget.clear_image()
         self.preprocessor_widget.clear_image()
 
-        self.controlnet = ControlNetData()
-        self.controlnet.generation_width = self.image_generation_data.image_width
-        self.controlnet.generation_height = self.image_generation_data.image_height
+        self.t2i_adapter = T2IAdapterDataObject()
+        self.t2i_adapter.generation_width = self.image_generation_data.image_width
+        self.t2i_adapter.generation_height = self.image_generation_data.image_height
 
-        self.conditioning_scale_slider.setValue(self.controlnet.conditioning_scale)
-        self.conditioning_scale_value_label.setText(f"{self.controlnet.conditioning_scale:.2f}")
-        self.guidance_slider.setValue((self.controlnet.guidance_start, self.controlnet.guidance_end))
-        self.canny_slider.setValue((self.controlnet.canny_low, self.controlnet.canny_high))
-        self.preprocessor_combo.setCurrentIndex(self.controlnet.type_index)
+        self.conditioning_scale_slider.setValue(self.t2i_adapter.conditioning_scale)
+        self.conditioning_scale_value_label.setText(f"{self.t2i_adapter.conditioning_scale:.2f}")
+        self.conditioning_factor_slider.setValue(self.t2i_adapter.conditioning_factor)
+
+        self.preprocessor_combo.setCurrentIndex(self.t2i_adapter.type_index)
+        self.canny_slider.setValue((self.t2i_adapter.canny_low, self.t2i_adapter.canny_high))
+        self.depth_type_combo.setCurrentIndex(self.t2i_adapter.depth_type_index)
+        self.lineart_type_combo.setCurrentIndex(self.t2i_adapter.lineart_type_index)
+        self.sketch_type_combo.setCurrentIndex(self.t2i_adapter.sketch_type_index)
         self.on_preprocessor_changed()
 
         self.source_changed = True

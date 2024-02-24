@@ -18,8 +18,8 @@ from iartisanxl.modules.common.lora.lora_list import LoraList
 from iartisanxl.modules.common.lora.lora_panel import LoraPanel
 from iartisanxl.modules.common.panels.panel_container import PanelContainer
 from iartisanxl.modules.common.prompt_window import PromptWindow
-from iartisanxl.modules.common.t2i_adapter.adapter_added_item import AdapterAddedItem
-from iartisanxl.modules.common.t2i_adapter.t2i_panel import T2IPanel
+from iartisanxl.modules.common.t2i_adapter.t2i_adapter_added_item import T2IAdapterAddedItem
+from iartisanxl.modules.common.t2i_adapter.t2i_adapter_panel import T2IAdapterPanel
 
 
 class RightMenu(QFrame):
@@ -223,22 +223,22 @@ class RightMenu(QFrame):
         if data["action"] == "add":
             self.t2i_adapter_list.add(data["t2i_adapter"])
 
-            if isinstance(self.current_panel, T2IPanel):
-                adapter_widget = AdapterAddedItem(data["t2i_adapter"])
+            if isinstance(self.current_panel, T2IAdapterPanel):
+                adapter_widget = T2IAdapterAddedItem(data["t2i_adapter"])
                 adapter_widget.update_ui()
                 adapter_widget.remove_clicked.connect(self.current_panel.on_remove_clicked)
                 adapter_widget.edit_clicked.connect(self.current_panel.on_edit_clicked)
                 adapter_widget.enabled.connect(self.current_panel.on_enabled)
                 self.current_panel.adapters_layout.addWidget(adapter_widget)
         elif data["action"] == "update":
-            adapter = data["t2i_adapter"]
-            self.t2i_adapter_list.update_with_adapter_data_object(adapter)
+            t2i_adapter = data["t2i_adapter"]
+            self.t2i_adapter_list.update_with_adapter_data_object(t2i_adapter)
 
-            if isinstance(self.current_panel, T2IPanel):
+            if isinstance(self.current_panel, T2IAdapterPanel):
                 for i in range(self.current_panel.adapters_layout.count()):
                     widget = self.current_panel.adapters_layout.itemAt(i).widget()
-                    if widget.adapter.adapter_id == adapter.adapter_id:
-                        widget.adapter = adapter
+                    if widget.t2i_adapter.adapter_id == t2i_adapter.adapter_id:
+                        widget.t2i_adapter = t2i_adapter
                         widget.update_ui()
                         break
 
