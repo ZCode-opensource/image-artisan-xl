@@ -226,17 +226,16 @@ class ImageWidget(QWidget):
         return layer_id
 
     def set_current_image(self):
-        if self.image_viewer.pixmap_item is not None:
-            self.clear_image()
+        timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+        filename = f"{self.prefix}_{timestamp}_original.png"
+        filepath = os.path.join("tmp/", filename)
 
-            timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
-            filename = f"{self.prefix}_{timestamp}_original.png"
-            filepath = os.path.join("tmp/", filename)
+        pixmap = self.image_viewer.pixmap_item.pixmap()
+        pixmap.save(filepath, format="PNG")
+        self.image_editor.set_image(filepath)
+        self.reset_controls()
 
-            pixmap = self.image_viewer.pixmap_item.pixmap()
-            pixmap.save(filepath)
-
-            self.set_image(filepath)
+        self.image_loaded.emit()
 
     def on_image_scale(self, value: float):
         self.image_editor.set_image_scale(value)
