@@ -1,5 +1,5 @@
-from iartisanxl.graph.nodes.node import Node
 from iartisanxl.diffusers_patch.ip_adapter_attention_processor import AttnProcessor2_0, IPAdapterAttnProcessor2_0
+from iartisanxl.graph.nodes.node import Node
 
 
 class IPAdapterMergeNode(Node):
@@ -34,7 +34,8 @@ class IPAdapterMergeNode(Node):
         return self.values
 
     def before_delete(self):
-        self.unet.set_attn_processor(AttnProcessor2_0())
+        if self.unet is not None:
+            self.unet.set_attn_processor(AttnProcessor2_0())
 
     def convert_ip_adapter_attn_to_diffusers(self, state_dicts):
         # set ip-adapter cross-attention processors & load state_dict
