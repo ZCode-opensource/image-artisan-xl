@@ -1,8 +1,6 @@
-from PyQt6.QtWidgets import QFrame, QVBoxLayout, QLabel
+from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import QPixmap
-from PyQt6.QtCore import pyqtSignal, Qt
-
-from iartisanxl.modules.common.image.image_data_object import ImageDataObject
+from PyQt6.QtWidgets import QFrame, QLabel, QVBoxLayout
 
 
 class ImageItem(QFrame):
@@ -10,10 +8,9 @@ class ImageItem(QFrame):
 
     COLORS = ["#252629", "#374344", "#56585f"]
 
-    def __init__(self, image_data: ImageDataObject, pixmap: QPixmap, *args, **kwargs):
+    def __init__(self, pixmap: QPixmap, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self.image_data = image_data
         self.pixmap = pixmap
         self.selected = False
 

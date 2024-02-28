@@ -1,22 +1,23 @@
 import os
 from io import BytesIO
 
-from PyQt6.QtWidgets import QWidget, QVBoxLayout, QScrollArea, QMenu
-from PyQt6.QtGui import QPixmap, QImage, QAction
-from PyQt6.QtCore import pyqtSignal, Qt
+from PyQt6.QtCore import Qt, pyqtSignal
+from PyQt6.QtGui import QAction, QImage, QPixmap
+from PyQt6.QtWidgets import QMenu, QScrollArea, QVBoxLayout, QWidget
 
 from iartisanxl.layouts.simple_flow_layout import SimpleFlowLayout
-from iartisanxl.threads.images_loader_thread import ImagesLoaderThread
-from iartisanxl.modules.common.image.image_item import ImageItem
 from iartisanxl.modules.common.drop_lightbox import DropLightBox
-from iartisanxl.modules.common.image.image_data_object import ImageDataObject
 from iartisanxl.modules.common.ip_adapter.ip_adapter_data_object import IPAdapterDataObject
+from iartisanxl.modules.common.ip_adapter.ip_adapter_image import IPAdapterImage
+from iartisanxl.modules.common.ip_adapter.ip_adapter_image_item import IPAdapterImageItem
+from iartisanxl.threads.images_loader_thread import ImagesLoaderThread
+from iartisanxl.utilities.image.operations import remove_image_data_files
 
 
 class IpAdapterImageItemsView(QWidget):
     finished_loading = pyqtSignal()
-    item_selected = pyqtSignal(ImageDataObject)
-    item_deleted = pyqtSignal(ImageDataObject, bool)
+    item_selected = pyqtSignal(IPAdapterImage)
+    item_deleted = pyqtSignal(IPAdapterImage, bool)
     error = pyqtSignal(str)
 
     def __init__(self, ip_adapter_data: IPAdapterDataObject, *args, **kwargs):
@@ -60,17 +61,17 @@ class IpAdapterImageItemsView(QWidget):
         self.dataset_items_loader_thread.finished.connect(self.on_loading_finished)
         self.dataset_items_loader_thread.start()
 
-    def add_item(self, buffer: BytesIO, image_data: ImageDataObject):
+    def add_item(self, buffer: BytesIO, ip_adapter_image: IPAdapterImage):
         qimage = QImage.fromData(buffer.getvalue())
         pixmap = QPixmap.fromImage(qimage)
 
-        dataset_item = ImageItem(image_data, pixmap)
+        dataset_item = IPAdapterImageItem(pixmap, ip_adapter_image=ip_adapter_image)
         dataset_item.clicked.connect(self.on_item_selected)
         self.flow_layout.addWidget(dataset_item)
 
-    def add_item_data_object(self, image_data: ImageDataObject):
-        pixmap = QPixmap(image_data.image_thumb)
-        image_item = ImageItem(image_data, pixmap)
+    def add_item_data_object(self, ip_adapter_image: IPAdapterImage):
+        pixmap = QPixmap(ip_adapter_image.thumb)
+        image_item = IPAdapterImageItem(pixmap, ip_adapter_image=ip_adapter_image)
         image_item.clicked.connect(self.on_item_selected)
 
         self.flow_layout.addWidget(image_item)
@@ -78,18 +79,18 @@ class IpAdapterImageItemsView(QWidget):
 
         return image_item
 
-    def update_current_item(self, image_data: ImageDataObject):
-        pixmap = QPixmap(image_data.image_thumb)
-        self.current_item.image_data = image_data
+    def update_current_item(self, ip_adapter_image: IPAdapterImage):
+        pixmap = QPixmap(ip_adapter_image.thumb)
+        self.current_item.ip_adapter_image = ip_adapter_image
         self.current_item.set_image(pixmap)
 
     def on_loading_finished(self):
         self.item_count = self.flow_layout.count()
         self.current_item_index = 0
-        widget: ImageItem = self.flow_layout.itemAt(0).widget()
+        widget: IPAdapterImageItem = self.flow_layout.itemAt(0).widget()
         self.current_item = widget
         widget.set_selected(True)
-        self.image_data = widget.image_data
+        self.ip_adapter_image = widget.ip_adapter_image
         self.finished_loading.emit()
 
     def clear_selection(self):
@@ -97,50 +98,50 @@ class IpAdapterImageItemsView(QWidget):
             self.current_item.set_selected(False)
             self.current_item_index = None
             self.current_item = None
-            self.image_data = None
+            self.ip_adapter_image = None
 
-    def on_item_selected(self, item: ImageItem):
+    def on_item_selected(self, item: IPAdapterImageItem):
         for i in range(self.flow_layout.count()):
-            widget: ImageItem = self.flow_layout.itemAt(i).widget()
+            widget: IPAdapterImageItem = self.flow_layout.itemAt(i).widget()
 
             if widget == item:
                 self.current_item_index = i
                 self.current_item = widget
-                self.image_data = item.image_data
+                self.ip_adapter_image = item.ip_adapter_image
                 widget.set_selected(True)
-                self.item_selected.emit(item.image_data)
+                self.item_selected.emit(item.ip_adapter_image)
             else:
                 widget.set_selected(False)
 
         self.setFocus()
 
-    def set_current_item(self, image_item: ImageItem):
+    def set_current_item(self, ip_adapter_image_item: IPAdapterImageItem):
         if self.current_item:
             self.current_item.set_selected(False)
 
-        self.current_item = image_item
-        self.image_data = image_item.image_data
+        self.current_item = ip_adapter_image_item
+        self.ip_adapter_image = ip_adapter_image_item.ip_adapter_image
 
-        self.scroll_area.ensureWidgetVisible(image_item)
+        self.scroll_area.ensureWidgetVisible(ip_adapter_image_item)
 
     def get_first_item(self):
         self.current_item_index = 0
-        item: ImageItem = self.flow_layout.itemAt(self.current_item_index).widget()
+        item: IPAdapterImageItem = self.flow_layout.itemAt(self.current_item_index).widget()
 
         if item is not None:
             self.set_current_item(item)
-            self.item_selected.emit(item.image_data)
+            self.item_selected.emit(item.ip_adapter_image)
 
         return item
 
     def get_prev_item(self):
         if self.current_item_index > 0:
             self.current_item_index -= 1
-            item: ImageItem = self.flow_layout.itemAt(self.current_item_index).widget()
+            item: IPAdapterImageItem = self.flow_layout.itemAt(self.current_item_index).widget()
 
             if item is not None:
                 self.set_current_item(item)
-                self.item_selected.emit(item.image_data)
+                self.item_selected.emit(item.ip_adapter_image)
 
             return item
         return None
@@ -148,11 +149,11 @@ class IpAdapterImageItemsView(QWidget):
     def get_next_item(self):
         if self.current_item_index < self.flow_layout.count() - 1:
             self.current_item_index += 1
-            item: ImageItem = self.flow_layout.itemAt(self.current_item_index).widget()
+            item: IPAdapterImageItem = self.flow_layout.itemAt(self.current_item_index).widget()
 
             if item is not None:
                 self.set_current_item(item)
-                self.item_selected.emit(item.image_data)
+                self.item_selected.emit(item.ip_adapter_image)
             return item
         return None
 
@@ -172,12 +173,14 @@ class IpAdapterImageItemsView(QWidget):
             delete_action.triggered.connect(lambda: self.on_delete_item(item.widget()))
             context_menu.exec(event.globalPos())
 
-    def on_delete_item(self, item: ImageItem):
+    def on_delete_item(self, item: IPAdapterImageItem):
         delete_index = self.flow_layout.index_of(item)
 
-        os.remove(item.image_data.image_thumb)
-        os.remove(item.image_data.image_filename)
-        os.remove(item.image_data.image_original)
+        os.remove(item.ip_adapter_image.thumb)
+        os.remove(item.ip_adapter_image.image)
+
+        for image_data in item.ip_adapter_image.images:
+            remove_image_data_files(image_data)
 
         self.flow_layout.remove_item(item)
         self.item_count = self.flow_layout.count()
@@ -191,7 +194,7 @@ class IpAdapterImageItemsView(QWidget):
             self.clear_selection()
             clear_view = True
 
-        self.item_deleted.emit(item.image_data, clear_view)
+        self.item_deleted.emit(item.ip_adapter_image, clear_view)
 
     def clear(self):
         self.clear_selection()

@@ -2,24 +2,30 @@ import os
 from datetime import datetime
 
 from PIL import Image
-from PyQt6.QtWidgets import QVBoxLayout, QHBoxLayout, QWidget, QPushButton, QFileDialog, QLabel, QComboBox
-from PyQt6.QtGui import QImageReader, QPixmap, QGuiApplication
-from PyQt6.QtCore import pyqtSignal, QTimer, Qt, QUrl, QMimeData
+from PyQt6.QtCore import QMimeData, Qt, QTimer, QUrl, pyqtSignal
+from PyQt6.QtGui import QGuiApplication, QImageReader
+from PyQt6.QtWidgets import QComboBox, QFileDialog, QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget
 from superqt import QLabeledDoubleSlider
 
-from iartisanxl.modules.common.image.image_adder_preview import ImageAdderPreview
-from iartisanxl.modules.common.image_viewer_simple import ImageViewerSimple
-from iartisanxl.modules.common.image_control import ImageControl
 from iartisanxl.layouts.aspect_ratio_layout import AspectRatioLayout
-from iartisanxl.threads.save_merged_image_thread import SaveMergedImageThread
-from iartisanxl.modules.common.image.image_data_object import ImageDataObject
+from iartisanxl.modules.common.image.image_editor import ImageEditor
+from iartisanxl.modules.common.image.layer_manager_widget import LayerManagerWidget
+from iartisanxl.modules.common.image_control import ImageControl
+from iartisanxl.modules.common.image_viewer_simple import ImageViewerSimple
+from iartisanxl.threads.image.save_merged_image_thread import SaveMergedImageThread
 
 
 class IPAdapterImageWidget(QWidget):
+    image_loaded = pyqtSignal()
+    image_changed = pyqtSignal()
+    widget_updated = pyqtSignal()
     image_added = pyqtSignal()
+    new_image = pyqtSignal()
 
-    def __init__(self, text: str, image_viewer: ImageViewerSimple, save_directory: str, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(
+        self, text: str, image_viewer: ImageViewerSimple, save_directory: str, target_width: int, target_height: int
+    ):
+        super().__init__()
 
         self.setObjectName("ip_adapter_image_widget")
         self.text = text
@@ -30,9 +36,9 @@ class IPAdapterImageWidget(QWidget):
 
         self.setAcceptDrops(True)
 
-        self.editor_width = 224
-        self.editor_height = 224
-        self.aspect_ratio = float(self.editor_width) / float(self.editor_height)
+        self.target_width = target_width
+        self.target_height = target_height
+        self.aspect_ratio = float(self.target_width) / float(self.target_height)
 
         self.image_copy_thread = None
 
@@ -44,30 +50,48 @@ class IPAdapterImageWidget(QWidget):
         main_layout.setSpacing(0)
 
         top_layout = QHBoxLayout()
-        top_layout.setContentsMargins(0, 0, 0, 0)
+        fit_image_button = QPushButton("Fit")
+        top_layout.addWidget(fit_image_button)
+        current_image_button = QPushButton("Current")
+        top_layout.addWidget(current_image_button)
         load_image_button = QPushButton("Load")
         load_image_button.clicked.connect(self.on_load_image)
         top_layout.addWidget(load_image_button)
-        current_image_button = QPushButton("Current")
-        top_layout.addWidget(current_image_button)
-        fit_image_button = QPushButton("Fit")
-        top_layout.addWidget(fit_image_button)
-        reset_image_button = QPushButton("Reset")
-        top_layout.addWidget(reset_image_button)
-
         main_layout.addLayout(top_layout)
 
+        middle_layout = QHBoxLayout()
         image_widget = QWidget()
-        self.image_editor = ImageAdderPreview(self.editor_width, self.editor_height, self.aspect_ratio, self.save_directory)
-        self.image_editor.image_updated.connect(self.on_image_updated)
-        self.image_editor.image_moved.connect(self.update_image_position)
+        self.image_editor = ImageEditor(self.target_width, self.target_height, self.aspect_ratio, self.save_directory)
+        self.image_editor.image_changed.connect(self.on_image_changed)
         self.image_editor.image_scaled.connect(self.update_image_scale)
-        self.image_editor.image_pasted.connect(self.create_original_image)
+        self.image_editor.image_moved.connect(self.update_image_position)
+        self.image_editor.image_rotated.connect(self.update_image_angle)
+        self.image_editor.image_pasted.connect(self.set_image)
         self.image_editor.image_copy.connect(self.on_image_copy)
-        self.image_editor.image_save.connect(self.on_image_save)
+        self.image_editor.image_save.connect(self.on_image_copy)
         editor_layout = AspectRatioLayout(image_widget, self.aspect_ratio)
         editor_layout.addWidget(self.image_editor)
-        main_layout.addWidget(image_widget)
+        middle_layout.addWidget(image_widget, 4)
+
+        layers_layout = QVBoxLayout()
+        self.layer_manager_widget = LayerManagerWidget(True)
+        self.layer_manager_widget.layer_selected.connect(self.on_layer_selected)
+        self.layer_manager_widget.layers_reordered.connect(self.image_editor.edit_all_layers_order)
+        self.layer_manager_widget.layer_lock_changed.connect(self.on_layer_lock_changed)
+        self.layer_manager_widget.add_layer_clicked.connect(self.on_add_layer_clicked)
+        self.layer_manager_widget.delete_layer_clicked.connect(self.on_delete_layer_clicked)
+        layers_layout.addWidget(self.layer_manager_widget)
+        middle_layout.addLayout(layers_layout, 0)
+        main_layout.addLayout(middle_layout)
+
+        image_bottom_layout = QHBoxLayout()
+        self.reset_image_button = QPushButton("Reset Layer")
+        self.reset_image_button.setToolTip("Reset zoom and position of the image from the last update.")
+        image_bottom_layout.addWidget(self.reset_image_button)
+        self.reset_view_button = QPushButton("Reset view")
+        self.reset_view_button.setToolTip("Reset zoom and position of the viewport.")
+        image_bottom_layout.addWidget(self.reset_view_button)
+        main_layout.addLayout(image_bottom_layout)
 
         image_controls_layout = QHBoxLayout()
         image_controls_layout.setContentsMargins(0, 0, 0, 0)
@@ -93,7 +117,7 @@ class IPAdapterImageWidget(QWidget):
         self.image_weight_slider = QLabeledDoubleSlider(Qt.Orientation.Horizontal)
         self.image_weight_slider.setRange(0.0, 1.0)
         self.image_weight_slider.setValue(1.0)
-        self.image_weight_slider.valueChanged.connect(self.on_image_updated)
+        self.image_weight_slider.valueChanged.connect(self.on_image_changed)
         image_actions_layout.addWidget(self.image_weight_slider)
 
         image_noise_label = QLabel("Noise:")
@@ -101,7 +125,7 @@ class IPAdapterImageWidget(QWidget):
         self.image_noise_slider = QLabeledDoubleSlider(Qt.Orientation.Horizontal)
         self.image_noise_slider.setRange(0.0, 1.0)
         self.image_noise_slider.setValue(0.0)
-        self.image_noise_slider.valueChanged.connect(self.on_image_updated)
+        self.image_noise_slider.valueChanged.connect(self.on_image_changed)
         image_actions_layout.addWidget(self.image_noise_slider)
         self.noise_type_combo = QComboBox()
         self.noise_type_combo.addItem("Default noise", "default")
@@ -110,7 +134,7 @@ class IPAdapterImageWidget(QWidget):
         self.noise_type_combo.addItem("Simplex noise", "simplex")
         self.noise_type_combo.addItem("Uniform noise", "uniform")
         self.noise_type_combo.addItem("Gaussian noise", "gaussian")
-        self.noise_type_combo.currentIndexChanged.connect(self.on_image_updated)
+        self.noise_type_combo.currentIndexChanged.connect(self.on_image_changed)
         image_actions_layout.addWidget(self.noise_type_combo)
 
         image_actions_layout.setStretch(0, 0)
@@ -146,17 +170,23 @@ class IPAdapterImageWidget(QWidget):
 
         self.setLayout(main_layout)
 
-        reset_image_button.clicked.connect(self.on_reset_image)
-        current_image_button.clicked.connect(self.set_current_image)
         fit_image_button.clicked.connect(self.image_editor.fit_image)
+        current_image_button.clicked.connect(self.set_current_image)
+        self.reset_image_button.clicked.connect(self.image_editor.clear_and_restore)
+        self.reset_view_button.clicked.connect(self.image_editor.reset_view)
 
-    def on_reset_image(self):
-        self.image_scale_control.reset()
-        self.image_x_pos_control.reset()
-        self.image_y_pos_control.reset()
-        self.image_rotation_control.reset()
-        self.image_weight_slider.setValue(1.0)
-        self.image_noise_slider.setValue(0.0)
+    def update_image_scale(self, scale: float):
+        self.image_scale_control.set_value(scale)
+        self.widget_updated.emit()
+
+    def update_image_position(self, x, y):
+        self.image_x_pos_control.set_value(x)
+        self.image_y_pos_control.set_value(y)
+        self.widget_updated.emit()
+
+    def update_image_angle(self, angle):
+        self.image_rotation_control.set_value(angle)
+        self.widget_updated.emit()
 
     def dragEnterEvent(self, event):
         if event.mimeData().hasUrls():
@@ -177,40 +207,96 @@ class IPAdapterImageWidget(QWidget):
             reader = QImageReader(path)
 
             if reader.canRead():
-                self.clear_image()
-                self.show_image(path)
+                self.set_image(path)
 
     def on_load_image(self):
         options = QFileDialog.Options()
         options |= QFileDialog.ReadOnly
         path, _ = QFileDialog.getOpenFileName(self, "Load Image", "", "Images (*.png *.jpg)", options=options)
         if path:
-            self.clear_image()
-            self.show_image(path)
+            self.set_image(path)
 
-    def show_image(self, path):
-        self.image_path = path
-        pixmap = QPixmap(path)
-        self.image_editor.set_pixmap(pixmap)
+    def on_layer_selected(self, layer_id: int):
+        self.image_editor.selected_layer_id = layer_id
+        layer = self.image_editor.get_selected_layer()
+        self.update_image_position(layer.pixmap_item.x(), layer.pixmap_item.y())
+
+    def on_layer_lock_changed(self, layer_id: int, locked: bool):
+        self.image_editor.set_layer_locked(layer_id, locked)
+
+    def on_add_layer_clicked(self):
+        self.add_empty_layer()
+
+    def add_empty_layer(self, name: str = None):
+        layer_id = self.image_editor.add_empty_layer()
+        layer_name = name if name else f"Layer {layer_id}"
+        self.layer_manager_widget.add_layer(layer_id, layer_name)
+        self.image_editor.selected_layer_id = layer_id
+
+    def on_delete_layer_clicked(self):
+        self.image_editor.delete_layer()
+        self.layer_manager_widget.delete_layer(self.image_editor.selected_layer_id)
+
+    def set_image(self, path):
+        timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+        filename = f"ip_adapter_{timestamp}_{self.image_editor.selected_layer_id}_original.png"
+        image_path = os.path.join("tmp/", filename)
+        pil_image = Image.open(path)
+        pil_image.save(image_path, format="PNG")
+        self.image_editor.set_image(image_path)
         self.add_image_button.setEnabled(True)
         self.new_image_button.setEnabled(True)
 
-    def reset_values(self):
-        self.image_scale_control.reset()
-        self.image_x_pos_control.reset()
-        self.image_y_pos_control.reset()
-        self.image_rotation_control.reset()
+        self.image_loaded.emit()
 
-    def update_image_position(self, x, y):
-        self.image_x_pos_control.set_value(x)
-        self.image_y_pos_control.set_value(y)
+    def on_add_image(self):
+        if self.image_editor.layer_manager.layers[0] is not None:
+            self.add_image_button.setEnabled(False)
+            QTimer.singleShot(10, self.image_added.emit)
 
-    def update_image_scale(self, scale):
-        self.image_scale_control.set_value(scale)
+    def on_new_image(self):
+        self.clear_image()
+        self.add_image_button.setText("Add image")
+        self.add_image_button.setDisabled(True)
+        self.delete_image_button.setDisabled(True)
+        self.new_image_button.setDisabled(True)
+        self.add_empty_layer()
+        self.new_image.emit()
 
-    def set_image_parameters(self, image_id, scale, x, y, angle, weight, noise, noise_type_index):
-        self.image_id = image_id
-        self.add_image_button.setText("Update image")
+    def reload_image_layer(self, image_path: str, original_path: str, order: int):
+        layer_id = self.image_editor.reload_image_layer(image_path, original_path, order)
+        return layer_id
+
+    def set_current_image(self):
+        timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+        filename = f"ip_adapter_{timestamp}_{self.image_editor.selected_layer_id}_original.png"
+        filepath = os.path.join("tmp/", filename)
+
+        pixmap = self.image_viewer.pixmap_item.pixmap()
+        pixmap.save(filepath, format="PNG")
+        self.image_editor.set_image(filepath)
+        self.reset_controls()
+
+        self.image_loaded.emit()
+
+    def on_image_scale(self, value: float):
+        self.image_editor.set_image_scale(value)
+        self.widget_updated.emit()
+
+    def on_set_image_x(self, value: int):
+        self.image_editor.set_image_x(value)
+        self.widget_updated.emit()
+
+    def on_set_image_y(self, value: int):
+        self.image_editor.set_image_y(value)
+        self.widget_updated.emit()
+
+    def on_rotate_image(self, value: float):
+        self.image_editor.rotate_image(value)
+        self.widget_updated.emit()
+
+    def set_layer_parameters(self, image_layer_id, scale, x, y, angle):
+        self.image_editor.selected_layer_id = image_layer_id
 
         self.image_scale_control.set_value(scale)
         self.image_editor.set_image_scale(scale)
@@ -220,14 +306,12 @@ class IPAdapterImageWidget(QWidget):
         self.image_editor.set_image_y(y)
         self.image_rotation_control.set_value(angle)
         self.image_editor.rotate_image(angle)
-        self.image_weight_slider.setValue(weight)
-        self.image_noise_slider.setValue(noise)
-        self.noise_type_combo.setCurrentIndex(noise_type_index)
 
-    def set_current_image(self):
-        if self.image_viewer.pixmap_item is not None:
-            pixmap = self.image_viewer.pixmap_item.pixmap()
-            self.image_editor.set_pixmap(pixmap)
+    def reset_controls(self):
+        self.image_scale_control.reset()
+        self.image_x_pos_control.reset()
+        self.image_y_pos_control.reset()
+        self.image_rotation_control.reset()
 
     def clear_image(self):
         self.image_scale_control.reset()
@@ -236,65 +320,31 @@ class IPAdapterImageWidget(QWidget):
         self.image_rotation_control.reset()
         self.image_weight_slider.setValue(1.0)
         self.image_noise_slider.setValue(0.0)
-        self.image_editor.clear()
+        self.image_editor.clear_all()
 
-    def on_add_image(self):
-        if self.image_editor.pixmap_item is not None:
-            self.add_image_button.setEnabled(False)
-            QTimer.singleShot(10, self.image_added.emit)
-
-    def on_image_updated(self):
+    def on_image_changed(self):
         self.add_image_button.setEnabled(True)
+        self.image_changed.emit()
 
-    def on_new_image(self):
-        self.image_id = None
-        self.image_path = None
-        self.clear_image()
-        self.add_image_button.setText("Add image")
-        self.add_image_button.setDisabled(True)
-        self.delete_image_button.setDisabled(True)
-        self.new_image_button.setDisabled(True)
+    def on_image_copy(self, save_path: str = None):
+        layers = self.image_editor.get_all_layers()
 
-    def set_editor_image_by_path(self, image_path):
-        self.image_editor.set_image(image_path)
-        self.image_path = image_path
+        if len(layers) == 0:
+            return
 
-    def create_original_image(self, path):
-        self.clear_image()
-
-        timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
-        filename = f"ip_{timestamp}_original.png"
-        image_path = os.path.join("tmp/", filename)
-        pil_image = Image.open(path)
-        pil_image.save(image_path, format="PNG")
-
-        self.set_editor_image_by_path(image_path)
-
-    def on_image_copy(self):
-        self.prepare_copy_thread()
+        self.image_copy_thread = SaveMergedImageThread(layers, self.target_width, self.target_height, save_path)
         self.image_copy_thread.image_done.connect(self.on_copy_image_done)
-        self.image_copy_thread.start()
-
-    def prepare_copy_thread(self, save_path: str = None):
-        image_data = ImageDataObject()
-        image_data.image_original = self.image_path
-        image_data.image_scale = self.image_scale_control.value
-        image_data.image_x_pos = self.image_x_pos_control.value
-        image_data.image_y_pos = self.image_y_pos_control.value
-        image_data.image_rotation = self.image_rotation_control.value
-
-        self.image_copy_thread = SaveMergedImageThread(self.editor_width, self.editor_height, image_data, None, save_path=save_path)
-        self.image_copy_thread.finished.connect(self.on_copy_thread_finished)
-
-    def on_copy_image_done(self, image_path):
-        clipboard = QGuiApplication.clipboard()
-        mime_data = QMimeData()
-        mime_data.setUrls([QUrl.fromLocalFile(image_path)])
-        clipboard.setMimeData(mime_data)
-
-    def on_image_save(self, image_path):
-        self.prepare_copy_thread(save_path=image_path)
         self.image_copy_thread.start()
 
     def on_copy_thread_finished(self):
         self.image_copy_thread = None
+
+    def on_copy_image_done(self, image_path):
+        if image_path is not None:
+            clipboard = QGuiApplication.clipboard()
+            mime_data = QMimeData()
+            mime_data.setUrls([QUrl.fromLocalFile(image_path)])
+            clipboard.setMimeData(mime_data)
+
+    def set_erase_mode(self, value: bool):
+        self.image_editor.erasing = value

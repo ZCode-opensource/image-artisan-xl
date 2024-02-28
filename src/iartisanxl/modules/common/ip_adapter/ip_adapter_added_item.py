@@ -1,9 +1,9 @@
-from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QCheckBox, QPushButton, QLabel
-from PyQt6.QtGui import QPixmap
 from PyQt6.QtCore import pyqtSignal
+from PyQt6.QtGui import QPixmap
+from PyQt6.QtWidgets import QCheckBox, QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget
 
-from iartisanxl.modules.common.ip_adapter.ip_adapter_data_object import IPAdapterDataObject
 from iartisanxl.buttons.remove_button import RemoveButton
+from iartisanxl.modules.common.ip_adapter.ip_adapter_data_object import IPAdapterDataObject
 
 
 class IPAdapterAddedItem(QWidget):
@@ -40,7 +40,7 @@ class IPAdapterAddedItem(QWidget):
         self.image_thumb = QLabel()
         self.image_thumb.setFixedSize(80, 80)
 
-        thumb_pixmap = QPixmap(self.adapter.images[0].image_thumb)
+        thumb_pixmap = QPixmap(self.adapter.images[0].thumb)
         self.image_thumb.setPixmap(thumb_pixmap)
         lower_layout.addWidget(self.image_thumb)
 
@@ -53,7 +53,7 @@ class IPAdapterAddedItem(QWidget):
         self.enabled_checkbox.setText(self.adapter.adapter_name)
         self.enabled_checkbox.setChecked(self.adapter.enabled)
 
-        thumb_pixmap = QPixmap(self.adapter.images[0].image_thumb)
+        thumb_pixmap = QPixmap(self.adapter.images[0].thumb)
         self.image_thumb.setPixmap(thumb_pixmap)
 
     def on_check_enabled(self):

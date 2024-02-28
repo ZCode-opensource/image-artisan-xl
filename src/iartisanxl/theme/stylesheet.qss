@@ -463,7 +463,7 @@ LoraPanel LoraAddedItem {
     border: 1px solid #3a3a3a;
 }
 
-IPAdapterImageWidget ImageAdderPreview {
+IPAdapterImageWidget ImageEditor {
     background: #232325;
     border: 1px solid #c9c9c9;
 }

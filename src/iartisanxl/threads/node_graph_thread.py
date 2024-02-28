@@ -368,13 +368,13 @@ class NodeGraphThread(QThread):
 
                     for image in ip_adapter.images:
                         ip_adapter_image_node = ImageLoadNode(
-                            path=image.image_filename,
+                            path=image.image,
                             weight=image.weight,
                             noise=image.noise,
                             noise_index=image.noise_type_index,
                         )
                         self.node_graph.add_node(
-                            ip_adapter_image_node, f"adapter_image_{ip_adapter_node.id}_{image.image_id}"
+                            ip_adapter_image_node, f"adapter_image_{ip_adapter_node.id}_{image.ip_adapter_id}"
                         )
                         image.node_id = ip_adapter_image_node.id
                         ip_adapter_node.connect("image", ip_adapter_image_node, "image")
@@ -424,13 +424,13 @@ class NodeGraphThread(QThread):
                     if len(added_images) > 0:
                         for image in added_images:
                             ip_adapter_image_node = ImageLoadNode(
-                                path=image.image_filename,
+                                path=image.image,
                                 weight=image.weight,
                                 noise=image.noise,
                                 noise_index=image.noise_type_index,
                             )
                             self.node_graph.add_node(
-                                ip_adapter_image_node, f"adapter_image_{ip_adapter_node.id}_{image.image_id}"
+                                ip_adapter_image_node, f"adapter_image_{ip_adapter_node.id}_{image.ip_adapter_id}"
                             )
                             image.node_id = ip_adapter_image_node.id
                             ip_adapter_node.connect("image", ip_adapter_image_node, "image")
@@ -439,7 +439,7 @@ class NodeGraphThread(QThread):
                         for image in modified_images:
                             ip_adapter_image_node = self.node_graph.get_node(image.node_id)
                             ip_adapter_image_node.update_path_weight_noise(
-                                image.image_filename,
+                                image.image,
                                 weight=image.weight,
                                 noise=image.noise,
                                 noise_index=image.noise_type_index,

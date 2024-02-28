@@ -1,11 +1,11 @@
 import os
 
-from PyQt6.QtWidgets import QVBoxLayout, QPushButton, QWidget
+from PyQt6.QtWidgets import QPushButton, QVBoxLayout, QWidget
 
 from iartisanxl.app.event_bus import EventBus
-from iartisanxl.modules.common.panels.base_panel import BasePanel
-from iartisanxl.modules.common.ip_adapter.ip_adapter_dialog import IPAdapterDialog
 from iartisanxl.modules.common.ip_adapter.ip_adapter_added_item import IPAdapterAddedItem
+from iartisanxl.modules.common.ip_adapter.ip_adapter_dialog import IPAdapterDialog
+from iartisanxl.modules.common.panels.base_panel import BasePanel
 
 
 class IPAdapterPanel(BasePanel):
@@ -41,6 +41,9 @@ class IPAdapterPanel(BasePanel):
                 self.adapters_layout.addWidget(adapter_widget)
 
     def open_ip_adapter_dialog(self):
+        if self.parent().ip_dialog is not None:
+            self.parent().ip_dialog.reset_ui()
+
         self.parent().open_dialog(
             "ip",
             IPAdapterDialog,
@@ -53,21 +56,15 @@ class IPAdapterPanel(BasePanel):
             self.prompt_window,
         )
 
-        if self.parent().ip_dialog is not None:
-            self.parent().ip_dialog.make_new_adapter()
-
     def on_remove_clicked(self, adapter_widget: IPAdapterAddedItem):
         ip_adapter_id = adapter_widget.adapter.adapter_id
 
         for image in adapter_widget.adapter.images:
-            if os.path.isfile(image.image_thumb):
-                os.remove(image.image_thumb)
+            if os.path.isfile(image.thumb):
+                os.remove(image.thumb)
 
-            if os.path.isfile(image.image_filename):
-                os.remove(image.image_filename)
-
-            if os.path.isfile(image.image_original):
-                os.remove(image.image_original)
+            if os.path.isfile(image.image):
+                os.remove(image.image)
 
         self.ip_adapter_list.remove(adapter_widget.adapter)
         self.adapters_layout.removeWidget(adapter_widget)

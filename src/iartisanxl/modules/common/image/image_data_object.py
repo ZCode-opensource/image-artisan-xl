@@ -16,8 +16,4 @@ class ImageDataObject:
     image_y_pos = attr.ib(type=int, default=0)
     image_rotation = attr.ib(type=int, default=0)
     replace_original = attr.ib(type=bool, default=False)
-    weight = attr.ib(type=float, default=1.0)
-    noise_type = attr.ib(type=str, default=None)
-    noise_type_index = attr.ib(type=int, default=0)
-    noise = attr.ib(type=float, default=0)
     order = attr.ib(type=int, default=None)
