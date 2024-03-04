@@ -471,6 +471,16 @@ class T2IAdapterDialog(BaseDialog):
         self.t2i_adapter.preprocessor_image = image_path
         self.t2i_adapter.preprocessor_thumb = thumbnail_path
 
+        self.t2i_adapter.adapter_name = self.preprocessor_combo.currentText()
+        self.t2i_adapter.adapter_type = self.preprocessor_combo.currentData()
+        self.t2i_adapter.type_index = self.preprocessor_combo.currentIndex()
+        self.t2i_adapter.depth_type = self.depth_type_combo.currentData()
+        self.t2i_adapter.depth_type_index = self.depth_type_combo.currentIndex()
+        self.t2i_adapter.lineart_type = self.lineart_type_combo.currentData()
+        self.t2i_adapter.lineart_type_index = self.lineart_type_combo.currentIndex()
+        self.t2i_adapter.sketch_type = self.sketch_type_combo.currentData()
+        self.t2i_adapter.sketch_type_index = self.sketch_type_combo.currentIndex()
+
         # save source layer data
         self.t2i_adapter.source_images.images = []
         for layer in self.source_widget.image_editor.get_all_layers():
