@@ -270,7 +270,7 @@ class ImageEditor(QGraphicsView):
         layer = self.layer_manager.get_layer_by_id(self.selected_layer_id)
 
         if layer is not None and layer.pixmap_item is not None:
-            pixmap = QPixmap(layer.image_path)
+            pixmap = QPixmap(layer.original_path)
             layer.pixmap_item.setPixmap(pixmap)
             layer.pixmap_item.setScale(1)
             layer.pixmap_item.setX(0)
