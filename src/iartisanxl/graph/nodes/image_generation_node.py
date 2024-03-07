@@ -214,6 +214,8 @@ class ImageGenerationNode(Node):
             timestep_cond = self.get_guidance_scale_embedding(
                 guidance_scale_tensor, embedding_dim=self.unet.config.time_cond_proj_dim
             ).to(device=self.device, dtype=latents.dtype)
+            if do_classifier_free_guidance:
+                timestep_cond = timestep_cond.repeat_interleave(2, dim=0)
 
         num_warmup_steps = max(len(timesteps) - self.num_inference_steps * self.scheduler.order, 0)
 
