@@ -25,14 +25,12 @@ from iartisanxl.modules.common.lora.lora_list import LoraList
 controlnet_dict = {
     "controlnet_canny_model": "controlnet-canny-sdxl-1.0-small",
     "controlnet_depth_model": "controlnet-depth-sdxl-1.0-small",
-    "controlnet_pose_model": "controlnet-openpose-sdxl-1.0",
     "controlnet_inpaint_model": "controlnet-inpaint-dreamer-sdxl",
 }
 
 t2i_adapter_dict = {
     "t2i_adapter_canny_model": "t2i-adapter-canny-sdxl-1.0",
     "t2i_adapter_depth_model": "t2i-adapter-depth-midas-sdxl-1.0",
-    "t2i_adapter_pose_model": "t2i-adapter-openpose-sdxl-1.0",
     "t2i_adapter_lineart_model": "t2i-adapter-lineart-sdxl-1.0",
     "t2i_adapter_sketch_model": "t2i-adapter-sketch-sdxl-1.0",
     "t2i-recolor": "t2i-recolor",
