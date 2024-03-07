@@ -444,6 +444,12 @@ class ControlNetDialog(BaseDialog):
         self.controlnet.preprocessor_image = image_path
         self.controlnet.preprocessor_thumb = thumbnail_path
 
+        self.controlnet.adapter_name = self.preprocessor_combo.currentText()
+        self.controlnet.adapter_type = self.preprocessor_combo.currentData()
+        self.controlnet.type_index = self.preprocessor_combo.currentIndex()
+        self.controlnet.depth_type = self.depth_type_combo.currentData()
+        self.controlnet.depth_type_index = self.depth_type_combo.currentIndex()
+
         # save source layer data
         self.controlnet.source_images.images = []
         for layer in self.source_widget.image_editor.get_all_layers():
