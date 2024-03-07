@@ -17,7 +17,6 @@ from iartisanxl.threads.image.save_merged_image_thread import SaveMergedImageThr
 
 class IPAdapterImageWidget(QWidget):
     image_loaded = pyqtSignal()
-    image_changed = pyqtSignal()
     widget_updated = pyqtSignal()
     image_added = pyqtSignal()
     new_image = pyqtSignal()
@@ -96,16 +95,16 @@ class IPAdapterImageWidget(QWidget):
         image_controls_layout = QHBoxLayout()
         image_controls_layout.setContentsMargins(0, 0, 0, 0)
         self.image_scale_control = ImageControl("Scale: ", 1.0, 3)
-        self.image_scale_control.value_changed.connect(self.image_editor.set_image_scale)
+        self.image_scale_control.value_changed.connect(self.on_image_scale)
         image_controls_layout.addWidget(self.image_scale_control)
         self.image_x_pos_control = ImageControl("X Pos: ", 0, 0)
-        self.image_x_pos_control.value_changed.connect(self.image_editor.set_image_x)
+        self.image_x_pos_control.value_changed.connect(self.on_set_image_x)
         image_controls_layout.addWidget(self.image_x_pos_control)
         self.image_y_pos_control = ImageControl("Y Pos: ", 0, 0)
-        self.image_y_pos_control.value_changed.connect(self.image_editor.set_image_y)
+        self.image_y_pos_control.value_changed.connect(self.on_set_image_y)
         image_controls_layout.addWidget(self.image_y_pos_control)
         self.image_rotation_control = ImageControl("Rotation: ", 0, 0)
-        self.image_rotation_control.value_changed.connect(self.image_editor.rotate_image)
+        self.image_rotation_control.value_changed.connect(self.on_rotate_image)
         image_controls_layout.addWidget(self.image_rotation_control)
         main_layout.addLayout(image_controls_layout)
 
@@ -281,19 +280,19 @@ class IPAdapterImageWidget(QWidget):
 
     def on_image_scale(self, value: float):
         self.image_editor.set_image_scale(value)
-        self.widget_updated.emit()
+        self.on_image_changed()
 
     def on_set_image_x(self, value: int):
         self.image_editor.set_image_x(value)
-        self.widget_updated.emit()
+        self.on_image_changed()
 
     def on_set_image_y(self, value: int):
         self.image_editor.set_image_y(value)
-        self.widget_updated.emit()
+        self.on_image_changed()
 
     def on_rotate_image(self, value: float):
         self.image_editor.rotate_image(value)
-        self.widget_updated.emit()
+        self.on_image_changed()
 
     def set_layer_parameters(self, image_layer_id, scale, x, y, angle):
         self.image_editor.selected_layer_id = image_layer_id
@@ -324,7 +323,7 @@ class IPAdapterImageWidget(QWidget):
 
     def on_image_changed(self):
         self.add_image_button.setEnabled(True)
-        self.image_changed.emit()
+        self.widget_updated.emit()
 
     def on_image_copy(self, save_path: str = None):
         layers = self.image_editor.get_all_layers()

@@ -279,11 +279,7 @@ class IPAdapterDialog(BaseDialog):
 
     def on_item_deleted(self, ip_adapter_image: IPAdapterImage, clear_view: bool):
         if clear_view:
-            self.image_widget.clear_image()
-
-        # delete images
-        for image_data in ip_adapter_image.images:
-            remove_image_data_files(image_data)
+            self.image_widget.on_new_image()
 
         self.adapter.delete_ip_adapter_image(ip_adapter_image.ip_adapter_id)
 
