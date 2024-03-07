@@ -1,23 +1,25 @@
-from PyQt6.QtWidgets import QSizePolicy, QHBoxLayout, QVBoxLayout, QFrame
-from PyQt6.QtCore import QPropertyAnimation, QEasingCurve, QTimer
+from PyQt6.QtCore import QEasingCurve, QPropertyAnimation, QTimer
+from PyQt6.QtWidgets import QFrame, QHBoxLayout, QSizePolicy, QVBoxLayout
 
-from iartisanxl.app.event_bus import EventBus
-from iartisanxl.buttons.expand_right_button import ExpandRightButton
-from iartisanxl.buttons.vertical_button import VerticalButton
-from iartisanxl.generation.image_generation_data import ImageGenerationData
-from iartisanxl.generation.lora_list import LoraList
-from iartisanxl.generation.adapter_list import AdapterList
 from iartisanxl.app.directories import DirectoriesObject
+from iartisanxl.app.event_bus import EventBus
 from iartisanxl.app.preferences import PreferencesObject
-from iartisanxl.modules.common.image_viewer_simple import ImageViewerSimple
-from iartisanxl.modules.common.prompt_window import PromptWindow
-from iartisanxl.modules.common.panels.panel_container import PanelContainer
-from iartisanxl.modules.common.controlnet.controlnet_panel import ControlNetPanel
+from iartisanxl.buttons.expand_contract_button import ExpandContractButton
+from iartisanxl.buttons.vertical_button import VerticalButton
+from iartisanxl.generation.adapter_list import AdapterList
+from iartisanxl.generation.image_generation_data import ImageGenerationData
 from iartisanxl.modules.common.controlnet.controlnet_added_item import ControlNetAddedItem
-from iartisanxl.modules.common.t2i_adapter.t2i_panel import T2IPanel
-from iartisanxl.modules.common.t2i_adapter.adapter_added_item import AdapterAddedItem
-from iartisanxl.modules.common.ip_adapter.ip_adapter_panel import IPAdapterPanel
+from iartisanxl.modules.common.controlnet.controlnet_panel import ControlNetPanel
+from iartisanxl.modules.common.image_viewer_simple import ImageViewerSimple
 from iartisanxl.modules.common.ip_adapter.ip_adapter_added_item import IPAdapterAddedItem
+from iartisanxl.modules.common.ip_adapter.ip_adapter_panel import IPAdapterPanel
+from iartisanxl.modules.common.lora.lora_added_item import LoraAddedItem
+from iartisanxl.modules.common.lora.lora_list import LoraList
+from iartisanxl.modules.common.lora.lora_panel import LoraPanel
+from iartisanxl.modules.common.panels.panel_container import PanelContainer
+from iartisanxl.modules.common.prompt_window import PromptWindow
+from iartisanxl.modules.common.t2i_adapter.t2i_adapter_added_item import T2IAdapterAddedItem
+from iartisanxl.modules.common.t2i_adapter.t2i_adapter_panel import T2IAdapterPanel
 
 
 class RightMenu(QFrame):
@@ -58,6 +60,7 @@ class RightMenu(QFrame):
         self.event_bus.subscribe("controlnet", self.on_controlnet)
         self.event_bus.subscribe("t2i_adapters", self.on_t2i_adapters)
         self.event_bus.subscribe("ip_adapters", self.on_ip_adapters)
+        self.event_bus.subscribe("lora", self.on_lora)
 
         self.expanded = self.module_options.get("right_menu_expanded")
         self.animating = False
@@ -84,7 +87,7 @@ class RightMenu(QFrame):
         self.main_layout.setSpacing(0)
 
         self.button_layout = QVBoxLayout()
-        self.expand_btn = ExpandRightButton()
+        self.expand_btn = ExpandContractButton(self.NORMAL_WIDTH, self.NORMAL_WIDTH, True)
         self.expand_btn.clicked.connect(self.on_expand_clicked)
         self.button_layout.addWidget(self.expand_btn)
 
@@ -135,13 +138,9 @@ class RightMenu(QFrame):
         self.expand()
 
     def animation_finished(self):
-        if self.expanded:
-            self.expanded = False
-        else:
-            self.expanded = True
+        self.expanded = not self.expanded
 
         self.module_options["right_menu_expanded"] = self.expanded
-
         self.animating = False
 
     def on_expand_clicked(self):
@@ -199,10 +198,9 @@ class RightMenu(QFrame):
 
     def on_controlnet(self, data):
         if data["action"] == "add":
-            adapter_id = self.controlnet_list.add(data["controlnet"])
+            self.controlnet_list.add(data["controlnet"])
 
             if isinstance(self.current_panel, ControlNetPanel):
-                data["controlnet"].adapter_id = adapter_id
                 controlnet_widget = ControlNetAddedItem(data["controlnet"])
                 controlnet_widget.update_ui()
                 controlnet_widget.remove_clicked.connect(self.current_panel.on_remove_clicked)
@@ -223,40 +221,39 @@ class RightMenu(QFrame):
 
     def on_t2i_adapters(self, data):
         if data["action"] == "add":
-            adapter_id = self.t2i_adapter_list.add(data["t2i_adapter"])
+            self.t2i_adapter_list.add(data["t2i_adapter"])
 
-            if isinstance(self.current_panel, T2IPanel):
-                data["t2i_adapter"].adapter_id = adapter_id
-                adapter_widget = AdapterAddedItem(data["t2i_adapter"])
+            if isinstance(self.current_panel, T2IAdapterPanel):
+                adapter_widget = T2IAdapterAddedItem(data["t2i_adapter"])
                 adapter_widget.update_ui()
                 adapter_widget.remove_clicked.connect(self.current_panel.on_remove_clicked)
                 adapter_widget.edit_clicked.connect(self.current_panel.on_edit_clicked)
                 adapter_widget.enabled.connect(self.current_panel.on_enabled)
                 self.current_panel.adapters_layout.addWidget(adapter_widget)
         elif data["action"] == "update":
-            adapter = data["t2i_adapter"]
-            self.t2i_adapter_list.update_with_adapter_data_object(adapter)
+            t2i_adapter = data["t2i_adapter"]
+            self.t2i_adapter_list.update_with_adapter_data_object(t2i_adapter)
 
-            if isinstance(self.current_panel, T2IPanel):
+            if isinstance(self.current_panel, T2IAdapterPanel):
                 for i in range(self.current_panel.adapters_layout.count()):
                     widget = self.current_panel.adapters_layout.itemAt(i).widget()
-                    if widget.adapter.adapter_id == adapter.adapter_id:
-                        widget.adapter = adapter
+                    if widget.t2i_adapter.adapter_id == t2i_adapter.adapter_id:
+                        widget.t2i_adapter = t2i_adapter
                         widget.update_ui()
                         break
 
     def on_ip_adapters(self, data):
         if data["action"] == "add":
-            adapter_id = self.ip_adapter_list.add(data["ip_adapter"])
+            self.ip_adapter_list.add(data["ip_adapter"])
 
             if isinstance(self.current_panel, IPAdapterPanel):
-                data["ip_adapter"].adapter_id = adapter_id
                 adapter_widget = IPAdapterAddedItem(data["ip_adapter"])
                 adapter_widget.update_ui()
                 adapter_widget.remove_clicked.connect(self.current_panel.on_remove_clicked)
                 adapter_widget.edit_clicked.connect(self.current_panel.on_edit_clicked)
                 adapter_widget.enabled.connect(self.current_panel.on_enabled)
                 self.current_panel.adapters_layout.addWidget(adapter_widget)
+
         elif data["action"] == "update":
             adapter = data["ip_adapter"]
             self.ip_adapter_list.update_with_adapter_data_object(adapter)
@@ -268,3 +265,17 @@ class RightMenu(QFrame):
                         widget.adapter = adapter
                         widget.update_ui()
                         break
+
+    def on_lora(self, data):
+        if data["action"] == "add":
+            lora_id = self.lora_list.add((data["lora"]))
+
+            if lora_id is None:
+                self.show_error("You can only add the same LoRA once.")
+                return
+
+            if isinstance(self.current_panel, LoraPanel):
+                lora_widget = LoraAddedItem(data["lora"])
+                lora_widget.remove_clicked.connect(self.current_panel.on_remove_clicked)
+                lora_widget.enabled.connect(self.current_panel.on_enabled)
+                self.current_panel.loras_layout.addWidget(lora_widget)

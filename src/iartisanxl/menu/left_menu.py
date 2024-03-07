@@ -1,11 +1,10 @@
 from importlib.resources import files
 
+from PyQt6.QtCore import QEasingCurve, QPropertyAnimation, pyqtSignal
+from PyQt6.QtWidgets import QFrame, QSizePolicy, QVBoxLayout, QWidget
 
-from PyQt6.QtWidgets import QFrame, QWidget, QVBoxLayout, QSizePolicy
-from PyQt6.QtCore import QPropertyAnimation, QEasingCurve, pyqtSignal
-
+from iartisanxl.buttons.hamburguer_button import HamburguerButton
 from iartisanxl.buttons.menu_button import MenuButton
-from iartisanxl.buttons.expand_button import ExpandButton
 
 
 class LeftMenu(QFrame):
@@ -31,10 +30,7 @@ class LeftMenu(QFrame):
 
         self.setContentsMargins(0, 0, 0, 0)
         self.setMinimumSize(self.EXPANDED_WIDTH, 50)
-        self.setSizePolicy(
-            QSizePolicy.Policy.Expanding,
-            QSizePolicy.Policy.Minimum,
-        )
+        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
 
         main_layout = QVBoxLayout()
         main_layout.setContentsMargins(0, 0, 0, 0)
@@ -46,7 +42,7 @@ class LeftMenu(QFrame):
         self.container_layout.setContentsMargins(1, 0, 0, 0)
         self.container_layout.setSpacing(0)
 
-        hamburguer_btn = ExpandButton()
+        hamburguer_btn = HamburguerButton()
         hamburguer_btn.clicked.connect(self.on_expand_clicked)
         self.container_layout.addWidget(hamburguer_btn)
 
@@ -103,10 +99,7 @@ class LeftMenu(QFrame):
         self.animating = True
 
     def animation_finished(self):
-        if self.expanded:
-            self.expanded = False
-        else:
-            self.expanded = True
+        self.expanded = not self.expanded
 
         self.gui_options["left_menu_expanded"] = self.expanded
         self.animating = False

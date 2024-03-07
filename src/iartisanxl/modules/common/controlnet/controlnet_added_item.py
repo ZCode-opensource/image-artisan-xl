@@ -1,9 +1,9 @@
-from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QCheckBox, QLabel, QPushButton
 from PyQt6.QtCore import pyqtSignal
 from PyQt6.QtGui import QPixmap
+from PyQt6.QtWidgets import QCheckBox, QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget
 
-from iartisanxl.modules.common.controlnet.controlnet_data_object import ControlNetDataObject
 from iartisanxl.buttons.remove_button import RemoveButton
+from iartisanxl.modules.common.controlnet.controlnet_data import ControlNetData
 
 
 class ControlNetAddedItem(QWidget):
@@ -11,7 +11,7 @@ class ControlNetAddedItem(QWidget):
     edit_clicked = pyqtSignal(object)
     enabled = pyqtSignal(int, bool)
 
-    def __init__(self, controlnet: ControlNetDataObject, *args, **kwargs):
+    def __init__(self, controlnet: ControlNetData, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.controlnet = controlnet
         self.init_ui()
@@ -52,10 +52,10 @@ class ControlNetAddedItem(QWidget):
         self.enabled_checkbox.setText(self.controlnet.adapter_name)
         self.enabled_checkbox.setChecked(self.controlnet.enabled)
 
-        source_thumb_pixmap = QPixmap(self.controlnet.source_image.image_thumb)
+        source_thumb_pixmap = QPixmap(self.controlnet.source_thumb)
         self.source_thumb.setPixmap(source_thumb_pixmap)
 
-        preprocessor_thumb_pixmap = QPixmap(self.controlnet.preprocessor_image.image_thumb)
+        preprocessor_thumb_pixmap = QPixmap(self.controlnet.preprocessor_thumb)
         self.preprocessor_thumb.setPixmap(preprocessor_thumb_pixmap)
 
     def on_check_enabled(self):

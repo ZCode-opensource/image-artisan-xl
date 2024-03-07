@@ -1,13 +1,11 @@
-import os
-
 import torch
+from PyQt6.QtWidgets import QPushButton, QVBoxLayout, QWidget
 
-from PyQt6.QtWidgets import QVBoxLayout, QPushButton, QWidget
-
-from iartisanxl.modules.common.panels.base_panel import BasePanel
-from iartisanxl.modules.common.controlnet.controlnet_dialog import ControlNetDialog
 from iartisanxl.modules.common.controlnet.controlnet_added_item import ControlNetAddedItem
-from iartisanxl.modules.common.controlnet.controlnet_data_object import ControlNetDataObject
+from iartisanxl.modules.common.controlnet.controlnet_data import ControlNetData
+from iartisanxl.modules.common.controlnet.controlnet_dialog import ControlNetDialog
+from iartisanxl.modules.common.panels.base_panel import BasePanel
+from iartisanxl.utilities.image.operations import remove_image_data_files
 
 
 class ControlNetPanel(BasePanel):
@@ -42,6 +40,9 @@ class ControlNetPanel(BasePanel):
                 self.controlnets_layout.addWidget(controlnet_widget)
 
     def open_controlnet_dialog(self):
+        if self.parent().controlnet_dialog is not None:
+            self.parent().controlnet_dialog.reset_ui()
+
         self.parent().open_dialog(
             "controlnet",
             ControlNetDialog,
@@ -54,9 +55,6 @@ class ControlNetPanel(BasePanel):
             self.prompt_window,
         )
 
-        if self.parent().controlnet_dialog is not None:
-            self.parent().controlnet_dialog.reset_ui()
-
     def on_dialog_closed(self):
         self.parent().controlnet_dialog = None
         torch.cuda.empty_cache()
@@ -68,32 +66,19 @@ class ControlNetPanel(BasePanel):
                 self.parent().controlnet_dialog.reset_ui()
 
         # delete images
-        if controlnet_widget.controlnet.source_image.image_original:
-            os.remove(controlnet_widget.controlnet.source_image.image_original)
-
-        if controlnet_widget.controlnet.source_image.image_filename:
-            os.remove(controlnet_widget.controlnet.source_image.image_filename)
-
-        if controlnet_widget.controlnet.source_image.image_thumb:
-            os.remove(controlnet_widget.controlnet.source_image.image_thumb)
-
-        if controlnet_widget.controlnet.preprocessor_image.image_filename:
-            os.remove(controlnet_widget.controlnet.preprocessor_image.image_filename)
-
-        if controlnet_widget.controlnet.preprocessor_image.image_thumb:
-            os.remove(controlnet_widget.controlnet.preprocessor_image.image_thumb)
+        remove_image_data_files(controlnet_widget.controlnet.source_image)
+        remove_image_data_files(controlnet_widget.controlnet.preprocessor_image)
 
         self.controlnet_list.remove(controlnet_widget.controlnet)
         self.controlnets_layout.removeWidget(controlnet_widget)
         controlnet_widget.deleteLater()
 
-    def on_edit_clicked(self, controlnet: ControlNetDataObject):
+    def on_edit_clicked(self, controlnet: ControlNetData):
         if self.parent().controlnet_dialog is None:
             self.open_controlnet_dialog()
 
         self.parent().controlnet_dialog.controlnet = controlnet
         self.parent().controlnet_dialog.update_ui()
-        self.parent().controlnet_dialog.raise_()
 
     def on_controlnet_enabled(self, controlet_id, enabled):
         self.controlnet_list.update_adapter(controlet_id, {"enabled": enabled})

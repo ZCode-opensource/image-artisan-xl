@@ -1,17 +1,16 @@
-import inspect
 import gc
-from typing import Optional, Union, List
+import inspect
+from typing import List, Optional, Union
 
-import torch
 import numpy as np
-from PIL import Image
-
+import torch
 from diffusers.image_processor import VaeImageProcessor
 from diffusers.utils import PIL_INTERPOLATION
+from PIL import Image
 
-from iartisanxl.graph.nodes.node import Node
 from iartisanxl.graph.additional.controlnets_wrapper import ControlnetsWrapper
 from iartisanxl.graph.additional.t2i_adapters_wrapper import T2IAdaptersWrapper
+from iartisanxl.graph.nodes.node import Node
 
 
 class ImageGenerationNode(Node):
@@ -40,7 +39,7 @@ class ImageGenerationNode(Node):
         "lora",
         "controlnet",
         "t2i_adapter",
-        "ip_image_prompt_embeds",
+        "ip_adapter",
     ]
     OUTPUTS = ["latents"]
 
@@ -67,7 +66,9 @@ class ImageGenerationNode(Node):
     def __call__(self):
         cross_attention_kwargs = {}
         crops_coords_top_left = self.crops_coords_top_left if self.crops_coords_top_left is not None else (0, 0)
-        negative_crops_coords_top_left = self.negative_crops_coords_top_left if self.negative_crops_coords_top_left is not None else (0, 0)
+        negative_crops_coords_top_left = (
+            self.negative_crops_coords_top_left if self.negative_crops_coords_top_left is not None else (0, 0)
+        )
 
         if hasattr(self.unet, "peft_config"):
             if len(self.unet.peft_config) == 0:
@@ -160,16 +161,41 @@ class ImageGenerationNode(Node):
             add_time_ids = torch.cat([negative_add_time_ids, add_time_ids], dim=0)
 
         # IP Adapters
-        if self.ip_image_prompt_embeds is not None:
-            ip_hidden_states = []
+        if self.ip_adapter is not None:
+            ip_adapters = self.ip_adapter
 
-            for image_embeds in self.ip_image_prompt_embeds:
+            if isinstance(ip_adapters, dict):
+                ip_adapters = [ip_adapters]
+
+            ip_hidden_states = []
+            ip_mask = []
+
+            for ip_adapter in ip_adapters:
                 if do_classifier_free_guidance:
-                    ip_hidden_states.append(torch.cat([image_embeds["uncond_image_prompt_embeds"], image_embeds["image_prompt_embeds"]]))
+                    image_prompt_embeds = ip_adapter["image_projection"](ip_adapter["image_prompt_embeds"])
+                    uncond_image_prompt_embeds = ip_adapter["image_projection"](
+                        ip_adapter["uncond_image_prompt_embeds"]
+                    )
+                    image_prompt_embeds = torch.cat([uncond_image_prompt_embeds, image_prompt_embeds])
                 else:
-                    ip_hidden_states.append(image_embeds["image_prompt_embeds"])
+                    image_prompt_embeds = ip_adapter["image_projection"](ip_adapter["image_prompt_embeds"])
+
+                ip_hidden_states.append(image_prompt_embeds)
+
+                if ip_adapter["tensor_mask"] is not None:
+                    mask = torch.nn.functional.interpolate(
+                        ip_adapter["tensor_mask"].unsqueeze(1),
+                        size=(height // self.vae_scale_factor, width // self.vae_scale_factor),
+                        mode="bicubic",
+                    ).squeeze(1)
+                    mask = mask.to(device=self.device, dtype=self.torch_dtype)
+                else:
+                    mask = None
+
+                ip_mask.append(mask)
 
             cross_attention_kwargs["ip_hidden_states"] = ip_hidden_states
+            cross_attention_kwargs["ip_mask"] = ip_mask
 
         if t2i_adapter_models is not None:
             adapter_states = t2i_adapter_models(t2i_adapter_images, t2i_conditioning_scale)
@@ -185,9 +211,11 @@ class ImageGenerationNode(Node):
         timestep_cond = None
         if self.unet.config.time_cond_proj_dim is not None:
             guidance_scale_tensor = torch.tensor(self.guidance_scale - 1).repeat(1)
-            timestep_cond = self.get_guidance_scale_embedding(guidance_scale_tensor, embedding_dim=self.unet.config.time_cond_proj_dim).to(
-                device=self.device, dtype=latents.dtype
-            )
+            timestep_cond = self.get_guidance_scale_embedding(
+                guidance_scale_tensor, embedding_dim=self.unet.config.time_cond_proj_dim
+            ).to(device=self.device, dtype=latents.dtype)
+            if do_classifier_free_guidance:
+                timestep_cond = timestep_cond.repeat_interleave(2, dim=0)
 
         num_warmup_steps = max(len(timesteps) - self.num_inference_steps * self.scheduler.order, 0)
 
@@ -214,7 +242,11 @@ class ImageGenerationNode(Node):
             controlnet_keep = []
             for i in range(len(timesteps)):
                 keeps = [
-                    1.0 - float(i / len(timesteps) < net_dict["guidance_start"] or (i + 1) / len(timesteps) > net_dict["guidance_end"])
+                    1.0
+                    - float(
+                        i / len(timesteps) < net_dict["guidance_start"]
+                        or (i + 1) / len(timesteps) > net_dict["guidance_end"]
+                    )
                     for net_dict in controlnets
                 ]
                 controlnet_keep.append(keeps)
@@ -385,7 +417,9 @@ def _preprocess_adapter_image(image, height, width):
 
     if isinstance(image[0], Image.Image):
         image = [np.array(i.resize((width, height), resample=PIL_INTERPOLATION["lanczos"])) for i in image]
-        image = [i[None, ..., None] if i.ndim == 2 else i[None, ...] for i in image]  # expand [h, w] or [h, w, c] to [b, h, w, c]
+        image = [
+            i[None, ..., None] if i.ndim == 2 else i[None, ...] for i in image
+        ]  # expand [h, w] or [h, w, c] to [b, h, w, c]
         image = np.concatenate(image, axis=0)
         image = np.array(image).astype(np.float32) / 255.0
         image = image.transpose(0, 3, 1, 2)
@@ -396,7 +430,9 @@ def _preprocess_adapter_image(image, height, width):
         elif image[0].ndim == 4:
             image = torch.cat(image, dim=0)
         else:
-            raise ValueError(f"Invalid image tensor! Expecting image tensor with 3 or 4 dimension, but recive: {image[0].ndim}")
+            raise ValueError(
+                f"Invalid image tensor! Expecting image tensor with 3 or 4 dimension, but recive: {image[0].ndim}"
+            )
     return image
 
 

@@ -31,6 +31,10 @@ QPushButton:hover {
     color: #eff0f1;
 }
 
+QPushButton:disabled {
+    color: #949494;
+}
+
 QPushButton:pressed {
     background-color: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
                                 stop: 0 #575b75, stop: 1 #494e61);
@@ -281,6 +285,9 @@ QPushButton#green_button:hover {
 QPushButton#green_button:pressed {
     background-color: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #35d457, stop: 1 #1f8834);
 }
+QPushButton#green_button:disabled {
+    background-color: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #1a6e2d, stop: 1 #0c3515);
+}
 
 QPushButton#red_button {
     background-color: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #c42b2b, stop: 1 #861e1e);
@@ -400,16 +407,6 @@ PreferencesDialog QCheckBox {
     background-color: #181b28;
 }
 
-QWidget#control_image_widget ImageEditor {
-    background: #181b28;
-    border: 1px solid #2f344e;
-}
-
-QWidget#ip_adapter_image_widget ImageEditor {
-    background: #181b28;
-    border: 1px solid #2f344e;
-}
-
 DownloaderDialog QProgressBar:horizontal {
     background-color: #353636;
     border: 10px solid #181b28;
@@ -466,11 +463,52 @@ LoraPanel LoraAddedItem {
     border: 1px solid #3a3a3a;
 }
 
-IPAdapterImageWidget ImageAdderPreview {
+IPAdapterImageWidget ImageEditor {
     background: #232325;
     border: 1px solid #c9c9c9;
 }
 
 ImageItemsView QWidget#flow_widget {
     background: #232325;
+}
+
+ImageWidget {
+    border: 1px solid #525164; 
+}
+
+LayerManagerWidget QListWidget {
+    background: #161525;
+    border: 1px solid #525164;
+}
+
+LayerManagerWidget QListWidget::item {
+    background: #23223b;
+}
+
+LayerManagerWidget QListWidget::item:selected {
+    background: #48477c;
+}
+
+LayerManagerWidget QListWidget::item:hover {
+    background: #5f5da3;
+}
+
+ImageWidget ImageEditor {
+    background: #181b28;
+    border: 1px solid #2f344e;
+}
+
+ImageWidget TransparentButton#bottom_layer_control:hover {
+    background: #282d42;
+    border: 1px solid #1f2333;
+}
+
+ImageWidget#ip_adapter_image_widget ImageEditor {
+    background: #181b28;
+    border: 1px solid #2f344e;
+}
+
+MaskWidget ImageEditor {
+    background: #181b28;
+    border: 1px solid #2f344e;
 }

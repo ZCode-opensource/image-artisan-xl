@@ -1,8 +1,6 @@
 import accelerate
 import torch
-
 from diffusers import T2IAdapter
-
 
 from iartisanxl.graph.nodes.node import Node
 
@@ -46,7 +44,7 @@ class T2IAdapterModelNode(Node):
         ).to(device)
 
         if self.sequential_offload:
-            vae = accelerate.cpu_offload(vae, "cuda:0")
+            t2i_adapter_model = accelerate.cpu_offload(t2i_adapter_model, "cuda:0")
 
         self.values["t2i_adapter_model"] = t2i_adapter_model
 

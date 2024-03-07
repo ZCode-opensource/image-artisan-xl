@@ -1,40 +1,39 @@
-import os
 import logging
+import os
 
 import torch
 from PIL import Image
-
 from PyQt6.QtCore import QThread, pyqtSignal
 
 from iartisanxl.app.directories import DirectoriesObject
-from iartisanxl.generation.image_generation_data import ImageGenerationData
-from iartisanxl.generation.lora_list import LoraList
 from iartisanxl.generation.adapter_list import AdapterList
+from iartisanxl.generation.image_generation_data import ImageGenerationData
 from iartisanxl.graph.iartisanxl_node_graph import ImageArtisanNodeGraph
-from iartisanxl.graph.nodes.lora_node import LoraNode
 from iartisanxl.graph.nodes.controlnet_model_node import ControlnetModelNode
 from iartisanxl.graph.nodes.controlnet_node import ControlnetNode
-from iartisanxl.graph.nodes.t2i_adapter_model_node import T2IAdapterModelNode
-from iartisanxl.graph.nodes.t2i_adapter_node import T2IAdapterNode
-from iartisanxl.graph.nodes.image_load_node import ImageLoadNode
 from iartisanxl.graph.nodes.image_encoder_model_node import ImageEncoderModelNode
+from iartisanxl.graph.nodes.image_load_node import ImageLoadNode
+from iartisanxl.graph.nodes.ip_adapter_merge_node import IPAdapterMergeNode
 from iartisanxl.graph.nodes.ip_adapter_model_node import IPAdapterModelNode
 from iartisanxl.graph.nodes.ip_adapter_node import IPAdapterNode
-from iartisanxl.graph.nodes.ip_adapter_merge_node import IPAdapterMergeNode
+from iartisanxl.graph.nodes.lora_node import LoraNode
+from iartisanxl.graph.nodes.t2i_adapter_model_node import T2IAdapterModelNode
+from iartisanxl.graph.nodes.t2i_adapter_node import T2IAdapterNode
+from iartisanxl.modules.common.lora.lora_list import LoraList
+
 
 controlnet_dict = {
     "controlnet_canny_model": "controlnet-canny-sdxl-1.0-small",
     "controlnet_depth_model": "controlnet-depth-sdxl-1.0-small",
-    "controlnet_pose_model": "controlnet-openpose-sdxl-1.0",
     "controlnet_inpaint_model": "controlnet-inpaint-dreamer-sdxl",
 }
 
 t2i_adapter_dict = {
     "t2i_adapter_canny_model": "t2i-adapter-canny-sdxl-1.0",
     "t2i_adapter_depth_model": "t2i-adapter-depth-midas-sdxl-1.0",
-    "t2i_adapter_pose_model": "t2i-adapter-openpose-sdxl-1.0",
     "t2i_adapter_lineart_model": "t2i-adapter-lineart-sdxl-1.0",
     "t2i_adapter_sketch_model": "t2i-adapter-sketch-sdxl-1.0",
+    "t2i-recolor": "t2i-recolor",
 }
 
 
@@ -78,7 +77,7 @@ class NodeGraphThread(QThread):
         self.sequential_offload = sequential_offload
         self.torch_dtype = torch_dtype
 
-    def run(self):
+    def run(self):  # noqa: C901
         self.node_graph.torch_dtype = self.torch_dtype
 
         self.status_changed.emit("Generating image...")
@@ -92,7 +91,12 @@ class NodeGraphThread(QThread):
 
                 if node is not None:
                     if attr_name == "model":
-                        node.update_model(path=new_value["path"], model_name=new_value["name"], version=new_value["version"], model_type=new_value["type"])
+                        node.update_model(
+                            path=new_value["path"],
+                            model_name=new_value["name"],
+                            version=new_value["version"],
+                            model_type=new_value["type"],
+                        )
                     elif attr_name == "vae":
                         node.update_model(path=new_value["path"], vae_name=new_value["name"])
                     else:
@@ -119,7 +123,8 @@ class NodeGraphThread(QThread):
         # process loras
         lora_scale = self.node_graph.get_node_by_name("lora_scale")
 
-        # if there's a image dropped to generate, reset all the loras since its impossible to keep track of the ids for the nodes
+        # if there's a image dropped to generate, reset all the loras since I'm too lazy to
+        # keep track of all the ids for the nodes
         if self.lora_list.dropped_image:
             lora_nodes = self.node_graph.get_all_nodes_class(LoraNode)
             for lora_node in lora_nodes:
@@ -128,13 +133,19 @@ class NodeGraphThread(QThread):
             new_loras = self.lora_list.loras
 
             for lora in new_loras:
-                lora_node = LoraNode(path=lora.path, adapter_name=lora.filename, scale=lora.weight, lora_name=lora.name, version=lora.version)
+                lora_node = LoraNode(
+                    path=lora.path,
+                    adapter_name=lora.filename,
+                    scale=lora.weight,
+                    lora_name=lora.name,
+                    version=lora.version,
+                )
                 lora_node.connect("unet", sdxl_model, "unet")
                 lora_node.connect("text_encoder_1", sdxl_model, "text_encoder_1")
                 lora_node.connect("text_encoder_2", sdxl_model, "text_encoder_2")
                 lora_node.connect("global_lora_scale", lora_scale, "value")
                 self.node_graph.add_node(lora_node, lora.filename)
-                lora.id = lora_node.id
+                lora.node_id = lora_node.id
                 image_generation.connect("lora", lora_node, "lora")
                 prompts_encoder.connect("lora", lora_node, "lora")
         else:
@@ -142,19 +153,25 @@ class NodeGraphThread(QThread):
 
             if len(removed_loras) > 0:
                 for lora in removed_loras:
-                    self.node_graph.delete_node_by_id(lora.id)
+                    self.node_graph.delete_node_by_id(lora.node_id)
 
             new_loras = self.lora_list.get_added()
 
             if len(new_loras) > 0:
                 for lora in new_loras:
-                    lora_node = LoraNode(path=lora.path, adapter_name=lora.filename, scale=lora.weight, lora_name=lora.name, version=lora.version)
+                    lora_node = LoraNode(
+                        path=lora.path,
+                        adapter_name=lora.filename,
+                        scale=lora.weight,
+                        lora_name=lora.name,
+                        version=lora.version,
+                    )
                     lora_node.connect("unet", sdxl_model, "unet")
                     lora_node.connect("text_encoder_1", sdxl_model, "text_encoder_1")
                     lora_node.connect("text_encoder_2", sdxl_model, "text_encoder_2")
                     lora_node.connect("global_lora_scale", lora_scale, "value")
                     self.node_graph.add_node(lora_node, lora.filename)
-                    lora.id = lora_node.id
+                    lora.node_id = lora_node.id
                     image_generation.connect("lora", lora_node, "lora")
                     prompts_encoder.connect("lora", lora_node, "lora")
 
@@ -162,7 +179,7 @@ class NodeGraphThread(QThread):
 
             if len(modified_loras) > 0:
                 for lora in modified_loras:
-                    lora_node = self.node_graph.get_node(lora.id)
+                    lora_node = self.node_graph.get_node(lora.node_id)
 
                     if lora_node is not None:
                         lora_node.update_lora(lora.weight, lora.enabled)
@@ -181,9 +198,13 @@ class NodeGraphThread(QThread):
 
             if len(added_controlnets) > 0:
                 for controlnet in added_controlnets:
-                    controlnet_image_node = ImageLoadNode(path=controlnet.preprocessor_image.image_filename)
+                    controlnet_image_node = ImageLoadNode(path=controlnet.preprocessor_image)
                     controlnet_node = ControlnetNode(
-                        controlnet.type_index, controlnet.adapter_type, controlnet.conditioning_scale, controlnet.guidance_start, controlnet.guidance_end
+                        controlnet.type_index,
+                        controlnet.adapter_type,
+                        controlnet.conditioning_scale,
+                        controlnet.guidance_start,
+                        controlnet.guidance_end,
                     )
 
                     controlnet_model_node = self.get_controlnet_model(controlnet.adapter_type)
@@ -222,7 +243,7 @@ class NodeGraphThread(QThread):
 
                     # update image
                     control_image_node = self.node_graph.get_node_by_name(f"control_image_{controlnet.node_id}")
-                    control_image_node.update_path(controlnet.preprocessor_image.image_filename)
+                    control_image_node.update_path(controlnet.preprocessor_image)
 
         removed_controlnets = self.controlnet_list.get_removed()
         if len(removed_controlnets) > 0:
@@ -245,9 +266,12 @@ class NodeGraphThread(QThread):
 
             if len(added_t2i_adapters) > 0:
                 for t2i_adapter in added_t2i_adapters:
-                    t2i_adapter_image_node = ImageLoadNode(path=t2i_adapter.preprocessor_image.image_filename)
+                    t2i_adapter_image_node = ImageLoadNode(path=t2i_adapter.preprocessor_image)
                     t2i_adapter_node = T2IAdapterNode(
-                        t2i_adapter.type_index, t2i_adapter.adapter_type, t2i_adapter.conditioning_scale, t2i_adapter.conditioning_factor
+                        t2i_adapter.type_index,
+                        t2i_adapter.adapter_type,
+                        t2i_adapter.conditioning_scale,
+                        t2i_adapter.conditioning_factor,
                     )
 
                     t2i_adapter_model_node = self.get_t2i_adapter_model(t2i_adapter.adapter_type)
@@ -285,7 +309,7 @@ class NodeGraphThread(QThread):
 
                     # update image
                     t2i_adapter_image_node = self.node_graph.get_node_by_name(f"adapter_image_{t2i_adapter.node_id}")
-                    t2i_adapter_image_node.update_path(t2i_adapter.preprocessor_image.image_filename)
+                    t2i_adapter_image_node.update_path(t2i_adapter.preprocessor_image)
 
         removed_t2i_adapters = self.t2i_adapter_list.get_removed()
         if len(removed_t2i_adapters) > 0:
@@ -304,7 +328,9 @@ class NodeGraphThread(QThread):
             image_encoder_h_model_node = self.node_graph.get_node_by_name("ip_image_encoder_h")
 
             if image_encoder_h_model_node is None:
-                image_encoder_h_model_node = ImageEncoderModelNode(path=os.path.join(self.directories.models_ip_adapters, "image_encoder"))
+                image_encoder_h_model_node = ImageEncoderModelNode(
+                    path=os.path.join(self.directories.models_ip_adapters, "image_encoder")
+                )
                 self.node_graph.add_node(image_encoder_h_model_node, "ip_image_encoder_h")
 
         if len(self.ip_adapter_list.adapters) > 0:
@@ -315,12 +341,14 @@ class NodeGraphThread(QThread):
             if ip_adapter_merge_node is None:
                 ip_adapter_merge_node = IPAdapterMergeNode()
                 ip_adapter_merge_node.connect("unet", sdxl_model, "unet")
-                image_generation.connect("ip_image_prompt_embeds", ip_adapter_merge_node, "ip_image_prompt_embeds")
+                image_generation.connect("ip_adapter", ip_adapter_merge_node, "ip_adapter")
                 self.node_graph.add_node(ip_adapter_merge_node, "ip_adapter_merge_node")
 
             if len(added_ip_adapters) > 0:
                 for ip_adapter in added_ip_adapters:
-                    ip_adapter_node = IPAdapterNode(ip_adapter.type_index, ip_adapter.adapter_type, ip_adapter.ip_adapter_scale)
+                    ip_adapter_node = IPAdapterNode(
+                        ip_adapter.type_index, ip_adapter.adapter_type, ip_adapter.ip_adapter_scale
+                    )
                     self.node_graph.add_node(ip_adapter_node)
                     ip_adapter.node_id = ip_adapter_node.id
 
@@ -329,9 +357,23 @@ class NodeGraphThread(QThread):
                     ip_adapter_node.connect("ip_adapter_model", ip_adapter_model_node, "ip_adapter_model")
                     ip_adapter_merge_node.connect("ip_adapter", ip_adapter_node, "ip_adapter")
 
+                    if ip_adapter.mask_alpha_image is not None:
+                        ip_adapter_mask_image_node = ImageLoadNode(path=ip_adapter.mask_alpha_image)
+                        self.node_graph.add_node(
+                            ip_adapter_mask_image_node, f"adapter_mask_image_{ip_adapter_node.id}"
+                        )
+                        ip_adapter_node.connect("mask_alpha_image", ip_adapter_mask_image_node, "image")
+
                     for image in ip_adapter.images:
-                        ip_adapter_image_node = ImageLoadNode(path=image.image_filename, weight=image.weight, noise=image.noise)
-                        self.node_graph.add_node(ip_adapter_image_node, f"adapter_image_{ip_adapter_node.id}_{image.id}")
+                        ip_adapter_image_node = ImageLoadNode(
+                            path=image.image,
+                            weight=image.weight,
+                            noise=image.noise,
+                            noise_index=image.noise_type_index,
+                        )
+                        self.node_graph.add_node(
+                            ip_adapter_image_node, f"adapter_image_{ip_adapter_node.id}_{image.ip_adapter_id}"
+                        )
                         image.node_id = ip_adapter_image_node.id
                         ip_adapter_node.connect("image", ip_adapter_image_node, "image")
 
@@ -353,7 +395,25 @@ class NodeGraphThread(QThread):
                         ip_adapter_node.connect("ip_adapter_model", ip_adapter_model_node, "ip_adapter_model")
 
                     # update rest of params
-                    ip_adapter_node.update_adapter(ip_adapter.type_index, ip_adapter.adapter_type, ip_adapter.enabled, ip_adapter.ip_adapter_scale)
+                    ip_adapter_node.update_adapter(
+                        ip_adapter.type_index, ip_adapter.adapter_type, ip_adapter.enabled, ip_adapter.ip_adapter_scale
+                    )
+
+                    if ip_adapter.mask_alpha_image is not None:
+                        ip_adapter_mask_image_node = self.node_graph.get_node_by_name(
+                            f"adapter_mask_image_{ip_adapter_node.id}"
+                        )
+
+                        if ip_adapter_mask_image_node is None:
+                            ip_adapter_mask_image_node = ImageLoadNode(path=ip_adapter.mask_alpha_image)
+                            self.node_graph.add_node(
+                                ip_adapter_mask_image_node, f"adapter_mask_image_{ip_adapter_node.id}"
+                            )
+                            ip_adapter_node.connect("mask_alpha_image", ip_adapter_mask_image_node, "image")
+                        else:
+                            ip_adapter_mask_image_node.update_path(ip_adapter.mask_alpha_image)
+                    else:
+                        self.node_graph.delete_node_by_name(f"adapter_mask_image_{ip_adapter_node.id}")
 
                     added_images = ip_adapter.get_added_images()
                     modified_images = ip_adapter.get_modified_images()
@@ -361,15 +421,27 @@ class NodeGraphThread(QThread):
 
                     if len(added_images) > 0:
                         for image in added_images:
-                            ip_adapter_image_node = ImageLoadNode(path=image.image_filename, weight=image.weight, noise=image.noise)
-                            self.node_graph.add_node(ip_adapter_image_node, f"adapter_image_{ip_adapter_node.id}_{image.id}")
+                            ip_adapter_image_node = ImageLoadNode(
+                                path=image.image,
+                                weight=image.weight,
+                                noise=image.noise,
+                                noise_index=image.noise_type_index,
+                            )
+                            self.node_graph.add_node(
+                                ip_adapter_image_node, f"adapter_image_{ip_adapter_node.id}_{image.ip_adapter_id}"
+                            )
                             image.node_id = ip_adapter_image_node.id
                             ip_adapter_node.connect("image", ip_adapter_image_node, "image")
 
                     if len(modified_images) > 0:
                         for image in modified_images:
                             ip_adapter_image_node = self.node_graph.get_node(image.node_id)
-                            ip_adapter_image_node.update_path_weight_noise(image.image_filename, weight=image.weight, noise=image.noise)
+                            ip_adapter_image_node.update_path_weight_noise(
+                                image.image,
+                                weight=image.weight,
+                                noise=image.noise,
+                                noise_index=image.noise_type_index,
+                            )
 
                     if len(deleted_images) > 0:
                         for image in deleted_images:
@@ -397,14 +469,21 @@ class NodeGraphThread(QThread):
             self.node_graph()
         except KeyError:
             self.generation_error.emit("There was an error while generating.", False)
-        except FileNotFoundError:            
+        except FileNotFoundError:
             self.generation_error.emit(
-                "There's a missing model file in the generation, choose a different one or download missing models from the downloader", False
+                (
+                    "There's a missing model file in the generation, choose a different one or download missing"
+                    "models from the downloader"
+                ),
+                False,
             )
-        except OSError as e:
-            print(f"{e}")
+        except OSError:
             self.generation_error.emit(
-                "There's a missing model file in the generation, choose a different one or download missing models from the downloader", False
+                (
+                    "There's a missing model file in the generation, choose a different one or download missing"
+                    "models from the downloader"
+                ),
+                False,
             )
 
         if not self.node_graph.updated:
@@ -448,7 +527,9 @@ class NodeGraphThread(QThread):
         if controlnet_model_node is None:
             controlnet_model_path = controlnet_dict.get(controlnet_type, "")
 
-            controlnet_model_node = ControlnetModelNode(path=os.path.join(self.directories.models_controlnets, controlnet_model_path))
+            controlnet_model_node = ControlnetModelNode(
+                path=os.path.join(self.directories.models_controlnets, controlnet_model_path)
+            )
             self.node_graph.add_node(controlnet_model_node, controlnet_type)
 
         return controlnet_model_node
@@ -459,7 +540,9 @@ class NodeGraphThread(QThread):
         if t2i_adapter_model_node is None:
             t2i_adapter_model_path = t2i_adapter_dict.get(adapter_type, "")
 
-            t2i_adapter_model_node = T2IAdapterModelNode(path=os.path.join(self.directories.models_t2i_adapters, t2i_adapter_model_path))
+            t2i_adapter_model_node = T2IAdapterModelNode(
+                path=os.path.join(self.directories.models_t2i_adapters, t2i_adapter_model_path)
+            )
             self.node_graph.add_node(t2i_adapter_model_node, adapter_type)
 
         return t2i_adapter_model_node
@@ -470,7 +553,9 @@ class NodeGraphThread(QThread):
         if ip_adapter_model_node is None:
             ip_adapter_model_file = ip_adapter_dict.get(ip_adapter_type, "")
 
-            ip_adapter_model_node = IPAdapterModelNode(path=os.path.join(self.directories.models_ip_adapters, ip_adapter_type, ip_adapter_model_file))
+            ip_adapter_model_node = IPAdapterModelNode(
+                path=os.path.join(self.directories.models_ip_adapters, ip_adapter_type, ip_adapter_model_file)
+            )
             self.node_graph.add_node(ip_adapter_model_node, ip_adapter_type)
 
         return ip_adapter_model_node

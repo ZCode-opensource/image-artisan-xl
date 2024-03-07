@@ -1,13 +1,13 @@
-from PyQt6.QtWidgets import QDialog, QVBoxLayout, QSizeGrip
 from PyQt6.QtCore import Qt, pyqtSignal
-from PyQt6.QtGui import QPainter, QColor, QPen
+from PyQt6.QtGui import QColor, QPainter, QPen
+from PyQt6.QtWidgets import QDialog, QSizeGrip, QVBoxLayout
 
 from iartisanxl.app.directories import DirectoriesObject
 from iartisanxl.app.preferences import PreferencesObject
 from iartisanxl.app.title_bar import TitleBar
+from iartisanxl.generation.image_generation_data import ImageGenerationData
 from iartisanxl.modules.common.image_viewer_simple import ImageViewerSimple
 from iartisanxl.modules.common.prompt_window import PromptWindow
-from iartisanxl.generation.image_generation_data import ImageGenerationData
 
 
 class CustomSizeGrip(QSizeGrip):

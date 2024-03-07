@@ -1,3 +1,4 @@
+import math
 from typing import Optional
 
 import torch
@@ -120,7 +121,7 @@ class IPAdapterAttnProcessor2_0(torch.nn.Module):
         self.to_k_ip = nn.ModuleList([nn.Linear(cross_attention_dim or hidden_size, hidden_size, bias=False) for _ in range(len(num_tokens))])
         self.to_v_ip = nn.ModuleList([nn.Linear(cross_attention_dim or hidden_size, hidden_size, bias=False) for _ in range(len(num_tokens))])
 
-    def __call__(self, attn, hidden_states, encoder_hidden_states=None, attention_mask=None, temb=None, ip_hidden_states=None):
+    def __call__(self, attn, hidden_states, encoder_hidden_states=None, attention_mask=None, temb=None, ip_hidden_states=None, ip_mask=None):
         residual = hidden_states
 
         if attn.spatial_norm is not None:
@@ -170,7 +171,7 @@ class IPAdapterAttnProcessor2_0(torch.nn.Module):
         hidden_states = hidden_states.to(query.dtype)
 
         # for ip-adapter
-        for current_ip_hidden_states, scale, to_k_ip, to_v_ip in zip(ip_hidden_states, self.scale, self.to_k_ip, self.to_v_ip):
+        for current_ip_hidden_states, scale, to_k_ip, to_v_ip, current_ip_mask in zip(ip_hidden_states, self.scale, self.to_k_ip, self.to_v_ip, ip_mask):
             ip_key = to_k_ip(current_ip_hidden_states)
             ip_value = to_v_ip(current_ip_hidden_states)
 
@@ -184,6 +185,17 @@ class IPAdapterAttnProcessor2_0(torch.nn.Module):
 
             current_ip_hidden_states = current_ip_hidden_states.transpose(1, 2).reshape(batch_size, -1, attn.heads * head_dim)
             current_ip_hidden_states = current_ip_hidden_states.to(query.dtype)
+
+            if current_ip_mask is not None:
+                mask_height = current_ip_mask.shape[1] / math.sqrt(current_ip_mask.shape[1] * current_ip_mask.shape[2] / query.shape[2])
+                mask_height = int(mask_height) + int((query.shape[2] % int(mask_height)) != 0)
+                mask_width = query.shape[2] // mask_height
+
+                mask_downsample = F.interpolate(current_ip_mask.unsqueeze(1), size=(mask_height, mask_width), mode="bicubic").squeeze(1)
+                mask_downsample = mask_downsample.view(mask_downsample.shape[0], -1, 1)
+                mask_downsample = mask_downsample.repeat(batch_size, 1, attn.heads * head_dim)
+
+                current_ip_hidden_states = current_ip_hidden_states * mask_downsample
 
             hidden_states = hidden_states + scale * current_ip_hidden_states
 

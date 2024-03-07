@@ -1,93 +1,20 @@
-import os
-import shutil
-import math
-from datetime import datetime
-
-from PIL import Image
-from PyQt6.QtCore import QSettings, Qt, QThread, pyqtSignal
-from PyQt6.QtWidgets import QVBoxLayout, QHBoxLayout, QComboBox, QLabel, QPushButton, QWidget
+from PyQt6.QtCore import QEvent, QSettings, Qt
+from PyQt6.QtGui import QColor, QCursor, QGuiApplication
+from PyQt6.QtWidgets import QApplication, QComboBox, QHBoxLayout, QLabel, QPushButton, QSlider, QVBoxLayout, QWidget
 from superqt import QDoubleSlider
 
-from iartisanxl.modules.common.dialogs.base_dialog import BaseDialog
 from iartisanxl.app.event_bus import EventBus
-from iartisanxl.modules.common.ip_adapter.ip_adapter_image_widget import IPAdapterImageWidget
+from iartisanxl.buttons.brush_erase_button import BrushEraseButton
+from iartisanxl.buttons.color_button import ColorButton
+from iartisanxl.buttons.eyedropper_button import EyeDropperButton
+from iartisanxl.modules.common.dialogs.base_dialog import BaseDialog
 from iartisanxl.modules.common.ip_adapter.ip_adapter_data_object import IPAdapterDataObject
+from iartisanxl.modules.common.ip_adapter.ip_adapter_image import IPAdapterImage
 from iartisanxl.modules.common.ip_adapter.ip_adapter_image_items_view import IpAdapterImageItemsView
-from iartisanxl.modules.common.image.image_adder_preview import ImageAdderPreview
-from iartisanxl.modules.common.image.image_data_object import ImageDataObject
-
-
-class ImageProcessThread(QThread):
-    image_saved = pyqtSignal(ImageDataObject)
-
-    def __init__(self, image_editor: ImageAdderPreview, image_data_object: ImageDataObject):
-        super().__init__()
-
-        self.image_editor = image_editor
-        self.image_data_object = image_data_object
-
-    def run(self):
-        timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
-
-        if self.image_data_object.id is None or self.image_data_object.replace_original:
-            original_filename = f"ip_{timestamp}_original.png"
-            original_path = os.path.join("tmp/", original_filename)
-
-            if self.image_data_object.image_original is not None:
-                shutil.copy2(self.image_data_object.image_original, original_path)
-            else:
-                pixmap = self.image_editor.pixmap_item.pixmap()
-                pixmap.save(original_path)
-
-            self.image_data_object.image_original = original_path
-            self.image_data_object.replace_original = False
-
-        pil_image = Image.open(self.image_data_object.image_original)
-        width, height = pil_image.size
-
-        dx = self.image_editor.pixmap_item.x()
-        dy = self.image_editor.pixmap_item.y()
-        angle = self.image_editor.pixmap_item.rotation()
-
-        center = (width / 2, height / 2)
-        pil_image = pil_image.rotate(-angle, Image.Resampling.BICUBIC, center=center, expand=True)
-
-        new_width = round(self.image_editor.pixmap_item.sceneBoundingRect().width())
-        new_height = round(self.image_editor.pixmap_item.sceneBoundingRect().height())
-        pil_image = pil_image.resize((new_width, new_height), Image.Resampling.LANCZOS)
-
-        left = math.floor(new_width / 2 - (width / 2 + dx))
-        top = math.floor(new_height / 2 - (height / 2 + dy))
-        right = round(self.image_editor.mapToScene(self.image_editor.viewport().rect()).boundingRect().width()) + left
-        bottom = round(self.image_editor.mapToScene(self.image_editor.viewport().rect()).boundingRect().height()) + top
-        pil_image = pil_image.crop((left, top, right, bottom))
-
-        original_pixmap = self.image_editor.original_pixmap
-
-        if self.image_data_object.id is None:
-            original_filename = f"ip_{timestamp}_original.png"
-
-            original_path = os.path.join("tmp/", original_filename)
-            original_pixmap.save(original_path)
-            self.image_data_object.image_original = original_path
-        else:
-            os.remove(self.image_data_object.image_filename)
-            os.remove(self.image_data_object.image_thumb)
-
-        filename = f"ip_{timestamp}.png"
-        thumb_filename = f"ip_{timestamp}_thumb.png"
-
-        image_path = os.path.join("tmp/", filename)
-        thumb_path = os.path.join("tmp/", thumb_filename)
-
-        pil_image.save(image_path)
-        pil_image.thumbnail((80, 80))
-        pil_image.save(thumb_path)
-
-        self.image_data_object.image_filename = image_path
-        self.image_data_object.image_thumb = thumb_path
-
-        self.image_saved.emit(self.image_data_object)
+from iartisanxl.modules.common.ip_adapter.ip_adapter_image_widget import IPAdapterImageWidget
+from iartisanxl.modules.common.mask.mask_dialog import MaskDialog
+from iartisanxl.threads.image.transformed_images_saver_thread import TransformedImagesSaverThread
+from iartisanxl.utilities.image.operations import remove_image_data_files
 
 
 class IPAdapterDialog(BaseDialog):
@@ -95,7 +22,7 @@ class IPAdapterDialog(BaseDialog):
         super().__init__(*args, **kwargs)
 
         self.setWindowTitle("IP Adapters")
-        self.setMinimumSize(900, 700)
+        self.setMinimumSize(500, 500)
 
         self.settings = QSettings("ZCode", "ImageArtisanXL")
         self.settings.beginGroup("ip_adapters_dialog")
@@ -106,12 +33,20 @@ class IPAdapterDialog(BaseDialog):
 
         self.event_bus = EventBus()
 
+        self.target_width = 512
+        self.targe_height = 512
         self.adapter = IPAdapterDataObject()
         self.adapter_scale = 1.0
+        self.image_changed = False
 
-        self.image_process_thread = None
+        self.image_prepare_thread = None
+
+        self.mask_dialog = None
 
         self.init_ui()
+
+        self.image_widget.image_editor.brush_size = 15
+        self.image_widget.add_empty_layer()
 
     def init_ui(self):
         top_layout = QHBoxLayout()
@@ -136,6 +71,36 @@ class IPAdapterDialog(BaseDialog):
 
         self.main_layout.addLayout(top_layout)
 
+        brush_layout = QHBoxLayout()
+        brush_layout.setContentsMargins(10, 0, 10, 0)
+        brush_layout.setSpacing(10)
+
+        brush_size_label = QLabel("Brush size:")
+        brush_layout.addWidget(brush_size_label)
+        brush_size_slider = QSlider(Qt.Orientation.Horizontal)
+        brush_size_slider.setRange(3, 300)
+        brush_size_slider.setValue(15)
+        brush_layout.addWidget(brush_size_slider)
+
+        brush_hardness_label = QLabel("Brush hardness:")
+        brush_layout.addWidget(brush_hardness_label)
+        brush_hardness_slider = QDoubleSlider(Qt.Orientation.Horizontal)
+        brush_hardness_slider.setRange(0.0, 0.99)
+        brush_hardness_slider.setValue(0.5)
+        brush_layout.addWidget(brush_hardness_slider)
+
+        brush_erase_button = BrushEraseButton()
+        brush_layout.addWidget(brush_erase_button)
+
+        self.color_button = ColorButton("Color:")
+        brush_layout.addWidget(self.color_button, 0)
+
+        eyedropper_button = EyeDropperButton(25, 25)
+        eyedropper_button.clicked.connect(self.on_eyedropper_clicked)
+        brush_layout.addWidget(eyedropper_button, 0)
+
+        self.main_layout.addLayout(brush_layout)
+
         middle_layout = QHBoxLayout()
 
         self.images_view = QWidget()
@@ -154,8 +119,11 @@ class IPAdapterDialog(BaseDialog):
 
         image_layout = QVBoxLayout()
         image_layout.setContentsMargins(5, 0, 5, 0)
-        self.image_widget = IPAdapterImageWidget("image", self.image_viewer, self.directories.outputs_images)
+        self.image_widget = IPAdapterImageWidget(
+            "image", self.image_viewer, self.directories.outputs_images, self.target_width, self.targe_height
+        )
         self.image_widget.image_added.connect(self.on_image_added)
+        self.image_widget.new_image.connect(self.on_new_image)
         image_layout.addWidget(self.image_widget)
 
         middle_layout.addLayout(image_layout)
@@ -167,6 +135,10 @@ class IPAdapterDialog(BaseDialog):
 
         bottom_layout = QHBoxLayout()
         bottom_layout.setContentsMargins(5, 0, 5, 0)
+        self.add_mask_button = QPushButton("Add Mask")
+        self.add_mask_button.clicked.connect(self.on_add_mask_clicked)
+        self.add_mask_button.setObjectName("blue_button")
+        bottom_layout.addWidget(self.add_mask_button)
         self.add_button = QPushButton("Add IP-Adapter")
         self.add_button.setObjectName("green_button")
         self.add_button.clicked.connect(self.on_ip_adapter_added)
@@ -177,6 +149,14 @@ class IPAdapterDialog(BaseDialog):
         self.main_layout.setStretch(1, 1)
         self.main_layout.setStretch(2, 0)
         self.main_layout.setSpacing(3)
+
+        self.color_button.color_changed.connect(self.image_widget.image_editor.set_brush_color)
+        brush_size_slider.valueChanged.connect(self.image_widget.image_editor.set_brush_size)
+        brush_size_slider.sliderReleased.connect(self.image_widget.image_editor.hide_brush_preview)
+        brush_hardness_slider.valueChanged.connect(self.image_widget.image_editor.set_brush_hardness)
+        brush_hardness_slider.sliderReleased.connect(self.image_widget.image_editor.hide_brush_preview)
+
+        brush_erase_button.brush_selected.connect(self.image_widget.set_erase_mode)
 
     def closeEvent(self, event):
         self.settings.beginGroup("ip_adapters_dialog")
@@ -204,86 +184,109 @@ class IPAdapterDialog(BaseDialog):
         else:
             self.show_error("Adapter must have at least one image.")
 
+    def on_new_image(self):
+        if self.image_items_view.current_item is not None:
+            self.image_items_view.current_item.set_selected(False)
+
+        self.image_items_view.current_item = None
+
     def on_image_added(self):
-        image_id = self.image_widget.image_id
+        layers = self.image_widget.image_editor.get_all_layers()
 
-        if image_id is None:
-            image_data_object = ImageDataObject(
-                image_scale=self.image_widget.image_scale_control.value,
-                image_x_pos=self.image_widget.image_x_pos_control.value,
-                image_y_pos=self.image_widget.image_y_pos_control.value,
-                image_rotation=self.image_widget.image_rotation_control.value,
-                weight=self.image_widget.image_weight_slider.value(),
-                noise=self.image_widget.image_noise_slider.value(),
-                image_original=self.image_widget.image_path,
+        if len(layers) == 0:
+            self.show_error("You must load an image or create a new one to be able to add it.")
+            return
+
+        self.image_prepare_thread = TransformedImagesSaverThread(
+            layers,
+            self.target_width,
+            self.targe_height,
+            prefix="ip_adapter_",
+        )
+
+        self.image_prepare_thread.merge_finished.connect(self.on_image_prepared)
+        self.image_prepare_thread.finished.connect(self.on_image_prepare_thread_finished)
+        self.image_prepare_thread.error.connect(self.on_error)
+        self.image_prepare_thread.start()
+
+    def on_error(self, message: str):
+        self.error = True
+        self.show_error(message)
+
+    def on_image_prepare_thread_finished(self):
+        self.image_prepare_thread.finished.disconnect(self.on_image_prepare_thread_finished)
+        self.image_prepare_thread = None
+
+    def on_image_prepared(self, image_path: str, thumbnail_path: str):
+        ip_adapter_image = IPAdapterImage(
+            image=image_path,
+            thumb=thumbnail_path,
+            weight=self.image_widget.image_weight_slider.value(),
+            noise=self.image_widget.image_noise_slider.value(),
+            noise_type=self.image_widget.noise_type_combo.currentData(),
+            noise_type_index=self.image_widget.noise_type_combo.currentIndex(),
+        )
+
+        for layer in self.image_widget.image_editor.get_all_layers():
+            layer_name = self.image_widget.layer_manager_widget.get_layer_name(layer.layer_id)
+            ip_adapter_image.add_image(
+                layer.original_path,
+                layer.image_path,
+                layer.pixmap_item.scale(),
+                layer.pixmap_item.x(),
+                layer.pixmap_item.y(),
+                layer.pixmap_item.rotation(),
+                layer_name,
+                layer.order,
             )
-        else:
-            image_data_object = self.adapter.get_image_data_object(image_id)
 
-            if image_data_object is not None:
-                image_data_object.image_scale = self.image_widget.image_scale_control.value
-                image_data_object.image_x_pos = self.image_widget.image_x_pos_control.value
-                image_data_object.image_y_pos = self.image_widget.image_y_pos_control.value
-                image_data_object.image_rotation = self.image_widget.image_rotation_control.value
-                image_data_object.weight = self.image_widget.image_weight_slider.value()
-                image_data_object.noise = self.image_widget.image_noise_slider.value()
-
-                if image_data_object.image_original != self.image_widget.image_path:
-                    os.remove(image_data_object.image_original)
-                    image_data_object.image_original = self.image_widget.image_path
-                    image_data_object.replace_original = True
-            else:
-                self.show_error("Couldn't obtain the information to add the image.")
-                return
-
-        self.image_process_thread = ImageProcessThread(self.image_widget.image_editor, image_data_object)
-        self.image_process_thread.image_saved.connect(self.on_image_saved)
-        self.image_process_thread.finished.connect(self.on_image_process_finished)
-        self.image_process_thread.start()
-
-    def on_image_saved(self, image_data_object: ImageDataObject):
-        if image_data_object.id is not None:
-            self.image_items_view.update_current_item(image_data_object)
-        else:
-            self.adapter.add_image_data_object(image_data_object)
-            image_item = self.image_items_view.add_item_data_object(image_data_object)
+        if self.image_items_view.current_item is None:
+            self.adapter.add_ip_adapter_image(ip_adapter_image)
+            image_item = self.image_items_view.add_item_data_object(ip_adapter_image)
             self.image_items_view.on_item_selected(image_item)
+        else:
+            ip_adapter_image.ip_adapter_id = self.image_items_view.current_item.ip_adapter_image.ip_adapter_id
+            self.adapter.update_ip_adapter_image(ip_adapter_image)
+            self.image_items_view.update_current_item(ip_adapter_image)
+            self.on_item_selected(ip_adapter_image)
 
-        self.image_widget.image_id = image_data_object.id
         self.image_widget.add_image_button.setText("Update image")
         self.image_widget.new_image_button.setEnabled(True)
         self.image_widget.delete_image_button.setEnabled(True)
 
-    def on_image_process_finished(self):
-        self.image_process_thread = None
+    def on_item_selected(self, ip_adapter_Image: IPAdapterImage):
+        self.image_widget.image_editor.clear_all()
+        self.image_widget.reset_controls()
+        self.image_widget.layer_manager_widget.list_widget.clear()
 
-    def on_item_selected(self, image_data: ImageDataObject):
-        self.image_widget.show_image(image_data.image_original)
-        self.image_widget.set_image_parameters(
-            image_data.id,
-            image_data.image_scale,
-            image_data.image_x_pos,
-            image_data.image_y_pos,
-            image_data.image_rotation,
-            image_data.weight,
-            image_data.noise,
-        )
+        self.image_widget.image_weight_slider.setValue(ip_adapter_Image.weight)
+        self.image_widget.image_noise_slider.setValue(ip_adapter_Image.noise)
+        self.image_widget.noise_type_combo.setCurrentIndex(ip_adapter_Image.noise_type_index)
+
+        for image in sorted(ip_adapter_Image.images, key=lambda img: img.order):
+            layer_id = self.image_widget.reload_image_layer(image.image_filename, image.image_original, image.order)
+            self.image_widget.image_editor.selected_layer_id = layer_id
+            self.image_widget.layer_manager_widget.add_layer(layer_id, image.layer_name)
+
         self.image_widget.add_image_button.setText("Update image")
         self.image_widget.add_image_button.setEnabled(False)
         self.image_widget.delete_image_button.setEnabled(True)
         self.image_widget.new_image_button.setEnabled(True)
 
-        self.dataset_items_count_label.setText(f"{self.image_items_view.current_item_index + 1}/{self.image_items_view.item_count}")
+        self.dataset_items_count_label.setText(
+            f"{self.image_items_view.current_item_index + 1}/{self.image_items_view.item_count}"
+        )
 
-    def on_item_deleted(self, image_data: ImageDataObject, clear_view: bool):
+    def on_item_deleted(self, ip_adapter_image: IPAdapterImage, clear_view: bool):
         if clear_view:
-            self.image_widget.clear_image()
+            self.image_widget.on_new_image()
 
-        self.adapter.delete_image(image_data.id)
+        self.adapter.delete_ip_adapter_image(ip_adapter_image.ip_adapter_id)
 
     def reset_ui(self):
-        self.adapter = IPAdapterDataObject()
         self.image_widget.clear_image()
+
+        self.adapter = IPAdapterDataObject()
         self.image_items_view.clear()
         self.add_button.setText("Add IP-Adapter")
 
@@ -308,5 +311,56 @@ class IPAdapterDialog(BaseDialog):
 
     def on_images_finished_loading(self):
         self.image_widget.new_image_button.setEnabled(True)
-        self.on_item_selected(self.image_items_view.current_item.widget().image_data)
-        self.dataset_items_count_label.setText(f"{self.image_items_view.current_item_index + 1}/{self.image_items_view.item_count}")
+        self.on_item_selected(self.image_items_view.current_item.ip_adapter_image)
+        self.dataset_items_count_label.setText(
+            f"{self.image_items_view.current_item_index + 1}/{self.image_items_view.item_count}"
+        )
+
+    def on_add_mask_clicked(self):
+        # if self.adapter.adapter_id is None:
+        #     self.show_error("To add a mask, you first need to add the IP Adapter.")
+        #     return
+
+        if self.mask_dialog is None:
+            self.mask_dialog = MaskDialog(
+                self.adapter,
+                self.directories,
+                self.preferences,
+                "IP Adapter - Mask Editor",
+                self.show_error,
+                self.image_generation_data,
+                self.image_viewer,
+                self.prompt_window,
+            )
+            self.mask_dialog.mask_saved.connect(self.on_mask_saved)
+            self.mask_dialog.closed.connect(self.on_mask_dialog_closed)
+            self.mask_dialog.show()
+        else:
+            self.mask_dialog.raise_()
+            self.mask_dialog.activateWindow()
+
+    def on_mask_saved(self):
+        self.mask_dialog.close()
+        self.add_mask_button.setText("Edit mask")
+
+    def on_mask_dialog_closed(self):
+        self.mask_dialog = None
+
+    def on_eyedropper_clicked(self):
+        QApplication.instance().setOverrideCursor(Qt.CursorShape.CrossCursor)
+        QApplication.instance().installEventFilter(self)
+
+    def eventFilter(self, obj, event):
+        if (
+            QApplication.instance().overrideCursor() == Qt.CursorShape.CrossCursor
+            and event.type() == QEvent.Type.MouseButtonPress
+        ):
+            QApplication.instance().restoreOverrideCursor()
+            QApplication.instance().removeEventFilter(self)
+            x, y = QCursor.pos().x(), QCursor.pos().y()
+            pixmap = QGuiApplication.primaryScreen().grabWindow(0, x, y, 1, 1)
+            color = QColor(pixmap.toImage().pixel(0, 0))
+            rgb_color = (color.red(), color.green(), color.blue())
+            self.color_button.set_color(rgb_color)
+            return True
+        return super().eventFilter(obj, event)

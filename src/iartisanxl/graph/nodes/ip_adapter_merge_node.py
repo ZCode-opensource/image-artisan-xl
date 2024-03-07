@@ -1,14 +1,13 @@
-from iartisanxl.graph.nodes.node import Node
 from iartisanxl.diffusers_patch.ip_adapter_attention_processor import AttnProcessor2_0, IPAdapterAttnProcessor2_0
+from iartisanxl.graph.nodes.node import Node
 
 
 class IPAdapterMergeNode(Node):
     REQUIRED_INPUTS = ["ip_adapter", "unet"]
-    OUTPUTS = ["ip_image_prompt_embeds", "ip_adapter"]
+    OUTPUTS = ["ip_adapter"]
 
     def __call__(self) -> dict:
         self.unet.set_attn_processor(AttnProcessor2_0())
-        ip_image_prompt_embeds = None
 
         if self.ip_adapter is not None:
             ip_adapters = self.ip_adapter
@@ -18,13 +17,9 @@ class IPAdapterMergeNode(Node):
 
             weights = []
             scales = []
-            ip_image_prompt_embeds = []
 
             for ip_adapter in ip_adapters:
                 weights.append(ip_adapter["weights"])
-                ip_image_prompt_embeds.append(
-                    {"image_prompt_embeds": ip_adapter["image_prompt_embeds"], "uncond_image_prompt_embeds": ip_adapter["uncond_image_prompt_embeds"]}
-                )
                 scales.append(ip_adapter["scale"])
 
             attn_procs = self.convert_ip_adapter_attn_to_diffusers(weights)
@@ -34,13 +29,13 @@ class IPAdapterMergeNode(Node):
                 if isinstance(attn_processor, IPAdapterAttnProcessor2_0):
                     attn_processor.scale = scales
 
-        self.values["ip_image_prompt_embeds"] = ip_image_prompt_embeds
         self.values["ip_adapter"] = self.ip_adapter
 
         return self.values
 
     def before_delete(self):
-        self.unet.set_attn_processor(AttnProcessor2_0())
+        if self.unet is not None:
+            self.unet.set_attn_processor(AttnProcessor2_0())
 
     def convert_ip_adapter_attn_to_diffusers(self, state_dicts):
         # set ip-adapter cross-attention processors & load state_dict
