@@ -3,6 +3,7 @@ import copy
 import attr
 
 from iartisanxl.modules.common.ip_adapter.ip_adapter_image import IPAdapterImage
+from iartisanxl.modules.common.mask.mask_image import MaskImage
 
 
 @attr.s(auto_attribs=True, slots=True)
@@ -16,7 +17,7 @@ class IPAdapterDataObject:
     node_id: int = attr.ib(default=None)
     adapter_id: int = attr.ib(default=None)
     images: list[IPAdapterImage] = attr.ib(factory=list)
-    mask_alpha_image: str = attr.ib(default=None)
+    mask_image: MaskImage = attr.ib(default=None)
     _original_images: list[IPAdapterImage] = attr.Factory(list)
 
     def add_image(self, images, weight, noise_type, noise_type_index, noise):

@@ -2,46 +2,23 @@ import os
 from datetime import datetime
 
 from PIL import Image
-from PyQt6.QtCore import QMimeData, Qt, QUrl, pyqtSignal
-from PyQt6.QtGui import QGuiApplication, QImageReader, QPixmap
-from PyQt6.QtWidgets import (
-    QFileDialog,
-    QGridLayout,
-    QHBoxLayout,
-    QLabel,
-    QPushButton,
-    QSizePolicy,
-    QSlider,
-    QSpacerItem,
-    QVBoxLayout,
-    QWidget,
-)
-from superqt import QDoubleSlider
+from PyQt6.QtCore import Qt, pyqtSignal
+from PyQt6.QtGui import QImageReader, QPixmap
+from PyQt6.QtWidgets import QFileDialog, QHBoxLayout, QPushButton, QSizePolicy, QSpacerItem, QVBoxLayout, QWidget
 
-from iartisanxl.buttons.color_button import ColorButton
 from iartisanxl.layouts.aspect_ratio_layout import AspectRatioLayout
-from iartisanxl.modules.common.image.image_data_object import ImageDataObject
 from iartisanxl.modules.common.image.image_editor import ImageEditor
 from iartisanxl.modules.common.image_control import ImageControl
 from iartisanxl.modules.common.image_viewer_simple import ImageViewerSimple
-from iartisanxl.threads.image.save_merged_image_thread import SaveMergedImageThread
+from iartisanxl.modules.common.mask.mask_image import MaskImage
 
 
 class MaskWidget(QWidget):
     image_loaded = pyqtSignal()
     image_changed = pyqtSignal()
 
-    def __init__(
-        self,
-        text: str,
-        prefix: str,
-        image_viewer: ImageViewerSimple,
-        editor_width: int,
-        editor_height: int,
-        *args,
-        **kwargs,
-    ):
-        super().__init__(*args, **kwargs)
+    def __init__(self, text: str, prefix: str, image_viewer: ImageViewerSimple, editor_width: int, editor_height: int):
+        super().__init__()
 
         self.setObjectName("image_widget")
         self.text = text
@@ -55,12 +32,11 @@ class MaskWidget(QWidget):
         self.editor_height = editor_height
         self.aspect_ratio = float(self.editor_width) / float(self.editor_height)
 
-        self.image_copy_thread = None
-
         self.init_ui()
 
         self.image_layer_id = self.image_editor.add_empty_layer()
         self.drawing_layer_id = self.image_editor.add_empty_layer()
+        self.image_editor.set_layer_locked(self.drawing_layer_id, False)
         self.image_editor.selected_layer_id = self.drawing_layer_id
 
     def init_ui(self):
@@ -69,73 +45,37 @@ class MaskWidget(QWidget):
         main_layout.setSpacing(0)
 
         top_layout = QHBoxLayout()
-        fit_image_button = QPushButton("Fit")
+        fit_image_button = QPushButton("Fit background")
         top_layout.addWidget(fit_image_button)
-        current_image_button = QPushButton("Current")
+        current_image_button = QPushButton("Generated image as background")
         current_image_button.setToolTip("Copy the current generated image an set it as an image.")
         top_layout.addWidget(current_image_button)
-        load_image_button = QPushButton("Load")
+        load_image_button = QPushButton("Load background image")
         load_image_button.setToolTip("Load an image from your computer.")
         load_image_button.clicked.connect(self.on_load_image)
         top_layout.addWidget(load_image_button)
         main_layout.addLayout(top_layout)
 
-        middle_layout = QHBoxLayout()
-        middle_left_layout = QVBoxLayout()
-
-        brush_layout = QGridLayout()
-        brush_layout.setSpacing(5)
-        brush_layout.setContentsMargins(5, 0, 0, 0)
-        brush_size_label = QLabel("Brush size:")
-        brush_layout.addWidget(brush_size_label, 0, 0)
-        brush_size_slider = QSlider(Qt.Orientation.Horizontal)
-        brush_size_slider.setFixedWidth(150)
-        brush_size_slider.setRange(3, 300)
-        brush_size_slider.setValue(20)
-        brush_layout.addWidget(brush_size_slider, 0, 1)
-
-        brush_hardness_label = QLabel("Brush hardness:")
-        brush_layout.addWidget(brush_hardness_label, 1, 0)
-        brush_hardness_slider = QDoubleSlider(Qt.Orientation.Horizontal)
-        brush_hardness_slider.setRange(0.0, 0.99)
-        brush_hardness_slider.setValue(0.5)
-        brush_layout.addWidget(brush_hardness_slider, 1, 1)
-        middle_left_layout.addLayout(brush_layout)
-
-        color_layout = QHBoxLayout()
-        color_button = ColorButton("Color:")
-        color_layout.addWidget(color_button, alignment=Qt.AlignmentFlag.AlignCenter)
-        middle_left_layout.addLayout(color_layout)
-
-        erase_layout = QHBoxLayout()
-        self.erase_button = QPushButton("Erase")
-        self.erase_button.clicked.connect(self.on_erase_clicked)
-        erase_layout.addWidget(self.erase_button)
-        middle_left_layout.addLayout(erase_layout)
-
-        middle_left_layout.addStretch()
-
-        middle_layout.addLayout(middle_left_layout, 0)
-
         image_widget = QWidget()
         self.image_editor = ImageEditor(self.editor_width, self.editor_height, self.aspect_ratio)
+        self.image_editor.set_enable_copy(False)
+        self.image_editor.set_enable_save(False)
         self.image_editor.image_changed.connect(self.on_image_changed)
         self.image_editor.image_scaled.connect(self.update_image_scale)
         self.image_editor.image_moved.connect(self.update_image_position)
         self.image_editor.image_rotated.connect(self.update_image_angle)
         self.image_editor.image_pasted.connect(self.set_image)
-        self.image_editor.image_copy.connect(self.on_image_copy)
-        self.image_editor.image_save.connect(self.on_image_save)
         editor_layout = AspectRatioLayout(image_widget, self.aspect_ratio)
         editor_layout.addWidget(self.image_editor)
         image_widget.setLayout(editor_layout)
-        middle_layout.addWidget(image_widget, 1)
-        main_layout.addLayout(middle_layout)
+        main_layout.addWidget(image_widget)
 
         image_bottom_layout = QHBoxLayout()
-        reset_image_button = QPushButton("Reset")
-        reset_image_button.setToolTip("Reset all modifications of the image including zoom, position and drawing.")
+        reset_image_button = QPushButton("Reset background image")
         image_bottom_layout.addWidget(reset_image_button)
+        clear_mask_button = QPushButton("Clear mask")
+        clear_mask_button.clicked.connect(self.on_clear_mask)
+        image_bottom_layout.addWidget(clear_mask_button)
         main_layout.addLayout(image_bottom_layout)
 
         image_controls_layout = QHBoxLayout()
@@ -165,14 +105,6 @@ class MaskWidget(QWidget):
         fit_image_button.clicked.connect(self.on_fit_image)
         current_image_button.clicked.connect(self.set_current_image)
         reset_image_button.clicked.connect(self.on_reset_image)
-        # self.delete_drawings_button.clicked.connect(self.on_reset_drawings)
-        # self.reset_view_button.clicked.connect(self.image_editor.reset_view)
-
-        color_button.color_changed.connect(self.image_editor.set_brush_color)
-        brush_size_slider.valueChanged.connect(self.image_editor.set_brush_size)
-        brush_size_slider.sliderReleased.connect(self.image_editor.hide_brush_preview)
-        brush_hardness_slider.valueChanged.connect(self.image_editor.set_brush_hardness)
-        brush_hardness_slider.sliderReleased.connect(self.image_editor.hide_brush_preview)
 
     def update_image_scale(self, scale: float):
         self.image_scale_control.set_value(scale)
@@ -218,28 +150,35 @@ class MaskWidget(QWidget):
         filename = f"{self.prefix}_{timestamp}_original.png"
         temp_image_path = os.path.join("tmp/", filename)
         pil_image = Image.open(path)
-
-        if pil_image.size[0] < self.editor_width or pil_image.size[1] < self.editor_height:
-            new_image = Image.new("RGBA", (self.editor_width, self.editor_height))
-            new_image.paste(pil_image, (0, 0))
-            new_image.save(temp_image_path, format="PNG")
-        else:
-            pil_image.save(temp_image_path, format="PNG")
-
-        self.reset_controls()
+        pil_image.save(temp_image_path, format="PNG")
         self.image_editor.selected_layer_id = self.image_layer_id
+
+        # if there's an image before and not saved, delete it
+        layer = self.image_editor.layer_manager.get_layer_by_id(self.image_layer_id)
+        if layer.image_path is None and layer.original_path is not None:
+            os.remove(layer.original_path)
+
         self.image_editor.set_image(temp_image_path)
         self.image_editor.selected_layer_id = self.drawing_layer_id
         self.image_loaded.emit()
 
-    def reload_image_layer(self, image_path: str):
-        if self.image_layer_id is None:
-            image_layer_id = self.image_editor.set_image(image_path, delete_prev_image=False)
-            self.image_editor.set_layer_order(image_layer_id, 0)
-            self.image_editor.layer_manager.edit_layer(self.drawing_layer_id, parent_id=image_layer_id)
-            self.image_layer_id = image_layer_id
-        else:
-            self.image_editor.set_image(image_path, layer_id=self.image_layer_id, delete_prev_image=False)
+    def reload_mask(self, mask_image: MaskImage):
+        if mask_image.background_image is not None:
+            self.image_editor.selected_layer_id = self.image_layer_id
+            self.image_editor.set_image(mask_image.background_image.image_original, delete_prev_image=False)
+
+            self.set_image_parameters(
+                self.image_layer_id,
+                mask_image.background_image.image_scale,
+                mask_image.background_image.image_x_pos,
+                mask_image.background_image.image_y_pos,
+                mask_image.background_image.image_rotation,
+            )
+
+        if mask_image.mask_image is not None:
+            self.image_editor.selected_layer_id = self.drawing_layer_id
+            self.image_editor.set_image(mask_image.mask_image.image_filename, delete_prev_image=False)
+            self.image_editor.set_layer_locked(self.drawing_layer_id, False)
 
     def set_current_image(self):
         if self.image_viewer.pixmap_item is not None:
@@ -252,16 +191,8 @@ class MaskWidget(QWidget):
 
             self.set_image(filepath)
 
-    def create_drawing_pixmap(self):
-        pixmap = QPixmap(self.editor_width, self.editor_height)
-        pixmap.fill(Qt.GlobalColor.transparent)
-
-        self.drawing_layer_id = self.image_editor.set_pixmap(pixmap, self.drawing_layer_id)
-        self.image_editor.selected_layer_id = self.drawing_layer_id
-
-    def set_image_parameters(self, image_layer_id, scale, x, y, angle):
-        previous_layer_id = self.image_editor.selected_layer_id
-        self.image_editor.selected_layer_id = image_layer_id
+    def set_image_parameters(self, layer_id: int, scale: float, x: int, y: int, angle: float):
+        self.image_editor.selected_layer_id = layer_id
 
         self.image_scale_control.set_value(scale)
         self.image_editor.set_image_scale(scale)
@@ -271,8 +202,6 @@ class MaskWidget(QWidget):
         self.image_editor.set_image_y(y)
         self.image_rotation_control.set_value(angle)
         self.image_editor.rotate_image(angle)
-
-        self.image_editor.selected_layer_id = previous_layer_id
 
     def reset_controls(self):
         self.image_scale_control.reset()
@@ -289,44 +218,6 @@ class MaskWidget(QWidget):
 
     def on_image_changed(self):
         self.image_changed.emit()
-
-    def on_image_copy(self):
-        layer = self.image_editor.layer_manager.get_layer_by_id(self.image_layer_id)
-
-        if layer.image_path is not None:
-            self.prepare_copy_thread()
-            self.image_copy_thread.image_done.connect(self.on_copy_image_done)
-            self.image_copy_thread.start()
-
-    def prepare_copy_thread(self, save_path: str = None):
-        image_data = ImageDataObject()
-        layer = self.image_editor.layer_manager.get_layer_by_id(self.image_layer_id)
-        image_data.image_original = layer.image_path
-        image_data.image_scale = self.image_scale_control.value
-        image_data.image_x_pos = self.image_x_pos_control.value
-        image_data.image_y_pos = self.image_y_pos_control.value
-        image_data.image_rotation = self.image_rotation_control.value
-
-        drawings_layer = self.image_editor.layer_manager.get_layer_by_id(self.drawing_layer_id)
-        drawings_pixmap = drawings_layer.pixmap_item.pixmap()
-
-        self.image_copy_thread = SaveMergedImageThread(
-            self.editor_width, self.editor_height, image_data, drawings_pixmap, save_path=save_path
-        )
-        self.image_copy_thread.finished.connect(self.on_copy_thread_finished)
-
-    def on_copy_thread_finished(self):
-        self.image_copy_thread = None
-
-    def on_copy_image_done(self, image_path):
-        clipboard = QGuiApplication.clipboard()
-        mime_data = QMimeData()
-        mime_data.setUrls([QUrl.fromLocalFile(image_path)])
-        clipboard.setMimeData(mime_data)
-
-    def on_image_save(self, image_path):
-        self.prepare_copy_thread(save_path=image_path)
-        self.image_copy_thread.start()
 
     def on_fit_image(self):
         self.image_editor.selected_layer_id = self.image_layer_id
@@ -362,5 +253,13 @@ class MaskWidget(QWidget):
     def on_reset_drawings(self):
         self.image_editor.clear_and_restore()
 
-    def on_erase_clicked(self):
-        pass
+    def set_erase_mode(self, value: bool):
+        self.image_editor.erasing = value
+
+    def on_clear_mask(self):
+        pixmap = QPixmap(self.editor_width, self.editor_height)
+        pixmap.fill(Qt.GlobalColor.transparent)
+
+        self.image_editor.selected_layer_id = self.drawing_layer_id
+        self.image_editor.set_pixmap(pixmap, self.drawing_layer_id)
+        self.image_editor.set_layer_locked(self.drawing_layer_id, False)

@@ -66,6 +66,9 @@ class ImageEditor(QGraphicsView):
         self.current_scale_factor = 1.0
         self.total_translation = QPointF(0, 0)
 
+        self.enable_copy = True
+        self.enable_save = True
+
         self.drop_lightbox = DropLightBox(self)
         self.drop_lightbox.setText("Drop file here")
 
@@ -410,9 +413,10 @@ class ImageEditor(QGraphicsView):
     def contextMenuEvent(self, event):
         context_menu = QMenu(self)
 
-        copy_action = QAction("Copy Image", self)
-        copy_action.triggered.connect(self.copy_image)
-        context_menu.addAction(copy_action)
+        if self.enable_copy:
+            copy_action = QAction("Copy Image", self)
+            copy_action.triggered.connect(self.copy_image)
+            context_menu.addAction(copy_action)
 
         paste_action = QAction("Paste Image", self)
         paste_action.triggered.connect(self.paste_image)
@@ -429,9 +433,10 @@ class ImageEditor(QGraphicsView):
 
         context_menu.addAction(paste_action)
 
-        save_action = QAction("Save Image", self)
-        save_action.triggered.connect(self.save_image)
-        context_menu.addAction(save_action)
+        if self.enable_save:
+            save_action = QAction("Save Image", self)
+            save_action.triggered.connect(self.save_image)
+            context_menu.addAction(save_action)
 
         context_menu.exec(event.globalPos())
 
@@ -582,6 +587,12 @@ class ImageEditor(QGraphicsView):
         painter.end()
 
         return pixmap
+
+    def set_enable_copy(self, enable: bool):
+        self.enable_copy = enable
+
+    def set_enable_save(self, enable: bool):
+        self.enable_save = enable
 
     def dragMoveEvent(self, event):
         pass
