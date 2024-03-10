@@ -6,7 +6,9 @@ from iartisanxl.graph.nodes.node import Node
 class ImageLoadNode(Node):
     OUTPUTS = ["image"]
 
-    def __init__(self, path: str = None, image: Image = None, weight: float = None, noise: float = None, noise_index: int = 0):
+    def __init__(
+        self, path: str = None, image: Image = None, weight: float = None, noise: float = None, noise_index: int = 0
+    ):
         super().__init__()
         self.path = path
         self.image = image
@@ -76,7 +78,12 @@ class ImageLoadNode(Node):
             pil_image = self.image
 
         if self.weight is not None and self.noise is not None:
-            self.values["image"] = {"image": pil_image, "weight": self.weight, "noise": self.noise, "noise_index": self.noise_index}
+            self.values["image"] = {
+                "image": pil_image,
+                "weight": self.weight,
+                "noise": self.noise,
+                "noise_index": self.noise_index,
+            }
         else:
             self.values["image"] = pil_image
 

@@ -512,3 +512,7 @@ MaskWidget ImageEditor {
     background: #181b28;
     border: 1px solid #2f344e;
 }
+
+IpMaskItem QLabel#mask_label {
+    border: 1px solid #848485;
+}
