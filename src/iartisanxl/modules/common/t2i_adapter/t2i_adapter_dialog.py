@@ -486,14 +486,7 @@ class T2IAdapterDialog(BaseDialog):
         for layer in self.source_widget.image_editor.get_all_layers():
             layer_name = self.source_widget.layer_manager_widget.get_layer_name(layer.layer_id)
             self.t2i_adapter.source_images.add_image(
-                layer.original_path,
-                layer.image_path,
-                layer.pixmap_item.scale(),
-                layer.pixmap_item.x(),
-                layer.pixmap_item.y(),
-                layer.pixmap_item.rotation(),
-                layer_name,
-                layer.order,
+                layer.original_path, layer.image_path, 1.0, 0, 0, 0.0, layer_name, layer.order
             )
 
         # save preprocessor layer data
