@@ -219,7 +219,7 @@ class ImageSectionWidget(QWidget):
 
         self.ip_adapter = ip_adapter
 
-        if ip_adapter.mask_image.mask_image.image_thumb:
+        if ip_adapter.mask_image is not None:
             self.ip_mask_item.set_thumb_image(ip_adapter.mask_image.mask_image.image_thumb)
 
         self.image_items_view.ip_adapter_data = self.ip_adapter
