@@ -3,8 +3,8 @@ from typing import Optional
 
 import torch
 import torch.nn.functional as F
-from torch import nn
 from diffusers.models.attention_processor import Attention
+from torch import nn
 
 
 class AttnProcessor2_0:
@@ -23,6 +23,8 @@ class AttnProcessor2_0:
         encoder_hidden_states: Optional[torch.FloatTensor] = None,
         attention_mask: Optional[torch.FloatTensor] = None,
         temb: Optional[torch.FloatTensor] = None,
+        ip_hidden_states=None,
+        ip_mask=None,
         **kwargs,
     ) -> torch.FloatTensor:
         residual = hidden_states
@@ -35,7 +37,9 @@ class AttnProcessor2_0:
             batch_size, channel, height, width = hidden_states.shape
             hidden_states = hidden_states.view(batch_size, channel, height * width).transpose(1, 2)
 
-        batch_size, sequence_length, _ = hidden_states.shape if encoder_hidden_states is None else encoder_hidden_states.shape
+        batch_size, sequence_length, _ = (
+            hidden_states.shape if encoder_hidden_states is None else encoder_hidden_states.shape
+        )
 
         if attention_mask is not None:
             attention_mask = attn.prepare_attention_mask(attention_mask, sequence_length, batch_size)
@@ -109,7 +113,9 @@ class IPAdapterAttnProcessor2_0(torch.nn.Module):
         super().__init__()
 
         if not hasattr(F, "scaled_dot_product_attention"):
-            raise ImportError(f"{self.__class__.__name__} requires PyTorch 2.0, to use it, please upgrade PyTorch to 2.0.")
+            raise ImportError(
+                f"{self.__class__.__name__} requires PyTorch 2.0, to use it, please upgrade PyTorch to 2.0."
+            )
 
         self.hidden_size = hidden_size
         self.cross_attention_dim = cross_attention_dim
@@ -118,10 +124,23 @@ class IPAdapterAttnProcessor2_0(torch.nn.Module):
         if not isinstance(scale, list):
             scale = [scale] * len(num_tokens)
 
-        self.to_k_ip = nn.ModuleList([nn.Linear(cross_attention_dim or hidden_size, hidden_size, bias=False) for _ in range(len(num_tokens))])
-        self.to_v_ip = nn.ModuleList([nn.Linear(cross_attention_dim or hidden_size, hidden_size, bias=False) for _ in range(len(num_tokens))])
+        self.to_k_ip = nn.ModuleList(
+            [nn.Linear(cross_attention_dim or hidden_size, hidden_size, bias=False) for _ in range(len(num_tokens))]
+        )
+        self.to_v_ip = nn.ModuleList(
+            [nn.Linear(cross_attention_dim or hidden_size, hidden_size, bias=False) for _ in range(len(num_tokens))]
+        )
 
-    def __call__(self, attn, hidden_states, encoder_hidden_states=None, attention_mask=None, temb=None, ip_hidden_states=None, ip_mask=None):
+    def __call__(
+        self,
+        attn,
+        hidden_states,
+        encoder_hidden_states=None,
+        attention_mask=None,
+        temb=None,
+        ip_hidden_states=None,
+        ip_mask=None,
+    ):
         residual = hidden_states
 
         if attn.spatial_norm is not None:
@@ -133,7 +152,9 @@ class IPAdapterAttnProcessor2_0(torch.nn.Module):
             batch_size, channel, height, width = hidden_states.shape
             hidden_states = hidden_states.view(batch_size, channel, height * width).transpose(1, 2)
 
-        batch_size, sequence_length, _ = hidden_states.shape if encoder_hidden_states is None else encoder_hidden_states.shape
+        batch_size, sequence_length, _ = (
+            hidden_states.shape if encoder_hidden_states is None else encoder_hidden_states.shape
+        )
 
         if attention_mask is not None:
             attention_mask = attn.prepare_attention_mask(attention_mask, sequence_length, batch_size)
@@ -171,7 +192,9 @@ class IPAdapterAttnProcessor2_0(torch.nn.Module):
         hidden_states = hidden_states.to(query.dtype)
 
         # for ip-adapter
-        for current_ip_hidden_states, scale, to_k_ip, to_v_ip, current_ip_mask in zip(ip_hidden_states, self.scale, self.to_k_ip, self.to_v_ip, ip_mask):
+        for current_ip_hidden_states, scale, to_k_ip, to_v_ip, current_ip_mask in zip(
+            ip_hidden_states, self.scale, self.to_k_ip, self.to_v_ip, ip_mask
+        ):
             ip_key = to_k_ip(current_ip_hidden_states)
             ip_value = to_v_ip(current_ip_hidden_states)
 
@@ -183,15 +206,21 @@ class IPAdapterAttnProcessor2_0(torch.nn.Module):
                 query, ip_key, ip_value, attn_mask=None, dropout_p=0.0, is_causal=False
             )
 
-            current_ip_hidden_states = current_ip_hidden_states.transpose(1, 2).reshape(batch_size, -1, attn.heads * head_dim)
+            current_ip_hidden_states = current_ip_hidden_states.transpose(1, 2).reshape(
+                batch_size, -1, attn.heads * head_dim
+            )
             current_ip_hidden_states = current_ip_hidden_states.to(query.dtype)
 
             if current_ip_mask is not None:
-                mask_height = current_ip_mask.shape[1] / math.sqrt(current_ip_mask.shape[1] * current_ip_mask.shape[2] / query.shape[2])
+                mask_height = current_ip_mask.shape[1] / math.sqrt(
+                    current_ip_mask.shape[1] * current_ip_mask.shape[2] / query.shape[2]
+                )
                 mask_height = int(mask_height) + int((query.shape[2] % int(mask_height)) != 0)
                 mask_width = query.shape[2] // mask_height
 
-                mask_downsample = F.interpolate(current_ip_mask.unsqueeze(1), size=(mask_height, mask_width), mode="bicubic").squeeze(1)
+                mask_downsample = F.interpolate(
+                    current_ip_mask.unsqueeze(1), size=(mask_height, mask_width), mode="bicubic"
+                ).squeeze(1)
                 mask_downsample = mask_downsample.view(mask_downsample.shape[0], -1, 1)
                 mask_downsample = mask_downsample.repeat(batch_size, 1, attn.heads * head_dim)
 
