@@ -1,10 +1,14 @@
 import re
 
+from diffusers.models.lora import text_encoder_attn_modules, text_encoder_mlp_modules
+from diffusers.utils.peft_utils import delete_adapter_layers, get_adapter_name, get_peft_kwargs, scale_lora_layers
+from diffusers.utils.state_dict_utils import (
+    convert_state_dict_to_diffusers,
+    convert_state_dict_to_peft,
+    convert_unet_state_dict_to_peft,
+)
 from peft import LoraConfig, inject_adapter_in_model, set_peft_model_state_dict
 from safetensors.torch import load_file
-from diffusers.utils.state_dict_utils import convert_unet_state_dict_to_peft, convert_state_dict_to_diffusers, convert_state_dict_to_peft
-from diffusers.utils.peft_utils import get_peft_kwargs, get_adapter_name, scale_lora_layers, delete_adapter_layers
-from diffusers.models.lora import text_encoder_attn_modules, text_encoder_mlp_modules
 
 from iartisanxl.graph.nodes.node import Node
 
@@ -70,7 +74,9 @@ class LoraNode(Node):
             if not is_correct_format:
                 raise ValueError("Invalid LoRA checkpoint.")
 
-            self.load_lora_into_unet(state_dict, network_alphas=network_alphas, unet=self.unet, adapter_name=self.adapter_name)
+            self.load_lora_into_unet(
+                state_dict, network_alphas=network_alphas, unet=self.unet, adapter_name=self.adapter_name
+            )
 
             text_encoder_state_dict = {k: v for k, v in state_dict.items() if "text_encoder." in k}
             if len(text_encoder_state_dict) > 0:
@@ -106,7 +112,7 @@ class LoraNode(Node):
         if self.unet is not None:
             delete_adapter_layers(self.unet, self.adapter_name)
 
-            if self.unet.peft_config is not None:
+            if hasattr(self.unet, "peft_config") and self.unet.peft_config is not None:
                 self.unet.peft_config.pop(self.adapter_name, None)
 
         if self.text_encoder_1 is not None:
@@ -123,7 +129,13 @@ class LoraNode(Node):
         network_alphas = None
 
         if all(
-            (k.startswith("lora_te_") or k.startswith("lora_unet_") or k.startswith("lora_te1_") or k.startswith("lora_te2_")) for k in state_dict.keys()
+            (
+                k.startswith("lora_te_")
+                or k.startswith("lora_unet_")
+                or k.startswith("lora_te1_")
+                or k.startswith("lora_te2_")
+            )
+            for k in state_dict.keys()
         ):
             # Map SDXL blocks correctly.
             if unet_config is not None:
@@ -147,7 +159,9 @@ class LoraNode(Node):
 
         if len(state_dict.keys()) > 0:
             if adapter_name in getattr(unet, "peft_config", {}):
-                raise ValueError(f"Adapter name {adapter_name} already in use in the Unet - please select a new adapter name.")
+                raise ValueError(
+                    f"Adapter name {adapter_name} already in use in the Unet - please select a new adapter name."
+                )
 
             state_dict = convert_unet_state_dict_to_peft(state_dict)
 
@@ -173,7 +187,9 @@ class LoraNode(Node):
 
         unet.load_attn_procs(state_dict, network_alphas=network_alphas)
 
-    def load_lora_into_text_encoder(self, state_dict, network_alphas, text_encoder, prefix=None, lora_scale=1.0, adapter_name=None):
+    def load_lora_into_text_encoder(
+        self, state_dict, network_alphas, text_encoder, prefix=None, lora_scale=1.0, adapter_name=None
+    ):
         # If the serialization format is new (introduced in https://github.com/huggingface/diffusers/pull/2918),
         # then the `state_dict` keys should have `self.unet_name` and/or `self.text_encoder_name` as
         # their prefixes.
@@ -184,7 +200,9 @@ class LoraNode(Node):
         if any("text_encoder" in key for key in keys):
             # Load the layers corresponding to text encoder and make necessary adjustments.
             text_encoder_keys = [k for k in keys if k.startswith(prefix) and k.split(".")[0] == prefix]
-            text_encoder_lora_state_dict = {k.replace(f"{prefix}.", ""): v for k, v in state_dict.items() if k in text_encoder_keys}
+            text_encoder_lora_state_dict = {
+                k.replace(f"{prefix}.", ""): v for k, v in state_dict.items() if k in text_encoder_keys
+            }
 
             if len(text_encoder_lora_state_dict) > 0:
                 rank = {}
@@ -207,8 +225,12 @@ class LoraNode(Node):
                         rank[rank_key_fc2] = text_encoder_lora_state_dict[rank_key_fc2].shape[1]
 
                 if network_alphas is not None:
-                    alpha_keys = [k for k in network_alphas.keys() if k.startswith(prefix) and k.split(".")[0] == prefix]
-                    network_alphas = {k.replace(f"{prefix}.", ""): v for k, v in network_alphas.items() if k in alpha_keys}
+                    alpha_keys = [
+                        k for k in network_alphas.keys() if k.startswith(prefix) and k.split(".")[0] == prefix
+                    ]
+                    network_alphas = {
+                        k.replace(f"{prefix}.", ""): v for k, v in network_alphas.items() if k in alpha_keys
+                    }
 
                 lora_config_kwargs = get_peft_kwargs(
                     rank,
@@ -272,9 +294,18 @@ class LoraNode(Node):
                 else:
                     raise ValueError(f"Checkpoint not supported because layer {layer} not supported.")
 
-        input_blocks = {layer_id: [key for key in state_dict if f"input_blocks{delimiter}{layer_id}" in key] for layer_id in input_block_ids}
-        middle_blocks = {layer_id: [key for key in state_dict if f"middle_block{delimiter}{layer_id}" in key] for layer_id in middle_block_ids}
-        output_blocks = {layer_id: [key for key in state_dict if f"output_blocks{delimiter}{layer_id}" in key] for layer_id in output_block_ids}
+        input_blocks = {
+            layer_id: [key for key in state_dict if f"input_blocks{delimiter}{layer_id}" in key]
+            for layer_id in input_block_ids
+        }
+        middle_blocks = {
+            layer_id: [key for key in state_dict if f"middle_block{delimiter}{layer_id}" in key]
+            for layer_id in middle_block_ids
+        }
+        output_blocks = {
+            layer_id: [key for key in state_dict if f"output_blocks{delimiter}{layer_id}" in key]
+            for layer_id in output_block_ids
+        }
 
         # Rename keys accordingly
         for i in input_block_ids:
@@ -304,7 +335,9 @@ class LoraNode(Node):
                 raise ValueError(f"Invalid middle block id {i}.")
 
             for key in middle_blocks[i]:
-                new_key = delimiter.join(key.split(delimiter)[: block_slice_pos - 1] + key_part + key.split(delimiter)[block_slice_pos:])
+                new_key = delimiter.join(
+                    key.split(delimiter)[: block_slice_pos - 1] + key_part + key.split(delimiter)[block_slice_pos:]
+                )
                 new_state_dict[new_key] = state_dict.pop(key)
 
         for i in output_block_ids:
@@ -471,11 +504,17 @@ class LoraNode(Node):
                 network_alphas.update({new_name: alpha})
 
         if len(state_dict) > 0:
-            raise ValueError(f"The following keys have not been correctly be renamed: \n\n {', '.join(state_dict.keys())}")
+            raise ValueError(
+                f"The following keys have not been correctly be renamed: \n\n {', '.join(state_dict.keys())}"
+            )
 
         unet_state_dict = {f"unet.{module_name}": params for module_name, params in unet_state_dict.items()}
         te_state_dict = {f"text_encoder.{module_name}": params for module_name, params in te_state_dict.items()}
-        te2_state_dict = {f"text_encoder_2.{module_name}": params for module_name, params in te2_state_dict.items()} if len(te2_state_dict) > 0 else None
+        te2_state_dict = (
+            {f"text_encoder_2.{module_name}": params for module_name, params in te2_state_dict.items()}
+            if len(te2_state_dict) > 0
+            else None
+        )
         if te2_state_dict is not None:
             te_state_dict.update(te2_state_dict)
 
