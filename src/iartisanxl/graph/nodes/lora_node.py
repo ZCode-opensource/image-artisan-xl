@@ -67,7 +67,7 @@ class LoraNode(Node):
         self.version = node_dict["version"]
 
     def __call__(self):
-        if not self.adapter_name in getattr(self.unet, "peft_config", {}):
+        if self.adapter_name not in getattr(self.unet, "peft_config", {}):
             state_dict, network_alphas = self.lora_state_dict(self.path, unet_config=self.unet.config)
 
             is_correct_format = all("lora" in key for key in state_dict.keys())
