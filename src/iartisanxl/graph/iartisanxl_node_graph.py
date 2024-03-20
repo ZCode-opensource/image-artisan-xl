@@ -116,7 +116,6 @@ class ImageArtisanNodeGraph:
                 try:
                     self.executing_node = node
                     node()
-                    node.updated = False
                 except IArtisanNodeError:
                     raise
 
@@ -129,6 +128,8 @@ class ImageArtisanNodeGraph:
                     node.abort = False
                     self.abort_function()
                     break
+
+                node.updated = False
 
     def to_json(self):
         # skip controlnet related nodes for the moment until I define where to save the relevant data
