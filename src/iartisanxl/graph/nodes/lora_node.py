@@ -1,3 +1,4 @@
+import os
 import re
 
 from diffusers.models.lora import text_encoder_attn_modules, text_encoder_mlp_modules
@@ -10,6 +11,7 @@ from diffusers.utils.state_dict_utils import (
 from peft import LoraConfig, inject_adapter_in_model, set_peft_model_state_dict
 from safetensors.torch import load_file
 
+from iartisanxl.graph.iartisan_node_error import IArtisanNodeError
 from iartisanxl.graph.nodes.node import Node
 
 
@@ -68,6 +70,10 @@ class LoraNode(Node):
 
     def __call__(self):
         if self.adapter_name not in getattr(self.unet, "peft_config", {}):
+            # Check if the file exists
+            if not os.path.isfile(self.path):
+                raise IArtisanNodeError(f"LoRA file not found: {self.path}", self.name)
+
             state_dict, network_alphas = self.lora_state_dict(self.path, unet_config=self.unet.config)
 
             is_correct_format = all("lora" in key for key in state_dict.keys())
