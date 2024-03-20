@@ -22,6 +22,7 @@ from transformers import (
     CLIPTokenizer,
 )
 
+from iartisanxl.graph.iartisan_node_error import IArtisanNodeError
 from iartisanxl.graph.nodes.node import Node
 
 
@@ -186,8 +187,10 @@ class StableDiffusionXLModelNode(Node):
                         dtype=self.torch_dtype,
                     )
 
-        self.values["num_channels_latents"] = self.values["unet"].config.in_channels
+        if "unet" not in self.values or self.values["unet"] is None:
+            raise IArtisanNodeError("Error trying to load the unet, probably the file doesn't exists.", self.name)
 
+        self.values["num_channels_latents"] = self.values["unet"].config.in_channels
         return self.values
 
     def delete(self):

@@ -1,14 +1,15 @@
 import gc
 import json
 import time
-from collections import deque, defaultdict
+from collections import defaultdict, deque
 
 import torch
 
-from iartisanxl.graph.nodes.node import Node
-from iartisanxl.graph.nodes.image_load_node import ImageLoadNode
+from iartisanxl.graph.iartisan_node_error import IArtisanNodeError
 from iartisanxl.graph.nodes.controlnet_model_node import ControlnetModelNode
 from iartisanxl.graph.nodes.controlnet_node import ControlnetNode
+from iartisanxl.graph.nodes.image_load_node import ImageLoadNode
+from iartisanxl.graph.nodes.node import Node
 
 
 class ImageArtisanNodeGraph:
@@ -116,8 +117,8 @@ class ImageArtisanNodeGraph:
                     self.executing_node = node
                     node()
                     node.updated = False
-                except KeyError as e:
-                    raise KeyError("KeyError occurred in node: " + str(e)) from e
+                except IArtisanNodeError:
+                    raise
 
                 end_time = time.time()
                 node.elapsed_time = end_time - start_time
@@ -135,7 +136,9 @@ class ImageArtisanNodeGraph:
             "nodes": [
                 node.to_dict()
                 for node in self.nodes
-                if not isinstance(node, ImageLoadNode) and not isinstance(node, ControlnetModelNode) and not isinstance(node, ControlnetNode)
+                if not isinstance(node, ImageLoadNode)
+                and not isinstance(node, ControlnetModelNode)
+                and not isinstance(node, ControlnetNode)
             ],
             "connections": [],
         }
@@ -234,7 +237,9 @@ class ImageArtisanNodeGraph:
             from_node = new_id_to_node[connection_dict["from_node_id"]]
             to_node = new_id_to_node[connection_dict["to_node_id"]]
             new_connections[to_node.id].append((from_node.id, connection_dict["from_output_name"]))
-            input_names[(to_node.id, from_node.id, connection_dict["from_output_name"])] = connection_dict["to_input_name"]
+            input_names[(to_node.id, from_node.id, connection_dict["from_output_name"])] = connection_dict[
+                "to_input_name"
+            ]
 
         # Update connections
         for node in self.nodes:

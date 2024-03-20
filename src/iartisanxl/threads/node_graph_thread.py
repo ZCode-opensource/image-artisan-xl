@@ -8,6 +8,7 @@ from PyQt6.QtCore import QThread, pyqtSignal
 from iartisanxl.app.directories import DirectoriesObject
 from iartisanxl.generation.adapter_list import AdapterList
 from iartisanxl.generation.image_generation_data import ImageGenerationData
+from iartisanxl.graph.iartisan_node_error import IArtisanNodeError
 from iartisanxl.graph.iartisanxl_node_graph import ImageArtisanNodeGraph
 from iartisanxl.graph.nodes.controlnet_model_node import ControlnetModelNode
 from iartisanxl.graph.nodes.controlnet_node import ControlnetNode
@@ -471,24 +472,8 @@ class NodeGraphThread(QThread):
 
         try:
             self.node_graph()
-        except KeyError:
-            self.generation_error.emit("There was an error while generating.", False)
-        except FileNotFoundError:
-            self.generation_error.emit(
-                (
-                    "There's a missing model file in the generation, choose a different one or download missing"
-                    "models from the downloader"
-                ),
-                False,
-            )
-        except OSError:
-            self.generation_error.emit(
-                (
-                    "There's a missing model file in the generation, choose a different one or download missing"
-                    "models from the downloader"
-                ),
-                False,
-            )
+        except IArtisanNodeError as e:
+            self.generation_error.emit(f"Error in node '{e.node_name}': {e}", False)
 
         if not self.node_graph.updated:
             self.generation_error.emit("Nothing was changed", False)
