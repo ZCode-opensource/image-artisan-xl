@@ -50,6 +50,7 @@ class IPAdapterDialog(BaseDialog):
         self.type_combo.addItem("IP Adapter", "ip_adapter_vit_h")
         self.type_combo.addItem("IP Adapter Plus", "ip_adapter_plus")
         self.type_combo.addItem("IP Adapter Plus Face", "ip_adapter_plus_face")
+        self.type_combo.addItem("IP Adapter Composition", "ip_plus_composition_sdxl")
         top_layout.addWidget(self.type_combo)
 
         adapter_scale_label = QLabel("Adapter scale:")

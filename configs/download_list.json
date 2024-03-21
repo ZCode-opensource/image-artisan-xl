@@ -423,7 +423,19 @@
                     "url": "https://huggingface.co/OzzyGT/sdxl-ip-adapter/resolve/main/ip-adapter-plus-face_sdxl_vit-h.safetensors?download=true"
                 }
             ]
-        }
+        },
+        {
+            "title": "IP Composition Adapter",
+            "description": "Designed to inject the general composition of an image into the model while mostly ignoring the style and content.",
+            "destination_directory": "ip-adapter",
+            "destination_subdirectory": "ip_plus_composition_sdxl",
+            "files": [
+                {
+                    "file": "ip_plus_composition_sdxl.safetensors",
+                    "url": "https://huggingface.co/ostris/ip-composition-adapter/resolve/main/ip_plus_composition_sdxl.safetensors?download=true"
+                }
+            ]
+        }        
     ],
     "captions_items": [
         {
