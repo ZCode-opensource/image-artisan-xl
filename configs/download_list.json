@@ -221,24 +221,6 @@
             ]
         },
         {
-            "title": "Preprocessors - OpenPose",
-            "description": "OpenPose: These are the models necessary for using the OpenPose Controlnet and T2I adapters. The total size is approximately 340 MB.",
-            "destination_directory": "app_models",
-            "destination_subdirectory": "preprocessors",
-            "files": [
-                {
-                    "file": "body_pose_model.pth",
-                    "destination_directory": "openpose",
-                    "url": "https://huggingface.co/OzzyGT/openpose/resolve/main/body_pose_model.pth?download=true"
-                },
-                {
-                    "file": "hand_pose_model.pth",
-                    "destination_directory": "openpose",
-                    "url": "https://huggingface.co/OzzyGT/openpose/resolve/main/hand_pose_model.pth?download=true"
-                }
-            ]
-        },
-        {
             "title": "Preprocessors - Sketch",
             "description": "Sketch: These are the models necessary for using the sketch Controlnet and T2I adapters. The total size is approximately 5.47 MB.",
             "destination_directory": "app_models",
@@ -291,18 +273,18 @@
             ]
         },
         {
-            "title": "ControlNet - OpenPose",
-            "description": "ControlNet model to use with the OpenPose preprocessor or with an image that has an openpose skeleton. The total size is approximately 2.33 GB.",
+            "title": "ControlNet - InPaint",
+            "description": "ControlNet model that has been conditioned on Inpainting and Outpainting. The total size is approximately 2.5 GB.",
             "destination_directory": "controlnets",
-            "destination_subdirectory": "controlnet-openpose-sdxl-1.0",
+            "destination_subdirectory": "controlnet-inpaint-dreamer-sdxl",
             "files": [
                 {
                     "file": "config.json",
-                    "url": "https://huggingface.co/OzzyGT/controlnet-openpose-sdxl-1.0/raw/main/config.json"
+                    "url": "https://huggingface.co/OzzyGT/controlnet-inpaint-dreamer-sdxl/raw/main/config.json"
                 },
                 {
                     "file": "diffusion_pytorch_model.fp16.safetensors",
-                    "url": "https://huggingface.co/OzzyGT/controlnet-openpose-sdxl-1.0/resolve/main/diffusion_pytorch_model.fp16.safetensors?download=true"
+                    "url": "https://huggingface.co/OzzyGT/controlnet-inpaint-dreamer-sdxl/resolve/main/diffusion_pytorch_model.fp16.safetensors?download=true"
                 }
             ]
         }
