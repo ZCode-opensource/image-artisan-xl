@@ -42,6 +42,7 @@ ip_adapter_dict = {
     "ip_adapter_vit_h": "ip-adapter_sdxl_vit-h.safetensors",
     "ip_adapter_plus": "ip-adapter-plus_sdxl_vit-h.safetensors",
     "ip_adapter_plus_face": "ip-adapter-plus-face_sdxl_vit-h.safetensors",
+    "ip_plus_composition_sdxl": "ip_plus_composition_sdxl.safetensors",
 }
 
 
