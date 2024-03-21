@@ -2,29 +2,27 @@ import os
 
 import accelerate
 import torch
-
+from accelerate import init_empty_weights
+from accelerate.utils import set_module_tensor_to_device
+from diffusers import UNet2DConditionModel
+from diffusers.pipelines.stable_diffusion.convert_from_ckpt import (
+    convert_ldm_clip_checkpoint,
+    convert_ldm_unet_checkpoint,
+    convert_open_clip_checkpoint,
+    create_unet_diffusers_config,
+)
+from diffusers.utils.peft_utils import delete_adapter_layers, recurse_remove_peft_layers, set_adapter_layers
+from omegaconf import OmegaConf
+from peft.tuners.tuners_utils import BaseTunerLayer
+from safetensors.torch import load_file as safe_load
 from transformers import (
-    CLIPTextModel,
     CLIPTextConfig,
+    CLIPTextModel,
     CLIPTextModelWithProjection,
     CLIPTokenizer,
 )
-from diffusers import UNet2DConditionModel
-from diffusers.utils.peft_utils import set_adapter_layers, recurse_remove_peft_layers
-from diffusers.pipelines.stable_diffusion.convert_from_ckpt import (
-    create_unet_diffusers_config,
-    convert_ldm_unet_checkpoint,
-    convert_ldm_clip_checkpoint,
-    convert_open_clip_checkpoint,
-)
-from diffusers.utils.peft_utils import delete_adapter_layers
-from omegaconf import OmegaConf
-from accelerate import init_empty_weights
-from accelerate.utils import set_module_tensor_to_device
-from safetensors.torch import load_file as safe_load
-from peft.tuners.tuners_utils import BaseTunerLayer
 
-
+from iartisanxl.graph.iartisan_node_error import IArtisanNodeError
 from iartisanxl.graph.nodes.node import Node
 
 
@@ -189,8 +187,10 @@ class StableDiffusionXLModelNode(Node):
                         dtype=self.torch_dtype,
                     )
 
-        self.values["num_channels_latents"] = self.values["unet"].config.in_channels
+        if "unet" not in self.values or self.values["unet"] is None:
+            raise IArtisanNodeError("Error trying to load the unet, probably the file doesn't exists.", self.name)
 
+        self.values["num_channels_latents"] = self.values["unet"].config.in_channels
         return self.values
 
     def delete(self):

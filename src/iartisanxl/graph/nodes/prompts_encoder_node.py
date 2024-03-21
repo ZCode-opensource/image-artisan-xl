@@ -1,8 +1,8 @@
 import re
 
 import torch
+from diffusers.utils.peft_utils import scale_lora_layers, set_weights_and_activate_adapters, unscale_lora_layers
 from transformers import CLIPTokenizer
-from diffusers.utils.peft_utils import scale_lora_layers, unscale_lora_layers, set_weights_and_activate_adapters
 
 from iartisanxl.graph.nodes.node import Node
 
@@ -10,7 +10,14 @@ from iartisanxl.graph.nodes.node import Node
 class PromptsEncoderNode(Node):
     PRIORITY = 0
     REQUIRED_INPUTS = ["tokenizer_1", "tokenizer_2", "text_encoder_1", "text_encoder_2", "positive_prompt_1"]
-    OPTIONAL_INPUTS = ["positive_prompt_2", "negative_prompt_1", "negative_prompt_2", "clip_skip", "global_lora_scale", "lora"]
+    OPTIONAL_INPUTS = [
+        "positive_prompt_2",
+        "negative_prompt_1",
+        "negative_prompt_2",
+        "clip_skip",
+        "global_lora_scale",
+        "lora",
+    ]
     OUTPUTS = ["prompt_embeds", "negative_prompt_embeds", "pooled_prompt_embeds", "negative_pooled_prompt_embeds"]
 
     def __call__(self):
@@ -115,7 +122,9 @@ class PromptsEncoderNode(Node):
 
         for z, weight in enumerate(neg_weight_tensor):
             if weight != 1.0:
-                neg_token_embedding[z] = neg_token_embedding[-1] + (neg_token_embedding[z] - neg_token_embedding[-1]) * weight
+                neg_token_embedding[z] = (
+                    neg_token_embedding[-1] + (neg_token_embedding[z] - neg_token_embedding[-1]) * weight
+                )
 
         neg_token_embedding = neg_token_embedding.unsqueeze(0)
         neg_embeds.append(neg_token_embedding)

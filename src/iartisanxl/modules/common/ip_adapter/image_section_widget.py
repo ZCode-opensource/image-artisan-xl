@@ -1,5 +1,4 @@
 from PyQt6.QtCore import Qt, pyqtSignal
-from PyQt6.QtGui import QPixmap
 from PyQt6.QtWidgets import QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget
 
 from iartisanxl.modules.common.image_viewer_simple import ImageViewerSimple
@@ -128,16 +127,7 @@ class ImageSectionWidget(QWidget):
 
         for layer in self.image_widget.image_editor.get_all_layers():
             layer_name = self.image_widget.layer_manager_widget.get_layer_name(layer.layer_id)
-            ip_adapter_image.add_image(
-                layer.original_path,
-                layer.image_path,
-                layer.pixmap_item.scale(),
-                layer.pixmap_item.x(),
-                layer.pixmap_item.y(),
-                layer.pixmap_item.rotation(),
-                layer_name,
-                layer.order,
-            )
+            ip_adapter_image.add_image(layer.original_path, layer.image_path, 1.0, 0, 0, 0.0, layer_name, layer.order)
 
         if self.image_items_view.current_item is None:
             self.ip_adapter.add_ip_adapter_image(ip_adapter_image)
@@ -174,7 +164,6 @@ class ImageSectionWidget(QWidget):
 
     def on_item_selected(self, ip_adapter_Image: IPAdapterImage):
         self.image_widget.image_editor.clear_all()
-        self.image_widget.reset_controls()
         self.image_widget.layer_manager_widget.list_widget.clear()
 
         self.image_widget.image_weight_slider.setValue(ip_adapter_Image.weight)
@@ -183,6 +172,9 @@ class ImageSectionWidget(QWidget):
 
         for image in sorted(ip_adapter_Image.images, key=lambda img: img.order):
             layer_id = self.image_widget.reload_image_layer(image.image_filename, image.image_original, image.order)
+            self.image_widget.set_layer_parameters(
+                layer_id, image.image_scale, image.image_x_pos, image.image_y_pos, image.image_rotation
+            )
             self.image_widget.image_editor.selected_layer_id = layer_id
             self.image_widget.layer_manager_widget.add_layer(layer_id, image.layer_name)
 
@@ -219,7 +211,7 @@ class ImageSectionWidget(QWidget):
 
         self.ip_adapter = ip_adapter
 
-        if ip_adapter.mask_image.mask_image.image_thumb:
+        if ip_adapter.mask_image is not None:
             self.ip_mask_item.set_thumb_image(ip_adapter.mask_image.mask_image.image_thumb)
 
         self.image_items_view.ip_adapter_data = self.ip_adapter
