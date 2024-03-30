@@ -24,7 +24,7 @@ class LoraNode(Node):
         self,
         path: str = None,
         adapter_name: str = None,
-        scale: float = None,
+        scale: dict = None,
         lora_name: str = None,
         version: str = None,
         **kwargs,
@@ -37,7 +37,7 @@ class LoraNode(Node):
         self.lora_name = lora_name
         self.version = version
 
-    def update_lora(self, scale: float, enabled: bool):
+    def update_lora(self, scale: dict, enabled: bool):
         self.scale = scale
         self.enabled = enabled
         self.set_updated()

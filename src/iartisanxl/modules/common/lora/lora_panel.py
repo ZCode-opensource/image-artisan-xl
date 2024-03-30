@@ -1,11 +1,11 @@
-from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel
 from PyQt6.QtCore import Qt
+from PyQt6.QtWidgets import QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget
 from superqt import QDoubleSlider
 
 from iartisanxl.app.event_bus import EventBus
-from iartisanxl.modules.common.panels.base_panel import BasePanel
-from iartisanxl.modules.common.lora.lora_dialog import LoraDialog
 from iartisanxl.modules.common.lora.lora_added_item import LoraAddedItem
+from iartisanxl.modules.common.lora.lora_dialog import LoraDialog
+from iartisanxl.modules.common.panels.base_panel import BasePanel
 
 
 class LoraPanel(BasePanel):

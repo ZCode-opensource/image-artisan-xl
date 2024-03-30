@@ -76,11 +76,11 @@ class ImageGenerationNode(Node):
 
         if self.lora:
             if isinstance(self.lora, list):
-                unzipped_list = zip(*self.lora)
-                reordered_list = [list(item) for item in unzipped_list]
-                self.unet.set_adapters(*reordered_list)
+                keys = [item[0] for item in self.lora]
+                unet_values = [item[1]["unet"] for item in self.lora]
+                self.unet.set_adapters(keys, unet_values)
             else:
-                self.unet.set_adapters([self.lora[0]], [self.lora[1]])
+                self.unet.set_adapters([self.lora[0]], [self.lora[1]["unet"]])
 
         controlnets_models = None
         controlnet_images = None

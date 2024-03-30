@@ -138,7 +138,7 @@ class NodeGraphThread(QThread):
                 lora_node = LoraNode(
                     path=lora.path,
                     adapter_name=lora.filename,
-                    scale=lora.weight,
+                    scale=lora.get_weights(),
                     lora_name=lora.name,
                     version=lora.version,
                 )
@@ -164,7 +164,7 @@ class NodeGraphThread(QThread):
                     lora_node = LoraNode(
                         path=lora.path,
                         adapter_name=lora.filename,
-                        scale=lora.weight,
+                        scale=lora.get_weights(),
                         lora_name=lora.name,
                         version=lora.version,
                     )
@@ -184,7 +184,7 @@ class NodeGraphThread(QThread):
                     lora_node = self.node_graph.get_node(lora.node_id)
 
                     if lora_node is not None:
-                        lora_node.update_lora(lora.weight, lora.enabled)
+                        lora_node.update_lora(lora.get_weights(), lora.enabled)
 
         self.lora_list.save_state()
         self.lora_list.dropped_image = False

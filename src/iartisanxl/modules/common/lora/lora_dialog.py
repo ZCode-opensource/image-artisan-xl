@@ -1,23 +1,23 @@
 import os
 import shutil
-
-from typing import cast, Optional
 from importlib.resources import files
-from PyQt6.QtWidgets import (
-    QHBoxLayout,
-    QVBoxLayout,
-    QSizePolicy,
-    QFrame,
-)
-from PyQt6.QtCore import QSettings, pyqtSignal, Qt, QSize
+from typing import Optional, cast
+
+from PyQt6.QtCore import QSettings, QSize, Qt, pyqtSignal
 from PyQt6.QtGui import QPixmap
+from PyQt6.QtWidgets import (
+    QFrame,
+    QHBoxLayout,
+    QSizePolicy,
+    QVBoxLayout,
+)
 
 from iartisanxl.app.event_bus import EventBus
-from iartisanxl.modules.common.lora.lora_data_object import LoraDataObject
 from iartisanxl.modules.common.dialogs.base_dialog import BaseDialog
-from iartisanxl.modules.common.lora.lora_info_widget import LoraInfoWidget
-from iartisanxl.modules.common.lora.lora_edit_widget import LoraEditWidget
 from iartisanxl.modules.common.dialogs.model_items_view import ModelItemsView
+from iartisanxl.modules.common.lora.lora_data_object import LoraDataObject
+from iartisanxl.modules.common.lora.lora_edit_widget import LoraEditWidget
+from iartisanxl.modules.common.lora.lora_info_widget import LoraInfoWidget
 from iartisanxl.modules.common.model_item import ModelItem
 
 

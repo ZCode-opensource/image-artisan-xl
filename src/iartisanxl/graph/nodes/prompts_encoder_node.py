@@ -29,13 +29,24 @@ class PromptsEncoderNode(Node):
 
         if self.lora:
             if isinstance(self.lora, list):
-                unzipped_list = zip(*self.lora)
-                reordered_list = [list(item) for item in unzipped_list]
-                set_weights_and_activate_adapters(self.text_encoder_1, *reordered_list)
-                set_weights_and_activate_adapters(self.text_encoder_2, *reordered_list)
+                keys = []
+                text_encoder_one_values = []
+                text_encoder_two_values = []
+
+                for item in self.lora:
+                    keys.append(item[0])
+                    text_encoder_one_values.append(item[1]["text_encoder_one"])
+                    text_encoder_two_values.append(item[1]["text_encoder_two"])
+
+                set_weights_and_activate_adapters(self.text_encoder_1, keys, text_encoder_one_values)
+                set_weights_and_activate_adapters(self.text_encoder_2, keys, text_encoder_two_values)
             else:
-                set_weights_and_activate_adapters(self.text_encoder_1, [self.lora[0]], [self.lora[1]])
-                set_weights_and_activate_adapters(self.text_encoder_2, [self.lora[0]], [self.lora[1]])
+                set_weights_and_activate_adapters(
+                    self.text_encoder_1, [self.lora[0]], [self.lora[1]["text_encoder_one"]]
+                )
+                set_weights_and_activate_adapters(
+                    self.text_encoder_2, [self.lora[0]], [self.lora[1]["text_encoder_two"]]
+                )
 
         if self.global_lora_scale is not None:
             scale_lora_layers(self.text_encoder_1, self.global_lora_scale)

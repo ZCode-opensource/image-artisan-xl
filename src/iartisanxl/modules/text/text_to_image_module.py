@@ -270,8 +270,8 @@ class TextToImageModule(BaseModule):
                     filename=lora["name"],
                     version=lora["version"],
                     path=lora["path"],
-                    weight=lora["scale"],
                 )
+                lora_object.set_weights(lora["scale"])
                 self.lora_list.add(lora_object)
 
         self.event_bus.publish("update_from_json", {})
@@ -429,8 +429,8 @@ class TextToImageModule(BaseModule):
                     filename=lora["name"],
                     version=lora["version"],
                     path=lora["path"],
-                    weight=lora["scale"],
                 )
+                lora_object.set_weights(lora["scale"])
                 self.lora_list.add(lora_object)
 
         self.event_bus.publish("update_from_json", {})
