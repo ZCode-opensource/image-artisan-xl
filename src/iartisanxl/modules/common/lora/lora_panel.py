@@ -79,6 +79,7 @@ class LoraPanel(BasePanel):
                 lora_widget = LoraAddedItem(lora)
                 lora_widget.remove_clicked.connect(self.on_remove_clicked)
                 lora_widget.enabled.connect(self.on_enabled)
+                lora_widget.sliders_locked.connect(self.on_locked)
                 self.loras_layout.addWidget(lora_widget)
 
     def update_from_json(self, _data):
@@ -97,6 +98,9 @@ class LoraPanel(BasePanel):
 
     def on_enabled(self, lora_id, enabled):
         self.lora_list.update_lora_by_id(lora_id, {"enabled": enabled})
+
+    def on_locked(self, lora_id, locked):
+        self.lora_list.update_lora_by_id(lora_id, {"locked": locked})
 
     def clean_up(self):
         self.event_bus.unsubscribe("update_from_json", self.update_from_json)

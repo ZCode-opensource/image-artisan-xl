@@ -14,6 +14,8 @@ class LoraDataObject:
     advanced_weights = attr.ib(type=dict, default=None)
     node_id: int = attr.ib(default=None)
     lora_id = attr.ib(default=None)
+    locked = attr.ib(type=bool, default=True)
+    is_slider = attr.ib(type=bool, default=False)
 
     def get_weights(self):
         if self.advanced_weights is None:

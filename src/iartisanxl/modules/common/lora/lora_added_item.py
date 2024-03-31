@@ -10,11 +10,12 @@ class LoraAddedItem(QFrame):
     remove_clicked = pyqtSignal(object)
     weight_changed = pyqtSignal()
     enabled = pyqtSignal(int, bool)
+    sliders_locked = pyqtSignal(int, bool)
 
     def __init__(self, lora: LoraDataObject, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.lora = lora
-        self.linked = True
+        self.locked = lora.locked
 
         self.init_ui()
 
@@ -56,21 +57,21 @@ class LoraAddedItem(QFrame):
         unet_label = QLabel("Unet: ")
         sliders_layout.addWidget(unet_label, 0, 0)
         self.unet_weight_slider = QLabeledDoubleSlider(Qt.Orientation.Horizontal)
-        self.unet_weight_slider.setRange(-8.0, 8.0)
+        self.unet_weight_slider.setRange(0.0, 1.0)
         self.unet_weight_slider.setValue(self.lora.unet_weight)
         sliders_layout.addWidget(self.unet_weight_slider, 0, 1)
 
         text_encoder_one_label = QLabel("Text 1: ")
         sliders_layout.addWidget(text_encoder_one_label, 1, 0)
         self.text_encoder_one_weight_slider = QLabeledDoubleSlider(Qt.Orientation.Horizontal)
-        self.text_encoder_one_weight_slider.setRange(-8.0, 8.0)
+        self.text_encoder_one_weight_slider.setRange(0.0, 1.0)
         self.text_encoder_one_weight_slider.setValue(self.lora.text_encoder_one_weight)
         sliders_layout.addWidget(self.text_encoder_one_weight_slider, 1, 1)
 
         text_encoder_two_label = QLabel("Text 2: ")
         sliders_layout.addWidget(text_encoder_two_label, 2, 0)
         self.text_encoder_two_weight_slider = QLabeledDoubleSlider(Qt.Orientation.Horizontal)
-        self.text_encoder_two_weight_slider.setRange(-8.0, 8.0)
+        self.text_encoder_two_weight_slider.setRange(0.0, 1.0)
         self.text_encoder_two_weight_slider.setValue(self.lora.text_encoder_two_weight)
         sliders_layout.addWidget(self.text_encoder_two_weight_slider, 2, 1)
 
@@ -79,31 +80,41 @@ class LoraAddedItem(QFrame):
         bottom_layout = QHBoxLayout()
         advanced_button = QPushButton("Advanced")
         bottom_layout.addWidget(advanced_button, alignment=Qt.AlignmentFlag.AlignCenter)
-        self.linked_checkbox = QCheckBox("Linked")
-        self.linked_checkbox.setChecked(self.linked)
-        self.linked_checkbox.stateChanged.connect(self.on_linked_changed)
-        bottom_layout.addWidget(self.linked_checkbox, alignment=Qt.AlignmentFlag.AlignCenter)
+        self.locked_checkbox = QCheckBox("Locked")
+        self.locked_checkbox.setChecked(self.locked)
+        self.locked_checkbox.stateChanged.connect(self.on_lock_changed)
+        bottom_layout.addWidget(self.locked_checkbox, alignment=Qt.AlignmentFlag.AlignCenter)
 
         main_layout.addLayout(bottom_layout)
 
         self.setLayout(main_layout)
 
     def on_slider_value_changed(self, weight_type: int, value: float):
-        if self.linked:
+        if weight_type == 0:
+            diff = value - self.lora.unet_weight
             self.lora.unet_weight = value
+
+            if self.locked:
+                self.lora.text_encoder_one_weight += diff
+                self.lora.text_encoder_two_weight += diff
+        elif weight_type == 1:
+            diff = value - self.lora.text_encoder_one_weight
             self.lora.text_encoder_one_weight = value
+
+            if self.locked:
+                self.lora.unet_weight += diff
+                self.lora.text_encoder_two_weight += diff
+        elif weight_type == 2:
+            diff = value - self.lora.text_encoder_two_weight
             self.lora.text_encoder_two_weight = value
 
-            self.unet_weight_slider.setValue(value)
-            self.text_encoder_one_weight_slider.setValue(value)
-            self.text_encoder_two_weight_slider.setValue(value)
-        else:
-            if weight_type == 0:
-                self.lora.unet_weight = value
-            elif weight_type == 1:
-                self.lora.text_encoder_one_weight = value
-            elif weight_type == 2:
-                self.lora.text_encoder_two_weight = value
+            if self.locked:
+                self.lora.unet_weight += diff
+                self.lora.text_encoder_one_weight += diff
+
+        self.unet_weight_slider.setValue(self.lora.unet_weight)
+        self.text_encoder_one_weight_slider.setValue(self.lora.text_encoder_one_weight)
+        self.text_encoder_two_weight_slider.setValue(self.lora.text_encoder_two_weight)
 
     def get_slider_value(self):
         return self.unet_weight_slider.value()
@@ -111,5 +122,6 @@ class LoraAddedItem(QFrame):
     def on_check_enabled(self):
         self.enabled.emit(self.lora.lora_id, self.enabled_checkbox.isChecked())
 
-    def on_linked_changed(self):
-        self.linked = self.linked_checkbox.isChecked()
+    def on_lock_changed(self):
+        self.locked = self.locked_checkbox.isChecked()
+        self.sliders_locked.emit(self.lora.lora_id, self.locked)
