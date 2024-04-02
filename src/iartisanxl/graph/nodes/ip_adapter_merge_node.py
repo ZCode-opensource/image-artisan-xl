@@ -7,9 +7,9 @@ class IPAdapterMergeNode(Node):
     OUTPUTS = ["ip_adapter"]
 
     def __call__(self) -> dict:
-        self.unet.set_attn_processor(AttnProcessor2_0())
-
-        if self.ip_adapter is not None:
+        if self.ip_adapter is None:
+            self.unet.set_attn_processor(AttnProcessor2_0())
+        else:
             ip_adapters = self.ip_adapter
 
             if isinstance(ip_adapters, dict):
@@ -17,13 +17,30 @@ class IPAdapterMergeNode(Node):
 
             weights = []
             scales = []
+            reload_weights = False
 
             for ip_adapter in ip_adapters:
-                weights.append(ip_adapter["weights"])
-                scales.append(ip_adapter["scale"])
+                if ip_adapter.get("reload_weights", False):
+                    reload_weights = True
+                    ip_adapter["reload_weights"] = False
 
-            attn_procs = self.convert_ip_adapter_attn_to_diffusers(weights)
-            self.unet.set_attn_processor(attn_procs)
+                weights.append(ip_adapter["weights"])
+
+                scale = 0.0
+
+                if ip_adapter.get("enabled", False):
+                    scale = (
+                        ip_adapter["granular_scale"]
+                        if ip_adapter.get("granular_scale_enabled", False)
+                        else ip_adapter.get("scale", 0.0)
+                    )
+
+                scales.append(scale)
+
+            if reload_weights:
+                self.unet.set_attn_processor(AttnProcessor2_0())
+                attn_procs = self.convert_ip_adapter_attn_to_diffusers(weights)
+                self.unet.set_attn_processor(attn_procs)
 
             for attn_processor in self.unet.attn_processors.values():
                 if isinstance(attn_processor, IPAdapterAttnProcessor2_0):
@@ -69,11 +86,15 @@ class IPAdapterMergeNode(Node):
                         # IP-Adapter Plus
                         num_image_text_embeds += [state_dict["image_proj"]["latents"].shape[1]]
 
+                name_parts = name.split(".")
+                block_transformer_name = ".".join(name_parts[:4])
+
                 attn_procs[name] = attn_processor_class(
                     hidden_size=hidden_size,
                     cross_attention_dim=cross_attention_dim,
                     scale=1.0,
                     num_tokens=num_image_text_embeds,
+                    block_transformer_name=block_transformer_name,
                 ).to(dtype=self.torch_dtype, device=self.device)
 
                 value_dict = {}

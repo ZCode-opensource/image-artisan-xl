@@ -516,3 +516,15 @@ MaskWidget ImageEditor {
 IpMaskItem QLabel#mask_label {
     border: 1px solid #848485;
 }
+
+IPAdapterDialog AdvancedWidget QCheckBox {
+    background: #181b28;
+}
+
+IPAdapterDialog QFrame:disabled {
+    color: #585858;
+}
+
+IPAdapterDialog AdvancedWidget QFrame#block_frame {
+    border: 1px solid #848485;
+}
