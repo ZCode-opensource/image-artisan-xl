@@ -349,7 +349,11 @@ class NodeGraphThread(QThread):
             if len(added_ip_adapters) > 0:
                 for ip_adapter in added_ip_adapters:
                     ip_adapter_node = IPAdapterNode(
-                        ip_adapter.type_index, ip_adapter.adapter_type, ip_adapter.ip_adapter_scale
+                        ip_adapter.type_index,
+                        ip_adapter.adapter_type,
+                        ip_adapter.ip_adapter_scale,
+                        ip_adapter.granular_scale_enabled,
+                        ip_adapter.granular_scale,
                     )
                     self.node_graph.add_node(ip_adapter_node)
                     ip_adapter.node_id = ip_adapter_node.id
@@ -388,8 +392,10 @@ class NodeGraphThread(QThread):
             if len(modified_ip_adapters) > 0:
                 for ip_adapter in modified_ip_adapters:
                     ip_adapter_node = self.node_graph.get_node(ip_adapter.node_id)
+                    type_changed = False
 
                     if ip_adapter.type_index != ip_adapter_node.type_index:
+                        type_changed = True
                         # disconnect old model
                         ip_adapter_model_node = self.get_ip_adapter_model(ip_adapter_node.adapter_type)
                         ip_adapter_node.disconnect("ip_adapter_model", ip_adapter_model_node, "ip_adapter_model")
@@ -400,7 +406,13 @@ class NodeGraphThread(QThread):
 
                     # update rest of params
                     ip_adapter_node.update_adapter(
-                        ip_adapter.type_index, ip_adapter.adapter_type, ip_adapter.enabled, ip_adapter.ip_adapter_scale
+                        ip_adapter.type_index,
+                        ip_adapter.adapter_type,
+                        ip_adapter.enabled,
+                        ip_adapter.ip_adapter_scale,
+                        ip_adapter.granular_scale_enabled,
+                        ip_adapter.granular_scale,
+                        type_changed,
                     )
 
                     if ip_adapter.mask_image is not None:
