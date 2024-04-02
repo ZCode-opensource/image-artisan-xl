@@ -1,6 +1,6 @@
 from PyQt6.QtCore import QEvent, QSettings, Qt
 from PyQt6.QtGui import QColor, QCursor, QGuiApplication, QPixmap
-from PyQt6.QtWidgets import QApplication, QComboBox, QHBoxLayout, QLabel, QSlider
+from PyQt6.QtWidgets import QApplication, QComboBox, QFrame, QHBoxLayout, QLabel, QPushButton, QSlider
 from superqt import QDoubleSlider
 
 from iartisanxl.app.event_bus import EventBus
@@ -8,6 +8,7 @@ from iartisanxl.buttons.brush_erase_button import BrushEraseButton
 from iartisanxl.buttons.color_button import ColorButton
 from iartisanxl.buttons.eyedropper_button import EyeDropperButton
 from iartisanxl.modules.common.dialogs.base_dialog import BaseDialog
+from iartisanxl.modules.common.ip_adapter.advanced_widget import AdvancedWidget
 from iartisanxl.modules.common.ip_adapter.image_section_widget import ImageSectionWidget
 from iartisanxl.modules.common.ip_adapter.ip_adapter_data_object import IPAdapterDataObject
 from iartisanxl.modules.common.ip_adapter.mask_section_widget import MaskSectionWidget
@@ -53,15 +54,25 @@ class IPAdapterDialog(BaseDialog):
         self.type_combo.addItem("IP Adapter Composition", "ip_plus_composition_sdxl")
         top_layout.addWidget(self.type_combo)
 
+        self.scale_frame = QFrame()
+        self.scale_frame.setObjectName("main_scale_frame")
+        scale_layout = QHBoxLayout()
         adapter_scale_label = QLabel("Adapter scale:")
-        top_layout.addWidget(adapter_scale_label)
+        scale_layout.addWidget(adapter_scale_label)
         self.adapter_scale_slider = QDoubleSlider(Qt.Orientation.Horizontal)
         self.adapter_scale_slider.setRange(0.0, 1.0)
         self.adapter_scale_slider.setValue(self.adapter_scale)
         self.adapter_scale_slider.valueChanged.connect(self.on_adapter_scale_changed)
-        top_layout.addWidget(self.adapter_scale_slider)
+        scale_layout.addWidget(self.adapter_scale_slider)
         self.adapter_scale_value_label = QLabel(f"{self.adapter_scale}")
-        top_layout.addWidget(self.adapter_scale_value_label)
+        scale_layout.addWidget(self.adapter_scale_value_label)
+        self.scale_frame.setLayout(scale_layout)
+        top_layout.addWidget(self.scale_frame)
+
+        advanced_button = QPushButton("Advanced")
+        advanced_button.setFixedWidth(80)
+        advanced_button.clicked.connect(self.on_advanced_clicked)
+        top_layout.addWidget(advanced_button)
 
         self.main_layout.addLayout(top_layout)
 
@@ -111,6 +122,12 @@ class IPAdapterDialog(BaseDialog):
         self.mask_section_widget.mask_canceled.connect(self.on_cancel_mask)
         self.mask_section_widget.setVisible(False)
         self.main_layout.addWidget(self.mask_section_widget)
+
+        self.advanced_widget = AdvancedWidget(self.adapter)
+        self.advanced_widget.setVisible(False)
+        self.advanced_widget.advanced_canceled.connect(self.on_cancel_advanced)
+        self.advanced_widget.granular_enabled.connect(self.on_granular)
+        self.main_layout.addWidget(self.advanced_widget)
 
         self.main_layout.setStretch(0, 0)
         self.main_layout.setStretch(1, 0)
@@ -184,13 +201,14 @@ class IPAdapterDialog(BaseDialog):
     def on_add_mask_clicked(self):
         self.connect_mask_editor()
         self.image_section_widget.hide()
+        self.advanced_widget.hide()
         self.mask_section_widget.show()
 
     def on_mask_saved(self, thumb_pixmap: QPixmap):
         self.connect_image_editor()
         self.image_section_widget.ip_mask_item.set_pixmap(thumb_pixmap)
-        self.image_section_widget.show()
         self.mask_section_widget.hide()
+        self.image_section_widget.show()
         self.image_section_widget.add_mask_button.setText("Edit mask")
 
     def on_cancel_mask(self):
@@ -219,3 +237,17 @@ class IPAdapterDialog(BaseDialog):
             self.color_button.set_color(rgb_color)
             return True
         return super().eventFilter(obj, event)
+
+    def on_advanced_clicked(self):
+        self.mask_section_widget.hide()
+        self.image_section_widget.hide()
+        self.advanced_widget.show()
+
+    def on_cancel_advanced(self):
+        self.mask_section_widget.hide()
+        self.advanced_widget.hide()
+        self.image_section_widget.show()
+
+    def on_granular(self, state):
+        self.scale_frame.setDisabled(state)
+        self.adapter.granular_scale_enabled = state

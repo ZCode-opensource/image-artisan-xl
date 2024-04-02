@@ -13,6 +13,8 @@ class IPAdapterDataObject:
     adapter_type: str = attr.ib(default=None)
     type_index: int = attr.ib(default=0)
     ip_adapter_scale: float = attr.ib(default=1.0)
+    granular_scale_enabled: bool = attr.ib(default=False)
+    granular_scale: dict = attr.ib(default=None)
     enabled: bool = attr.ib(default=True)
     node_id: int = attr.ib(default=None)
     adapter_id: int = attr.ib(default=None)

@@ -13,21 +13,44 @@ class IPAdapterNode(Node):
     OPTIONAL_INPUTS = ["mask_alpha_image"]
     OUTPUTS = ["ip_adapter"]
 
-    def __init__(self, type_index: int, adapter_type: str, adapter_scale: float = None, **kwargs):
+    def __init__(
+        self,
+        type_index: int,
+        adapter_type: str,
+        adapter_scale: float = None,
+        granular_scale_enabled: bool = False,
+        granular_scale: dict = None,
+        **kwargs,
+    ):
         super().__init__(**kwargs)
 
         self.type_index = type_index
         self.adapter_type = adapter_type
         self.adapter_scale = adapter_scale
+        self.adapter_granuler_scale = granular_scale
+        self.granular_scale_enabled = granular_scale_enabled
         self.ip_image_prompt_embeds = None
+        self.reload_weights = True
 
         self.clip_image_processor = CLIPImageProcessor()
 
-    def update_adapter(self, type_index: int, adapter_type: str, enabled: bool, adapter_scale: float = None):
+    def update_adapter(
+        self,
+        type_index: int,
+        adapter_type: str,
+        enabled: bool,
+        adapter_scale: float = None,
+        granular_scale_enabled: bool = False,
+        granular_scale: dict = None,
+        reload_weights: bool = False,
+    ):
         self.type_index = type_index
         self.adapter_type = adapter_type
         self.enabled = enabled
         self.adapter_scale = adapter_scale
+        self.granular_scale_enabled = granular_scale_enabled
+        self.adapter_granuler_scale = granular_scale
+        self.reload_weights = reload_weights
         self.set_updated()
 
     def to_dict(self):
@@ -35,6 +58,8 @@ class IPAdapterNode(Node):
         node_dict["type_index"] = self.type_index
         node_dict["adapter_type"] = self.adapter_type
         node_dict["adapter_scale"] = self.adapter_scale
+        node_dict["granular_scale_enabled"] = self.granular_scale_enabled
+        node_dict["adapter_granuler_scale"] = self.adapter_granuler_scale
         return node_dict
 
     @classmethod
@@ -43,12 +68,16 @@ class IPAdapterNode(Node):
         node.type_index = node_dict["type_index"]
         node.adapter_type = node_dict["adapter_type"]
         node.adapter_scale = node_dict["adapter_scale"]
+        node.granular_scale_enabled = node_dict["granular_scale_enabled"]
+        node.adapter_granuler_scale = node_dict["adapter_granuler_scale"]
         return node
 
     def update_inputs(self, node_dict):
         self.type_index = node_dict["type_index"]
         self.adapter_type = node_dict["adapter_type"]
         self.adapter_scale = node_dict["adapter_scale"]
+        self.granular_scale_enabled = node_dict["granular_scale_enabled"]
+        self.adapter_granuler_scale = node_dict["adapter_granuler_scale"]
 
     def __call__(self) -> dict:
         image_projection = self.convert_ip_adapter_image_proj_to_diffusers(self.ip_adapter_model["image_proj"])
@@ -65,7 +94,7 @@ class IPAdapterNode(Node):
         image_prompt_embeds, uncond_image_prompt_embeds = self.get_image_embeds(image, output_hidden_states)
 
         # save_embeds = torch.cat([uncond_image_prompt_embeds, image_prompt_embeds])
-        # torch.save(save_embeds, "C:/Users/Ozzy/Desktop/iartisanxl_style_test.ipadpt")
+        # torch.save(save_embeds, "iartisanxl_style_test.ipadpt")
 
         tensor_mask = None
         if self.mask_alpha_image is not None:
@@ -81,9 +110,13 @@ class IPAdapterNode(Node):
             "weights": self.ip_adapter_model,
             "image_prompt_embeds": image_prompt_embeds,
             "uncond_image_prompt_embeds": uncond_image_prompt_embeds,
+            "enabled": self.enabled,
             "scale": self.adapter_scale,
+            "granular_scale_enabled": self.granular_scale_enabled,
+            "granular_scale": self.adapter_granuler_scale,
             "tensor_mask": tensor_mask,
             "image_projection": image_projection,
+            "reload_weights": self.reload_weights,
         }
 
         return self.values
