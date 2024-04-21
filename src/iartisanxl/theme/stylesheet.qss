@@ -528,3 +528,19 @@ IPAdapterDialog QFrame:disabled {
 IPAdapterDialog AdvancedWidget QFrame#block_frame {
     border: 1px solid #848485;
 }
+
+LoraAdvancedDialog QCheckBox {
+    background: #181b28;
+}
+
+LoraAdvancedDialog QFrame:disabled {
+    color: #585858;
+}
+
+LoraAdvancedDialog QFrame#block_frame {
+    border: 1px solid #848485;
+}
+
+LoraAdvancedDialog QLabeledDoubleSlider SliderLabel:disabled {
+    color: #585858;
+}

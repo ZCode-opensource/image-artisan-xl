@@ -1,8 +1,8 @@
 from PyQt6.QtCore import Qt, pyqtSignal
-from PyQt6.QtWidgets import QCheckBox, QFrame, QGridLayout, QHBoxLayout, QLabel, QPushButton, QVBoxLayout
-from superqt import QLabeledDoubleSlider
+from PyQt6.QtWidgets import QCheckBox, QFrame, QHBoxLayout, QPushButton, QVBoxLayout
 
 from iartisanxl.buttons.remove_button import RemoveButton
+from iartisanxl.modules.common.lora.lora_advanced_dialog import LoraAdvancedDialog
 from iartisanxl.modules.common.lora.lora_data_object import LoraDataObject
 
 
@@ -11,21 +11,15 @@ class LoraAddedItem(QFrame):
     weight_changed = pyqtSignal()
     enabled = pyqtSignal(int, bool)
     sliders_locked = pyqtSignal(int, bool)
+    advanced_clicked = pyqtSignal(object)
 
     def __init__(self, lora: LoraDataObject, *args, **kwargs):
         super().__init__(*args, **kwargs)
+
         self.lora = lora
-        self.locked = lora.locked
+        self.advanced_dialog = None
 
         self.init_ui()
-
-        self.unet_weight_slider.valueChanged.connect(lambda weight: self.on_slider_value_changed(0, weight))
-        self.text_encoder_one_weight_slider.valueChanged.connect(
-            lambda weight: self.on_slider_value_changed(1, weight)
-        )
-        self.text_encoder_two_weight_slider.valueChanged.connect(
-            lambda weight: self.on_slider_value_changed(2, weight)
-        )
 
     def init_ui(self):
         main_layout = QVBoxLayout()
@@ -44,7 +38,7 @@ class LoraAddedItem(QFrame):
 
         remove_button = RemoveButton()
         remove_button.setFixedSize(20, 20)
-        remove_button.clicked.connect(lambda: self.remove_clicked.emit(self))
+        remove_button.clicked.connect(self.on_removed)
         upper_layout.addWidget(remove_button)
 
         upper_layout.setStretch(0, 1)
@@ -52,76 +46,35 @@ class LoraAddedItem(QFrame):
 
         main_layout.addLayout(upper_layout)
 
-        sliders_layout = QGridLayout()
-
-        unet_label = QLabel("Unet: ")
-        sliders_layout.addWidget(unet_label, 0, 0)
-        self.unet_weight_slider = QLabeledDoubleSlider(Qt.Orientation.Horizontal)
-        self.unet_weight_slider.setRange(0.0, 1.0)
-        self.unet_weight_slider.setValue(self.lora.unet_weight)
-        sliders_layout.addWidget(self.unet_weight_slider, 0, 1)
-
-        text_encoder_one_label = QLabel("Text 1: ")
-        sliders_layout.addWidget(text_encoder_one_label, 1, 0)
-        self.text_encoder_one_weight_slider = QLabeledDoubleSlider(Qt.Orientation.Horizontal)
-        self.text_encoder_one_weight_slider.setRange(0.0, 1.0)
-        self.text_encoder_one_weight_slider.setValue(self.lora.text_encoder_one_weight)
-        sliders_layout.addWidget(self.text_encoder_one_weight_slider, 1, 1)
-
-        text_encoder_two_label = QLabel("Text 2: ")
-        sliders_layout.addWidget(text_encoder_two_label, 2, 0)
-        self.text_encoder_two_weight_slider = QLabeledDoubleSlider(Qt.Orientation.Horizontal)
-        self.text_encoder_two_weight_slider.setRange(0.0, 1.0)
-        self.text_encoder_two_weight_slider.setValue(self.lora.text_encoder_two_weight)
-        sliders_layout.addWidget(self.text_encoder_two_weight_slider, 2, 1)
-
-        main_layout.addLayout(sliders_layout)
-
         bottom_layout = QHBoxLayout()
         advanced_button = QPushButton("Advanced")
+        advanced_button.clicked.connect(self.open_advanced)
         bottom_layout.addWidget(advanced_button, alignment=Qt.AlignmentFlag.AlignCenter)
-        self.locked_checkbox = QCheckBox("Locked")
-        self.locked_checkbox.setChecked(self.locked)
-        self.locked_checkbox.stateChanged.connect(self.on_lock_changed)
-        bottom_layout.addWidget(self.locked_checkbox, alignment=Qt.AlignmentFlag.AlignCenter)
-
         main_layout.addLayout(bottom_layout)
 
         self.setLayout(main_layout)
 
-    def on_slider_value_changed(self, weight_type: int, value: float):
-        if weight_type == 0:
-            diff = value - self.lora.unet_weight
-            self.lora.unet_weight = value
-
-            if self.locked:
-                self.lora.text_encoder_one_weight += diff
-                self.lora.text_encoder_two_weight += diff
-        elif weight_type == 1:
-            diff = value - self.lora.text_encoder_one_weight
-            self.lora.text_encoder_one_weight = value
-
-            if self.locked:
-                self.lora.unet_weight += diff
-                self.lora.text_encoder_two_weight += diff
-        elif weight_type == 2:
-            diff = value - self.lora.text_encoder_two_weight
-            self.lora.text_encoder_two_weight = value
-
-            if self.locked:
-                self.lora.unet_weight += diff
-                self.lora.text_encoder_one_weight += diff
-
-        self.unet_weight_slider.setValue(self.lora.unet_weight)
-        self.text_encoder_one_weight_slider.setValue(self.lora.text_encoder_one_weight)
-        self.text_encoder_two_weight_slider.setValue(self.lora.text_encoder_two_weight)
-
-    def get_slider_value(self):
-        return self.unet_weight_slider.value()
-
     def on_check_enabled(self):
         self.enabled.emit(self.lora.lora_id, self.enabled_checkbox.isChecked())
 
-    def on_lock_changed(self):
-        self.locked = self.locked_checkbox.isChecked()
-        self.sliders_locked.emit(self.lora.lora_id, self.locked)
+    def on_removed(self):
+        if self.advanced_dialog is not None:
+            self.advanced_dialog.close()
+        self.remove_clicked.emit(self)
+
+    def hideEvent(self, event):
+        if self.advanced_dialog is not None:
+            self.advanced_dialog.close()
+        super().hideEvent(event)
+
+    def open_advanced(self):
+        if self.advanced_dialog is None:
+            self.advanced_dialog = LoraAdvancedDialog(self.lora)
+            self.advanced_dialog.closed.connect(self.on_dialog_closed)
+            self.advanced_dialog.show()
+        else:
+            self.advanced_dialog.raise_()
+            self.advanced_dialog.activateWindow()
+
+    def on_dialog_closed(self):
+        self.advanced_dialog = None

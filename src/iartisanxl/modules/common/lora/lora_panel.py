@@ -13,7 +13,6 @@ class LoraPanel(BasePanel):
         super().__init__(*args, **kwargs)
 
         self.lora_scale = 1.0
-        self.dialog = None
         self.init_ui()
 
         self.event_bus = EventBus()

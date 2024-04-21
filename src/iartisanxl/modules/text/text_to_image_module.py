@@ -270,8 +270,19 @@ class TextToImageModule(BaseModule):
                     filename=lora["name"],
                     version=lora["version"],
                     path=lora["path"],
+                    unet_weight=lora.get("unet_weight", 1.0),
+                    text_encoder_one_weight=lora.get("text_encoder_one_weight", 1.0),
+                    text_encoder_two_weight=lora.get("text_encoder_two_weight", 1.0),
+                    granular_unet_weights_enabled=lora.get("granular_unet_weights_enabled", False),
+                    granular_unet_weights=lora.get(
+                        "granular_unet_weights",
+                        {
+                            "down": {"block_1": [1.0, 1.0], "block_2": [1.0, 1.0]},
+                            "mid": 0,
+                            "up": {"block_0": [1.0, 1.0, 1.0], "block_1": [1.0, 1.0, 1.0]},
+                        },
+                    ),
                 )
-                lora_object.set_weights(lora["scale"])
                 self.lora_list.add(lora_object)
 
         self.event_bus.publish("update_from_json", {})
@@ -429,8 +440,19 @@ class TextToImageModule(BaseModule):
                     filename=lora["name"],
                     version=lora["version"],
                     path=lora["path"],
+                    unet_weight=lora.get("unet_weight", 1.0),
+                    text_encoder_one_weight=lora.get("text_encoder_one_weight", 1.0),
+                    text_encoder_two_weight=lora.get("text_encoder_two_weight", 1.0),
+                    granular_unet_weights_enabled=lora.get("granular_unet_weights_enabled", False),
+                    granular_unet_weights=lora.get(
+                        "granular_unet_weights",
+                        {
+                            "down": {"block_1": [1.0, 1.0], "block_2": [1.0, 1.0]},
+                            "mid": 0,
+                            "up": {"block_0": [1.0, 1.0, 1.0], "block_1": [1.0, 1.0, 1.0]},
+                        },
+                    ),
                 )
-                lora_object.set_weights(lora["scale"])
                 self.lora_list.add(lora_object)
 
         self.event_bus.publish("update_from_json", {})

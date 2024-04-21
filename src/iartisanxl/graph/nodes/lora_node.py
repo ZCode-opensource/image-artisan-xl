@@ -24,31 +24,55 @@ class LoraNode(Node):
         self,
         path: str = None,
         adapter_name: str = None,
-        scale: dict = None,
         lora_name: str = None,
         version: str = None,
+        unet_weight: float = None,
+        text_encoder_one_weight: float = None,
+        text_encoder_two_weight: float = None,
+        granular_unet_weights_enabled: bool = False,
+        granular_unet_weights: dict = None,
         **kwargs,
     ):
         super().__init__(**kwargs)
 
         self.path = path
         self.adapter_name = adapter_name
-        self.scale = scale
         self.lora_name = lora_name
         self.version = version
+        self.unet_weight = unet_weight
+        self.text_encoder_one_weight = text_encoder_one_weight
+        self.text_encoder_two_weight = text_encoder_two_weight
+        self.granular_unet_weights_enabled = granular_unet_weights_enabled
+        self.granular_unet_weights = granular_unet_weights
 
-    def update_lora(self, scale: dict, enabled: bool):
-        self.scale = scale
+    def update_lora(
+        self,
+        enabled: bool,
+        unet_weight: float,
+        text_encoder_one_weight: float,
+        text_encoder_two_weight: float,
+        granular_unet_weights_enabled: bool,
+        granular_unet_weights: dict,
+    ):
         self.enabled = enabled
+        self.unet_weight = unet_weight
+        self.text_encoder_one_weight = text_encoder_one_weight
+        self.text_encoder_two_weight = text_encoder_two_weight
+        self.granular_unet_weights_enabled = granular_unet_weights_enabled
+        self.granular_unet_weights = granular_unet_weights
         self.set_updated()
 
     def to_dict(self):
         node_dict = super().to_dict()
         node_dict["path"] = self.path
         node_dict["adapter_name"] = self.adapter_name
-        node_dict["scale"] = self.scale
         node_dict["lora_name"] = self.lora_name
         node_dict["version"] = self.version
+        node_dict["unet_weight"] = self.unet_weight
+        node_dict["text_encoder_one_weight"] = self.text_encoder_one_weight
+        node_dict["text_encoder_two_weight"] = self.text_encoder_two_weight
+        node_dict["granular_unet_weights_enabled"] = self.granular_unet_weights_enabled
+        node_dict["granular_unet_weights"] = self.granular_unet_weights
         return node_dict
 
     @classmethod
@@ -56,17 +80,25 @@ class LoraNode(Node):
         node = super(LoraNode, cls).from_dict(node_dict)
         node.path = node_dict["path"]
         node.adapter_name = node_dict["adapter_name"]
-        node.scale = node_dict["scale"]
         node.lora_name = node_dict["lora_name"]
         node.version = node_dict["version"]
+        node.unet_weight = node_dict["unet_weight"]
+        node.text_encoder_one_weight = node_dict["text_encoder_one_weight"]
+        node.text_encoder_two_weight = node_dict["text_encoder_two_weight"]
+        node.granular_unet_weights_enabled = node_dict["granular_unet_weights_enabled"]
+        node.granular_unet_weights = node_dict["granular_unet_weights"]
         return node
 
     def update_inputs(self, node_dict):
         self.path = node_dict["path"]
         self.adapter_name = node_dict["adapter_name"]
-        self.scale = node_dict["scale"]
         self.lora_name = node_dict["lora_name"]
         self.version = node_dict["version"]
+        self.unet_weight = node_dict["unet_weight"]
+        self.text_encoder_one_weight = node_dict["text_encoder_one_weight"]
+        self.text_encoder_two_weight = node_dict["text_encoder_two_weight"]
+        self.granular_unet_weights_enabled = node_dict["granular_unet_weights_enabled"]
+        self.granular_unet_weights = node_dict["granular_unet_weights"]
 
     def __call__(self):
         if self.adapter_name not in getattr(self.unet, "peft_config", {}):
@@ -106,7 +138,16 @@ class LoraNode(Node):
                     adapter_name=self.adapter_name,
                 )
 
-        scale = self.scale
+        unet_weights = self.unet_weight
+
+        if self.granular_unet_weights_enabled:
+            unet_weights = self.granular_unet_weights
+
+        scale = {
+            "unet": unet_weights,
+            "text_encoder_one": self.text_encoder_one_weight,
+            "text_encoder_two": self.text_encoder_two_weight,
+        }
         if not self.enabled:
             scale = {"unet": 0.0, "text_encoder_one": 0.0, "text_encoder_two": 0.0}
 

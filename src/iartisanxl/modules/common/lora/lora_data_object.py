@@ -11,31 +11,15 @@ class LoraDataObject:
     unet_weight = attr.ib(type=float, default=1.00)
     text_encoder_one_weight = attr.ib(type=float, default=1.00)
     text_encoder_two_weight = attr.ib(type=float, default=1.00)
-    advanced_weights = attr.ib(type=dict, default=None)
+    granular_unet_weights_enabled: bool = attr.ib(default=False)
+    granular_unet_weights: dict = attr.ib(
+        default={
+            "down": {"block_1": [1.0, 1.0], "block_2": [1.0, 1.0]},
+            "mid": 0,
+            "up": {"block_0": [1.0, 1.0, 1.0], "block_1": [1.0, 1.0, 1.0]},
+        }
+    )
     node_id: int = attr.ib(default=None)
     lora_id = attr.ib(default=None)
     locked = attr.ib(type=bool, default=True)
     is_slider = attr.ib(type=bool, default=False)
-
-    def get_weights(self):
-        if self.advanced_weights is None:
-            return {
-                "text_encoder_one": self.text_encoder_one_weight,
-                "text_encoder_two": self.text_encoder_two_weight,
-                "unet": self.unet_weight,
-            }
-        else:
-            return self.advanced_weights
-
-    def set_weights(self, weights):
-        if isinstance(weights, float):
-            self.text_encoder_one_weight = weights
-            self.text_encoder_two_weight = weights
-            self.unet_weight = weights
-        elif isinstance(weights, dict):
-            if "unet" in weights and isinstance(weights["unet"], dict):
-                self.advanced_weights = weights["unet"]
-            else:
-                self.text_encoder_one_weight = weights.get("text_encoder_one", self.text_encoder_one_weight)
-                self.text_encoder_two_weight = weights.get("text_encoder_two", self.text_encoder_two_weight)
-                self.unet_weight = weights.get("unet", self.unet_weight)
