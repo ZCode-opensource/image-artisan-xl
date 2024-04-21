@@ -1,6 +1,16 @@
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import QColor, QPainter, QPen
-from PyQt6.QtWidgets import QCheckBox, QDialog, QFrame, QGridLayout, QHBoxLayout, QLabel, QSizeGrip, QVBoxLayout
+from PyQt6.QtWidgets import (
+    QCheckBox,
+    QDialog,
+    QFrame,
+    QGridLayout,
+    QHBoxLayout,
+    QLabel,
+    QSizeGrip,
+    QSpacerItem,
+    QVBoxLayout,
+)
 from superqt import QLabeledDoubleSlider
 
 from iartisanxl.app.title_bar import TitleBar
@@ -122,6 +132,8 @@ class LoraAdvancedDialog(QDialog):
                         blocks_layout.addLayout(attention_layout)
 
                         self.sliders.setdefault(section, {}).setdefault(block, []).append(attention_slider)
+                    blocks_layout.addSpacerItem(QSpacerItem(0, 15))
+                blocks_layout.addStretch()
             else:
                 # Handle the 'mid' section which is not a dictionary
                 attention_layout = QHBoxLayout()
@@ -133,6 +145,7 @@ class LoraAdvancedDialog(QDialog):
                 attention_slider.valueChanged.connect(lambda val, sec=section: self.update_scale(val, sec, None, None))
                 attention_layout.addWidget(attention_slider)
                 blocks_layout.addLayout(attention_layout)
+                blocks_layout.addStretch()
 
                 self.sliders[section] = attention_slider
 

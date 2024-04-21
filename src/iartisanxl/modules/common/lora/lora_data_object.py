@@ -15,7 +15,7 @@ class LoraDataObject:
     granular_unet_weights: dict = attr.ib(
         default={
             "down": {"block_1": [1.0, 1.0], "block_2": [1.0, 1.0]},
-            "mid": 0,
+            "mid": 1.0,
             "up": {"block_0": [1.0, 1.0, 1.0], "block_1": [1.0, 1.0, 1.0]},
         }
     )
