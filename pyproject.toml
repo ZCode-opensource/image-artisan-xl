@@ -5,9 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "iartisanxl"
 version = "0.3.0"
-authors = [
-  { name="Alvaro Somoza", email="somoza.alvaro@gmail.com" },
-]
+authors = [{ name = "Alvaro Somoza", email = "somoza.alvaro@gmail.com" }]
 description = "Dekstop application for generating images using Stable Diffusion."
 requires-python = ">=3.11"
 dependencies = [
@@ -32,24 +30,24 @@ dependencies = [
     "vcolorpicker>=1.4.3",
     "einops>=0.7.0",
     "timm==0.9.5",
-    "bitsandbytes==0.41.1",
+    "bitsandbytes>=0.43.0",
     "prodigyopt==1.0",
     "noise==1.2.2",
 ]
 
 [project.optional-dependencies]
-dev = [
-    "pytest",
-    "pytest-qt",
-    "pytest-cov",
-    "build",
-]
+dev = ["pytest", "pytest-qt", "pytest-cov", "build"]
 
 [tool.setuptools.packages.find]
 where = ["src"]
 
 [tool.setuptools.package-data]
-iartisanxl = ["theme/stylesheet.qss", "theme/icons/*.*", "theme/images/*.*", "theme/cursors/*.svg"]
+iartisanxl = [
+    "theme/stylesheet.qss",
+    "theme/icons/*.*",
+    "theme/images/*.*",
+    "theme/cursors/*.svg",
+]
 
 [tool.ruff]
 select = ["C", "E", "F", "I", "W"]
@@ -70,9 +68,7 @@ iartisanxl = "iartisanxl.__main__:main"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = [
-    "--import-mode=importlib",
-]
+addopts = ["--import-mode=importlib"]
 filterwarnings = [
     "ignore::DeprecationWarning:torchvision.transforms._functional_pil",
 ]

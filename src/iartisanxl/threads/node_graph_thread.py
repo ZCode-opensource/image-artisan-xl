@@ -138,9 +138,13 @@ class NodeGraphThread(QThread):
                 lora_node = LoraNode(
                     path=lora.path,
                     adapter_name=lora.filename,
-                    scale=lora.weight,
                     lora_name=lora.name,
                     version=lora.version,
+                    unet_weight=lora.unet_weight,
+                    text_encoder_one_weight=lora.text_encoder_one_weight,
+                    text_encoder_two_weight=lora.text_encoder_two_weight,
+                    granular_unet_weights_enabled=lora.granular_unet_weights_enabled,
+                    granular_unet_weights=lora.granular_unet_weights,
                 )
                 lora_node.connect("unet", sdxl_model, "unet")
                 lora_node.connect("text_encoder_1", sdxl_model, "text_encoder_1")
@@ -164,9 +168,13 @@ class NodeGraphThread(QThread):
                     lora_node = LoraNode(
                         path=lora.path,
                         adapter_name=lora.filename,
-                        scale=lora.weight,
                         lora_name=lora.name,
                         version=lora.version,
+                        unet_weight=lora.unet_weight,
+                        text_encoder_one_weight=lora.text_encoder_one_weight,
+                        text_encoder_two_weight=lora.text_encoder_two_weight,
+                        granular_unet_weights_enabled=lora.granular_unet_weights_enabled,
+                        granular_unet_weights=lora.granular_unet_weights,
                     )
                     lora_node.connect("unet", sdxl_model, "unet")
                     lora_node.connect("text_encoder_1", sdxl_model, "text_encoder_1")
@@ -184,7 +192,14 @@ class NodeGraphThread(QThread):
                     lora_node = self.node_graph.get_node(lora.node_id)
 
                     if lora_node is not None:
-                        lora_node.update_lora(lora.weight, lora.enabled)
+                        lora_node.update_lora(
+                            lora.enabled,
+                            unet_weight=lora.unet_weight,
+                            text_encoder_one_weight=lora.text_encoder_one_weight,
+                            text_encoder_two_weight=lora.text_encoder_two_weight,
+                            granular_unet_weights_enabled=lora.granular_unet_weights_enabled,
+                            granular_unet_weights=lora.granular_unet_weights,
+                        )
 
         self.lora_list.save_state()
         self.lora_list.dropped_image = False

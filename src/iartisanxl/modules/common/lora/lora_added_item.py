@@ -1,8 +1,8 @@
 from PyQt6.QtCore import Qt, pyqtSignal
-from PyQt6.QtWidgets import QCheckBox, QFrame, QHBoxLayout, QVBoxLayout
-from superqt import QLabeledDoubleSlider
+from PyQt6.QtWidgets import QCheckBox, QFrame, QHBoxLayout, QPushButton, QVBoxLayout
 
 from iartisanxl.buttons.remove_button import RemoveButton
+from iartisanxl.modules.common.lora.lora_advanced_dialog import LoraAdvancedDialog
 from iartisanxl.modules.common.lora.lora_data_object import LoraDataObject
 
 
@@ -10,12 +10,16 @@ class LoraAddedItem(QFrame):
     remove_clicked = pyqtSignal(object)
     weight_changed = pyqtSignal()
     enabled = pyqtSignal(int, bool)
+    sliders_locked = pyqtSignal(int, bool)
+    advanced_clicked = pyqtSignal(object)
 
     def __init__(self, lora: LoraDataObject, *args, **kwargs):
         super().__init__(*args, **kwargs)
+
         self.lora = lora
+        self.advanced_dialog = None
+
         self.init_ui()
-        self.weight_slider.valueChanged.connect(self.on_slider_value_changed)
 
     def init_ui(self):
         main_layout = QVBoxLayout()
@@ -34,7 +38,7 @@ class LoraAddedItem(QFrame):
 
         remove_button = RemoveButton()
         remove_button.setFixedSize(20, 20)
-        remove_button.clicked.connect(lambda: self.remove_clicked.emit(self))
+        remove_button.clicked.connect(self.on_removed)
         upper_layout.addWidget(remove_button)
 
         upper_layout.setStretch(0, 1)
@@ -43,20 +47,34 @@ class LoraAddedItem(QFrame):
         main_layout.addLayout(upper_layout)
 
         bottom_layout = QHBoxLayout()
-        self.weight_slider = QLabeledDoubleSlider(Qt.Orientation.Horizontal)
-        self.weight_slider.setRange(-8.0, 8.0)
-        self.weight_slider.setValue(self.lora.weight)
-        main_layout.addWidget(self.weight_slider)
-        bottom_layout.addWidget(self.weight_slider)
-
+        advanced_button = QPushButton("Advanced")
+        advanced_button.clicked.connect(self.open_advanced)
+        bottom_layout.addWidget(advanced_button, alignment=Qt.AlignmentFlag.AlignCenter)
         main_layout.addLayout(bottom_layout)
+
         self.setLayout(main_layout)
-
-    def on_slider_value_changed(self, value):
-        self.lora.weight = value
-
-    def get_slider_value(self):
-        return self.weight_slider.value()
 
     def on_check_enabled(self):
         self.enabled.emit(self.lora.lora_id, self.enabled_checkbox.isChecked())
+
+    def on_removed(self):
+        if self.advanced_dialog is not None:
+            self.advanced_dialog.close()
+        self.remove_clicked.emit(self)
+
+    def hideEvent(self, event):
+        if self.advanced_dialog is not None:
+            self.advanced_dialog.close()
+        super().hideEvent(event)
+
+    def open_advanced(self):
+        if self.advanced_dialog is None:
+            self.advanced_dialog = LoraAdvancedDialog(self.lora)
+            self.advanced_dialog.closed.connect(self.on_dialog_closed)
+            self.advanced_dialog.show()
+        else:
+            self.advanced_dialog.raise_()
+            self.advanced_dialog.activateWindow()
+
+    def on_dialog_closed(self):
+        self.advanced_dialog = None

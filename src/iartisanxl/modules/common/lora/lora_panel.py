@@ -1,11 +1,11 @@
-from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel
 from PyQt6.QtCore import Qt
+from PyQt6.QtWidgets import QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget
 from superqt import QDoubleSlider
 
 from iartisanxl.app.event_bus import EventBus
-from iartisanxl.modules.common.panels.base_panel import BasePanel
-from iartisanxl.modules.common.lora.lora_dialog import LoraDialog
 from iartisanxl.modules.common.lora.lora_added_item import LoraAddedItem
+from iartisanxl.modules.common.lora.lora_dialog import LoraDialog
+from iartisanxl.modules.common.panels.base_panel import BasePanel
 
 
 class LoraPanel(BasePanel):
@@ -13,7 +13,6 @@ class LoraPanel(BasePanel):
         super().__init__(*args, **kwargs)
 
         self.lora_scale = 1.0
-        self.dialog = None
         self.init_ui()
 
         self.event_bus = EventBus()
@@ -79,6 +78,7 @@ class LoraPanel(BasePanel):
                 lora_widget = LoraAddedItem(lora)
                 lora_widget.remove_clicked.connect(self.on_remove_clicked)
                 lora_widget.enabled.connect(self.on_enabled)
+                lora_widget.sliders_locked.connect(self.on_locked)
                 self.loras_layout.addWidget(lora_widget)
 
     def update_from_json(self, _data):
@@ -97,6 +97,9 @@ class LoraPanel(BasePanel):
 
     def on_enabled(self, lora_id, enabled):
         self.lora_list.update_lora_by_id(lora_id, {"enabled": enabled})
+
+    def on_locked(self, lora_id, locked):
+        self.lora_list.update_lora_by_id(lora_id, {"locked": locked})
 
     def clean_up(self):
         self.event_bus.unsubscribe("update_from_json", self.update_from_json)
